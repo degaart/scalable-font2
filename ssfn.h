@@ -1007,10 +1007,10 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
         } else {
             ctx->g = &ctx->ga;
         }
-        x = (ci ? (ctx->f->height - ctx->f->baseline) * h / SSFN_ITALIC_DIV / ctx->f->height : 0);
+        x = (ctx->rc->x > 0 && ci ? (ctx->f->height - ctx->f->baseline) * h / SSFN_ITALIC_DIV / ctx->f->height : 0);
         ctx->g->p = p;
         ctx->g->h = h;
-        ctx->g->x = ctx->rc->x + (ctx->rc->x ? x : 0);
+        ctx->g->x = ctx->rc->x + x;
         ctx->g->y = ctx->rc->y;
         ctx->g->o = (ctx->rc->t & 0x3F) + x;
         SSFN_memset(&ctx->g->data, 0xFF, p * h);
@@ -1173,8 +1173,10 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
         w = ctx->style & SSFN_STYLE_NOAA ? ctx->g->p : ctx->g->p * h / ctx->g->h;
         s = ctx->g->x * h / ctx->f->height - ctx->g->o * h / ctx->f->height;
         if(dst->ptr) {
-            ox = ctx->g->x ? ctx->g->o * h / ctx->f->height : w / 2;
-            oy = ctx->g->x ? ctx->g->a * h / ctx->f->height : 0;
+            if(ctx->g->x) {
+                ox = (ctx->g->o * h / ctx->f->height) + (ctx->style & SSFN_STYLE_RTL ? w : 0);
+                oy = ctx->g->a * h / ctx->f->height;
+            } else { ox = w / 2; oy = 0; }
             j = dst->w < 0 ? -dst->w : dst->w;
             cb = (h + 64) >> 6; uix = w > s ? w : s; uax = 0;
             n = ctx->f->underline * h / ctx->f->height;
@@ -1253,7 +1255,7 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
             }
         }
         /* add advance and kerning */
-        dst->x += s;
+        dst->x += (ctx->style & SSFN_STYLE_RTL ? -s : s);
         dst->y += ctx->g->y * h / ctx->f->height;
         ptr = (uint8_t*)str + ret;
         if(!(ctx->style & SSFN_STYLE_NOKERN) && ctx->f->kerning_offs && _ssfn_c(ctx->f, (const char*)ptr, &i, &P) && P > 32) {

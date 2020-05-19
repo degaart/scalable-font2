@@ -108,6 +108,8 @@ void do_test(SDL_Surface *screen, char *fontfn)
     char *str10="(font provided)";
     char *str11="Oh, almost forgot: the compressed 😀 SSFN format supports bitmap based glyphs, vector based glyphs, and...";
     char *str12="->@-COLORFUL-PIXMAP-GLYPHS-=-ALSO>AVAILABLE-BY:->\n->THE-----------<SSFN>FORMAT-AND>RENDERER-;->=@->";
+    char *str13="Vertical, horizontal left-to-right and right-to-left rendering (with flag, no BiDi state machine):";
+    char *str14="אבגדהוזחט";
     char strM[128];
     int sintbl[] = { 0, 1, 5, 9, 14, 21, 28, 36, 56, 67, 78, 67, 56, 46, 36, 28, 21, 14, 9, 5, 1 };
     int ret, size, i;
@@ -137,7 +139,7 @@ void do_test(SDL_Surface *screen, char *fontfn)
     if(ret != SSFN_OK) { fprintf(stderr, "ssfn select error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
 
     s = title;
-    ssfn_dst.x = 80;
+    ssfn_dst.x = 55;
     ssfn_dst.y = 32;
     while((ret = ssfn_render(&ctx, &ssfn_dst, s)) > 0) s += ret;
     if(ret != SSFN_OK) { fprintf(stderr, "ssfn render error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
@@ -190,7 +192,7 @@ void do_test(SDL_Surface *screen, char *fontfn)
     /* scaling demos */
     s = str3;
     ssfn_dst.x = 8;
-    ssfn_dst.y = 140;
+    ssfn_dst.y = 135;
     i = 0;
     do {
         ret = ssfn_select(&ctx, SSFN_FAMILY_MONOSPACE, NULL, SSFN_STYLE_REGULAR | SSFN_STYLE_NOCACHE | SSFN_STYLE_NOAA,
@@ -204,7 +206,7 @@ void do_test(SDL_Surface *screen, char *fontfn)
 
     s = str4;
     ssfn_dst.x = 8;
-    ssfn_dst.y = 180;
+    ssfn_dst.y = 170;
     i = 0;
     do {
         ret = ssfn_select(&ctx, SSFN_FAMILY_MONOSPACE, NULL, SSFN_STYLE_REGULAR | SSFN_STYLE_NOCACHE,
@@ -218,7 +220,7 @@ void do_test(SDL_Surface *screen, char *fontfn)
 
     s = str5;
     ssfn_dst.x = 8;
-    ssfn_dst.y = 250;
+    ssfn_dst.y = 230;
     i = 0;
     do {
         ret = ssfn_select(&ctx, SSFN_FAMILY_SERIF, NULL, SSFN_STYLE_REGULAR | SSFN_STYLE_NOCACHE,
@@ -233,7 +235,7 @@ void do_test(SDL_Surface *screen, char *fontfn)
     /* bitmap style tests */
     s = str6;
     ssfn_dst.x = 8;
-    ssfn_dst.y = 290;
+    ssfn_dst.y = 270;
     while(*s) {
         if(*s=='@') { s++; ssfn_select(&ctx, SSFN_FAMILY_MONOSPACE, NULL, SSFN_STYLE_UNDERLINE | SSFN_STYLE_NOCACHE, 16); continue; }
         if(*s=='#') { s++; ssfn_select(&ctx, SSFN_FAMILY_MONOSPACE, NULL, SSFN_STYLE_ITALIC | SSFN_STYLE_NOCACHE, 16); continue; }
@@ -247,7 +249,7 @@ void do_test(SDL_Surface *screen, char *fontfn)
 
     s = str7;
     ssfn_dst.x = 420;
-    ssfn_dst.y = 290;
+    ssfn_dst.y = 270;
     while(*s) {
         if(*s=='@') { s++; ssfn_select(&ctx, SSFN_FAMILY_SERIF, NULL, SSFN_STYLE_UNDERLINE | SSFN_STYLE_NOCACHE, 16); continue; }
         if(*s=='#') { s++; ssfn_select(&ctx, SSFN_FAMILY_SERIF, NULL, SSFN_STYLE_ITALIC | SSFN_STYLE_NOCACHE, 16); continue; }
@@ -265,7 +267,7 @@ void do_test(SDL_Surface *screen, char *fontfn)
 
     s = str8;
     ssfn_dst.x = 8;
-    ssfn_dst.y = 310;
+    ssfn_dst.y = 290;
     while((ret = ssfn_render(&ctx, &ssfn_dst, s)) > 0) s += ret;
     if(ret != SSFN_OK) { fprintf(stderr, "ssfn render error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
 
@@ -274,7 +276,7 @@ void do_test(SDL_Surface *screen, char *fontfn)
 
     s = str9;
     ssfn_dst.x = 8;
-    ssfn_dst.y = 330;
+    ssfn_dst.y = 310;
     while((ret = ssfn_render(&ctx, &ssfn_dst, s)) > 0) s += ret;
     if(ret != SSFN_OK) { fprintf(stderr, "ssfn render error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
 
@@ -284,7 +286,7 @@ void do_test(SDL_Surface *screen, char *fontfn)
 
     s = strA;
     ssfn_dst.x = 420;
-    ssfn_dst.y = 310;
+    ssfn_dst.y = 290;
     while((ret = ssfn_render(&ctx, &ssfn_dst, s)) > 0) s += ret;
     if(ret != SSFN_OK) { fprintf(stderr, "ssfn render error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
 
@@ -293,14 +295,14 @@ void do_test(SDL_Surface *screen, char *fontfn)
 
     s = strB;
     ssfn_dst.x = 420;
-    ssfn_dst.y = 330;
+    ssfn_dst.y = 310;
     while((ret = ssfn_render(&ctx, &ssfn_dst, s)) > 0) s += ret;
     if(ret != SSFN_OK) { fprintf(stderr, "ssfn render error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
 
     /* italic and bold in bigger */
     s = strC;
     ssfn_dst.x = 8;
-    ssfn_dst.y = 360;
+    ssfn_dst.y = 340;
     ssfn_select(&ctx, SSFN_FAMILY_SERIF, NULL, SSFN_STYLE_REGULAR | SSFN_STYLE_NOCACHE, 27);
     while(*s) {
         if(*s=='#') { s++; ssfn_select(&ctx, SSFN_FAMILY_SERIF, NULL, SSFN_STYLE_ITALIC | SSFN_STYLE_NOCACHE, 27); continue; }
@@ -313,7 +315,7 @@ void do_test(SDL_Surface *screen, char *fontfn)
 
     s = strD;
     ssfn_dst.x = 380;
-    ssfn_dst.y = 360;
+    ssfn_dst.y = 340;
     ssfn_select(&ctx, SSFN_FAMILY_SANS, NULL, SSFN_STYLE_REGULAR | SSFN_STYLE_NOCACHE, 27);
     while(*s) {
         if(*s=='#') { s++; ssfn_select(&ctx, SSFN_FAMILY_SANS, NULL, SSFN_STYLE_ITALIC | SSFN_STYLE_NOCACHE, 27); continue; }
@@ -326,14 +328,14 @@ void do_test(SDL_Surface *screen, char *fontfn)
 
     s = strF;
     ssfn_dst.x = 710;
-    ssfn_dst.y = 360;
+    ssfn_dst.y = 340;
     ssfn_select(&ctx, SSFN_FAMILY_SANS, NULL, SSFN_STYLE_REGULAR | SSFN_STYLE_NOCACHE, 16);
     while((ret = ssfn_render(&ctx, &ssfn_dst, s)) > 0) s += ret;
     if(ret != SSFN_OK) { fprintf(stderr, "ssfn render error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
 
     s = strE;
     ssfn_dst.x = 10;
-    ssfn_dst.y = 385;
+    ssfn_dst.y = 365;
     ssfn_select(&ctx, SSFN_FAMILY_BYNAME, "Bitstream Vera Sans", SSFN_STYLE_REGULAR | SSFN_STYLE_NOCACHE, 20);
     while(*s) {
         if(*s=='#') { s++; ssfn_select(&ctx, SSFN_FAMILY_BYNAME, "Bitstream Vera Sans", SSFN_STYLE_ITALIC | SSFN_STYLE_NOCACHE, 20); continue; }
@@ -366,7 +368,7 @@ void do_test(SDL_Surface *screen, char *fontfn)
 
     s = strC;
     ssfn_dst.x = 8;
-    ssfn_dst.y = 420;
+    ssfn_dst.y = 400;
     ssfn_select(&ctx, SSFN_FAMILY_SERIF, NULL, SSFN_STYLE_REGULAR | SSFN_STYLE_NOCACHE, 27);
     while(*s) {
         if(*s=='#') { s++; ssfn_select(&ctx, SSFN_FAMILY_SERIF, NULL, SSFN_STYLE_ITALIC | SSFN_STYLE_NOCACHE, 27); continue; }
@@ -379,7 +381,7 @@ void do_test(SDL_Surface *screen, char *fontfn)
 
     s = strD;
     ssfn_dst.x = 380;
-    ssfn_dst.y = 420;
+    ssfn_dst.y = 400;
     ssfn_select(&ctx, SSFN_FAMILY_SANS, NULL, SSFN_STYLE_REGULAR | SSFN_STYLE_NOCACHE, 27);
     while(*s) {
         if(*s=='#') { s++; ssfn_select(&ctx, SSFN_FAMILY_SANS, NULL, SSFN_STYLE_ITALIC | SSFN_STYLE_NOCACHE, 27); continue; }
@@ -392,14 +394,14 @@ void do_test(SDL_Surface *screen, char *fontfn)
 
     s = str10;
     ssfn_dst.x = 710;
-    ssfn_dst.y = 420;
+    ssfn_dst.y = 400;
     ssfn_select(&ctx, SSFN_FAMILY_SANS, NULL, SSFN_STYLE_REGULAR | SSFN_STYLE_NOCACHE, 16);
     while((ret = ssfn_render(&ctx, &ssfn_dst, s)) > 0) s += ret;
     if(ret != SSFN_OK) { fprintf(stderr, "ssfn render error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
 
     s = strE;
     ssfn_dst.x = 10;
-    ssfn_dst.y = 445;
+    ssfn_dst.y = 425;
     ssfn_select(&ctx, SSFN_FAMILY_BYNAME, "Bitstream Vera Sans", SSFN_STYLE_REGULAR | SSFN_STYLE_NOCACHE, 20);
     while(*s) {
         if(*s=='#') { s++; ssfn_select(&ctx, SSFN_FAMILY_BYNAME, "Bitstream Vera Sans Oblique", SSFN_STYLE_NOCACHE, 20); continue; }
@@ -417,23 +419,42 @@ void do_test(SDL_Surface *screen, char *fontfn)
 
     s = str11;
     ssfn_dst.x = 8;
-    ssfn_dst.y = 480;
+    ssfn_dst.y = 460;
     while((ret = ssfn_render(&ctx, &ssfn_dst, s)) > 0) s += ret;
     if(ret != SSFN_OK) { fprintf(stderr, "ssfn render error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
 
     s = str12;
     ssfn_dst.x = 8;
-    ssfn_dst.y = 510;
+    ssfn_dst.y = 485;
     ret = ssfn_select(&ctx, SSFN_FAMILY_DECOR, NULL, SSFN_STYLE_REGULAR | SSFN_STYLE_ABS_SIZE | SSFN_STYLE_NOCACHE, 16);
     if(ret != SSFN_OK) { fprintf(stderr, "ssfn select error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
     while(*s) {
         if(*s=='>') { ssfn_select(&ctx, SSFN_FAMILY_DECOR, NULL, SSFN_STYLE_REGULAR | SSFN_STYLE_ABS_SIZE | SSFN_STYLE_NOCACHE, 16); }
-        if(*s=='<') { ssfn_select(&ctx, SSFN_FAMILY_BYNAME, "Retro Chrome", SSFN_STYLE_REGULAR | SSFN_STYLE_ABS_SIZE | SSFN_STYLE_NOCACHE, 32); ssfn_dst.x -= 164; s++; continue; }
-        if(*s=='\n') { s++; ssfn_dst.x = 48; ssfn_dst.y += 36; continue; }
+        if(*s=='<') { ssfn_select(&ctx, SSFN_FAMILY_BYNAME, "Retro Chrome", SSFN_STYLE_REGULAR | SSFN_STYLE_ABS_SIZE | SSFN_STYLE_NOCACHE, 19); ssfn_dst.x -= 164; s++; continue; }
+        if(*s=='\n') { s++; ssfn_dst.x = 48; ssfn_dst.y += 24; continue; }
         ret = ssfn_render(&ctx, &ssfn_dst, s);
         if(ret < SSFN_OK) { fprintf(stderr, "ssfn render error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
         s += ret;
     };
+
+    /* writing directions */
+    ret = ssfn_select(&ctx, SSFN_FAMILY_SERIF, NULL, SSFN_STYLE_REGULAR | SSFN_STYLE_NOCACHE, 16);
+    if(ret != SSFN_OK) { fprintf(stderr, "ssfn select error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
+
+    s = str13;
+    ssfn_dst.x = 16;
+    ssfn_dst.y = 550;
+    while((ret = ssfn_render(&ctx, &ssfn_dst, s)) > 0) s += ret;
+    if(ret != SSFN_OK) { fprintf(stderr, "ssfn render error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
+
+    ret = ssfn_select(&ctx, SSFN_FAMILY_SERIF, NULL, SSFN_STYLE_REGULAR | SSFN_STYLE_RTL | SSFN_STYLE_NOCACHE, 24);
+    if(ret != SSFN_OK) { fprintf(stderr, "ssfn select error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
+
+    s = str14;
+    ssfn_dst.x = screen->w - 16;
+    ssfn_dst.y = 550;
+    while((ret = ssfn_render(&ctx, &ssfn_dst, s)) > 0) s += ret;
+    if(ret != SSFN_OK) { fprintf(stderr, "ssfn render error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
 
     /* free resources */
     sprintf(strM, "Memory allocated: @%d bytes. All of this from a 28k of code in a single ANSI C header, that's something, right?",
