@@ -2,12 +2,11 @@ Scalable Screen Font 2.0 Converter Utility
 ==========================================
 
 ```
-$ ./sfnconv
 Scalable Screen Font 2.0 by bzt Copyright (C) 2020 MIT license
  https://gitlab.com/bztsrc/scalable-font2
 
-./sfnconv [-c|-e|-d|-dd|-dd...|-D] [-z] [-A] [-R] [-B <size>|-V] [-g] [-b <p>]
-   [-u <+p>] [-a <+p>] [-o] [-q] [-S <U+xxx>] [-E] [-t [b][i]<0..4>]
+./sfnconv [-c|-e|-d|-dd|-dd...|-D] [-C] [-U] [-A] [-R] [-B <size>|-V] [-g]
+   [-b <p>] [-u <+p>] [-a <+p>] [-o] [-q] [-S <U+xxx>] [-E] [-t [b][i]<0..4>]
    [-n <name>] [-f <family>] [-s <subfamily>] [-v <ver>] [-m <manufacturer>]
    [-l <license>] [-r <from> <to>] <in> [ [-r <from> <to>] <in> ...] <out>
 
@@ -15,6 +14,7 @@ Scalable Screen Font 2.0 by bzt Copyright (C) 2020 MIT license
  -e:    extract font collection
  -d:    dump font (-d = header, -dd = string table, -ddd = fragments etc.)
  -D:    dump all tables in the font
+ -C:    UNICODE range coverage report
  -U:    save uncompressed, non-gzipped output
  -A:    output SSFN ASCII
  -R:    replace characters from new files

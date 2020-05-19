@@ -163,6 +163,7 @@ int sfn_load(char *filename, int dump);
 int sfn_save(char *filename, int ascii, int compress);
 void sfn_sanitize();
 void sfn_rasterize(int size);
+void sfn_coverage();
 void sfn_free();
 
 /*** potrace.c ***/

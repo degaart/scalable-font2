@@ -442,7 +442,7 @@ void do_test(SDL_Surface *screen, char *fontfn)
     if(ret != SSFN_OK) { fprintf(stderr, "ssfn select error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
 
     s = str13;
-    ssfn_dst.x = 16;
+    ssfn_dst.x = 8;
     ssfn_dst.y = 550;
     while((ret = ssfn_render(&ctx, &ssfn_dst, s)) > 0) s += ret;
     if(ret != SSFN_OK) { fprintf(stderr, "ssfn render error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }

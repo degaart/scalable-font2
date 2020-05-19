@@ -259,6 +259,7 @@ void pixmap_parse(unsigned char *data, int w, int h)
         re = h > w ? h / w : w / h;
     if(h > w ) {
         m = h / (re - rs + 1);
+        if(m < 8 || w < 8) { fprintf(stderr, "unable to determine glyph size\n"); return; }
         for(unicode=rs, i=0; unicode<=re; unicode++, i += w*m) {
             for(y=k=0;y<m;y++)
                 for(j=w-1;j>k;j--)
@@ -269,6 +270,7 @@ void pixmap_parse(unsigned char *data, int w, int h)
         }
     } else {
         m = w / (re - rs + 1);
+        if(m < 8 || h < 8) { fprintf(stderr, "unable to determine glyph size\n"); return; }
         data2 = (unsigned char*)malloc(m*h);
         if(!data2) { fprintf(stderr,"memory allocation error\n"); return; }
         for(unicode=rs; unicode<=re; unicode++) {

@@ -944,8 +944,9 @@ int sfn_dump(ssfn_font_t *font, int size, int dump)
             printf("\n---Fonts---\n");
             for(font = (ssfn_font_t*)((uint8_t*)font + 8); font < end; font = (ssfn_font_t*)((uint8_t*)font + font->size)) {
                 if(!memcmp(font->magic, "SSFN", 4)) printf("(obsolete SSFN1.0 font) %s\n", (char*)font + 64);
-                else printf("%d %c%c %s\n", SSFN_TYPE_FAMILY(font->type), SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_BOLD ? 'b':'.',
-                    SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_ITALIC ? 'i':'.', (char*)font + sizeof(ssfn_font_t));
+                else printf("%c%c %d %s\n", SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_BOLD ? 'b':'.',
+                    SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_ITALIC ? 'i':'.', SSFN_TYPE_FAMILY(font->type),
+                    (char*)font + sizeof(ssfn_font_t));
             }
         }
         return 1;
@@ -1246,7 +1247,7 @@ int sfn_load(char *filename, int dump)
     }
     data[size] = 0;
 
-    if(dump) {
+    if(dump > 0) {
         printf("Dumping '%s'\n\n", filename);
         return sfn_dump((ssfn_font_t *)data, size, dump);
     }
@@ -2039,4 +2040,38 @@ void sfn_rasterize(int size)
     if(size < 8) size = 8;
     if(size > 255) size = 255;
     fprintf(stderr, "TODO: implement rasterization %d\n", size);
+}
+
+/**
+ * Print out a UNICODE blocks coverage report
+ */
+void sfn_coverage()
+{
+    int i, j, m, n, a, b, d;
+
+    printf("| Coverage | NumChar | Start  | End    | Description                                |\n"
+           "| -------: | ------: | ------ | ------ | ------------------------------------------ |\n");
+    for(i = 0; i < UNICODE_NUMBLOCKS; i++)
+        ublocks[i].cnt = 0;
+    for(i = m = 0; i < 0x110000; i++)
+        if(ctx.glyphs[i].numlayer) {
+            m++;
+            for(j = 0; j < UNICODE_NUMBLOCKS; j++)
+                if(i >= ublocks[j].start && i <= ublocks[j].end) { ublocks[j].cnt++; m--; break; }
+        }
+    for(i = a = b = d = 0; i < UNICODE_NUMBLOCKS; i++) {
+        if(ublocks[i].cnt) {
+            n = ublocks[i].end - ublocks[i].start + 1 - ublocks[i].undef;
+            if(ublocks[i].cnt > n) { m += ublocks[i].cnt - n; ublocks[i].cnt = n; };
+            a += ublocks[i].cnt; b += n;
+            d = ublocks[i].cnt * 1000 / n;
+            printf("|   %3d.%d%% | %7d | %06X | %06X | %-42s |\n", d/10, d%10,
+                ublocks[i].cnt, ublocks[i].start, ublocks[i].end, ublocks[i].name);
+        }
+    }
+    if(m)
+        printf("|        - | %7d | 000000 | 10FFFF | No Block                                   |\n", m);
+    d = a * 1000 / b;
+    printf("| -------- | ------- | ------------------------------------------------------------ |\n"
+        "|   %3d.%d%% | %7d |     = = = = = = = =   Overall Coverage   = = = = = = = =     |\n", d/10, d%10, a);
 }

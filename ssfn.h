@@ -1321,18 +1321,19 @@ int ssfn_bbox(ssfn_t *ctx, const char *str, int *w, int *h, int *left, int *top)
     SSFN_memset(&buf, 0, sizeof(ssfn_buf_t));
     while((ret = ssfn_render(ctx, &buf, str))) {
         if(ret < 0 || !ctx->g) return ret;
-        if(f) { f = 0; buf.w = buf.x = ctx->g->o; }
+        if(f) { f = 0; buf.w = buf.x = ctx->style & SSFN_STYLE_RTL ? ctx->g->p : ctx->g->o; }
         if(ctx->g->x) {
             if(ctx->g->a > buf.y) buf.y = ctx->g->a;
             if(buf.h < ctx->g->h) buf.h = ctx->g->h;
             buf.w += ctx->g->x;
         } else {
             if(buf.w < ctx->g->p) buf.w = ctx->g->p;
-            buf.h += ctx->g->y;
+            buf.h += ctx->g->y ? ctx->g->y : ctx->g->h;
         }
         str += ret;
     }
-    if(ctx->g->x) buf.w += ctx->g->p; else { buf.h += ctx->f->height; buf.x = buf.w / 2; }
+    if(ctx->g->x) buf.w += ctx->style & SSFN_STYLE_RTL ? ctx->g->o : ctx->g->p;
+    else { buf.x = buf.w / 2; buf.y = 0; }
     s = (ctx->style & SSFN_STYLE_ABS_SIZE) || SSFN_TYPE_FAMILY(ctx->f->type) == SSFN_FAMILY_MONOSPACE || !ctx->f->baseline ?
         ctx->size : ctx->size * ctx->f->height / ctx->f->baseline;
     *w = buf.w * s / ctx->f->height;

@@ -168,17 +168,17 @@ if(cp==0x21) {
                 c->bbox.yMin != face->glyph->metrics.horiBearingY - face->glyph->metrics.height ||
                 c->bbox.xMax != c->bbox.xMin + face->glyph->metrics.width ||
                 c->bbox.yMax != c->bbox.yMin + face->glyph->metrics.height)) {
-                    fprintf(stderr, "\rInconsistent font U+%06lX:", cp);
+                    fprintf(stderr, "\rInconsistent font: U+%06lX", cp);
                     if(c->bbox.xMin != face->glyph->metrics.horiBearingX)
-                        fprintf(stderr, " xMin %ld != hBX %ld", c->bbox.xMin, face->glyph->metrics.horiBearingX);
+                        fprintf(stderr, ", xMin %ld != hBX %ld", c->bbox.xMin, face->glyph->metrics.horiBearingX);
                     if(c->bbox.yMin != face->glyph->metrics.horiBearingY - face->glyph->metrics.height)
-                        fprintf(stderr, " yMin %ld != hBY-h %ld", c->bbox.yMin,
+                        fprintf(stderr, ", yMin %ld != hBY-h %ld", c->bbox.yMin,
                             face->glyph->metrics.horiBearingY - face->glyph->metrics.height);
                     if(c->bbox.xMax != c->bbox.xMin + face->glyph->metrics.width)
-                        fprintf(stderr, " xMax %ld != xMin+w %ld", c->bbox.xMax,
+                        fprintf(stderr, ", xMax %ld != xMin+w %ld", c->bbox.xMax,
                             c->bbox.xMin + face->glyph->metrics.width);
                     if(c->bbox.yMax != c->bbox.yMin + face->glyph->metrics.height)
-                        fprintf(stderr, " yMax %ld != yMin+h %ld", c->bbox.yMax,
+                        fprintf(stderr, ", yMax %ld != yMin+h %ld", c->bbox.yMax,
                             c->bbox.yMin + face->glyph->metrics.height);
                     fprintf(stderr, "    \n");
             }

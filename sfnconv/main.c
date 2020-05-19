@@ -115,17 +115,18 @@ void usage()
 {
     printf("Scalable Screen Font 2.0 by bzt Copyright (C) 2020 MIT license\n"
            " https://gitlab.com/bztsrc/scalable-font2\n\n"
-           "./sfnconv [-c|-e|-d|-dd|-dd...|-D] "
+           "./sfnconv [-c|-e|-d|-dd|-dd...|-D] [-C] "
 #if HAS_ZLIB
-            "[-z] "
+            "[-U] "
 #endif
-           "[-A] [-R] [-B <size>|-V] [-g] [-b <p>]\n   [-u <+p>] [-a <+p>] [-o] [-q] [-S <U+xxx>] [-E] [-t [b][i]<0..4>]");
+           "[-A] [-R] [-B <size>|-V] [-g]\n   [-b <p>] [-u <+p>] [-a <+p>] [-o] [-q] [-S <U+xxx>] [-E] [-t [b][i]<0..4>]");
     printf("\n   [-n <name>] [-f <family>] [-s <subfamily>] [-v <ver>] [-m <manufacturer>] "
            "\n   [-l <license>] [-r <from> <to>] <in> [ [-r <from> <to>] <in> ...] <out>\n\n"
            " -c:    create font collection\n"
            " -e:    extract font collection\n"
            " -d:    dump font (-d = header, -dd = string table, -ddd = fragments etc.)\n"
            " -D:    dump all tables in the font\n"
+           " -C:    UNICODE range coverage report\n"
 #if HAS_ZLIB
            " -U:    save uncompressed, non-gzipped output\n"
 #endif
@@ -234,7 +235,7 @@ int main(int argc, char **argv)
     }
     if(argv[1][0] == '-' && argv[1][1] == 'e') {
         /* extract collection */
-        i = 2;
+        i = 2; j = 0;
 #if HAS_ZLIB
         for(; i<argc && argv[i][0] == '-'; i++)
             if(argv[i][0] == '-' && argv[i][1] == 'U') zip = 0;
@@ -246,10 +247,12 @@ int main(int argc, char **argv)
         }
         end = (ssfn_font_t*)((uint8_t*)font + font->size);
         for(i++, font = (ssfn_font_t*)((uint8_t*)font + 8); font < end; font = (ssfn_font_t*)((uint8_t*)font + font->size)) {
-            if(argc < 3)
-                printf("%d %c%c %s\n", SSFN_TYPE_FAMILY(font->type), SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_BOLD ? 'b':'.',
-                    SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_ITALIC ? 'i':'.', (char*)font + sizeof(ssfn_font_t));
-            else
+            if(argc < 3) {
+                if(!j) { j = 1; printf("-t\t-n\n"); }
+                printf("%s%s%d\t%s\n", SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_BOLD ? "b":"",
+                    SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_ITALIC ? "i":"", SSFN_TYPE_FAMILY(font->type),
+                    (char*)font + sizeof(ssfn_font_t));
+            } else
                 save_file(argv[i++], font);
         }
         return 0;
@@ -326,6 +329,7 @@ int main(int argc, char **argv)
                             case 'E': dorounderr = 1; break;
                             case 'd': dump++; break;
                             case 'D': dump = 99; break;
+                            case 'C': dump = -1; break;
                             default: fprintf(stderr, "unknown flag '%c'\n", argv[i][j]); return 1;
                         }
                     }
@@ -369,7 +373,12 @@ int main(int argc, char **argv)
                 printf(" Compressed to %ld.%ld%%", (long int)i*100/ctx.total, ((long int)i*10000/ctx.total)%100);
             printf("\n");
         }
+    } else
+    if(dump == -1) {
+        printf("\r\x1b[K\n");
+        sfn_coverage();
     }
+
     /* free resources */
     sfn_free();
     uniname_free();
