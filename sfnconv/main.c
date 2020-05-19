@@ -122,42 +122,42 @@ void usage()
            "[-A] [-R] [-B <size>|-V] [-g]\n   [-b <p>] [-u <+p>] [-a <+p>] [-o] [-q] [-S <U+xxx>] [-E] [-t [b][i]<0..4>]");
     printf("\n   [-n <name>] [-f <family>] [-s <subfamily>] [-v <ver>] [-m <manufacturer>] "
            "\n   [-l <license>] [-r <from> <to>] <in> [ [-r <from> <to>] <in> ...] <out>\n\n"
-           " -c:    create font collection\n"
-           " -e:    extract font collection\n"
-           " -d:    dump font (-d = header, -dd = string table, -ddd = fragments etc.)\n"
-           " -D:    dump all tables in the font\n"
-           " -C:    UNICODE range coverage report\n"
+           " -c:  create font collection\n"
+           " -e:  extract font collection\n"
+           " -d:  dump font (-d = header, -dd = string table, -ddd = fragments etc.)\n"
+           " -D:  dump all tables in the font\n"
+           " -C:  UNICODE range coverage report\n"
 #if HAS_ZLIB
-           " -U:    save uncompressed, non-gzipped output\n"
+           " -U:  save uncompressed, non-gzipped output\n"
 #endif
-           " -A:    output SSFN ASCII\n"
-           " -R:    replace characters from new files\n");
-    printf(" -B:    rasterize vector fonts to bitmaps\n"
+           " -A:  output SSFN ASCII\n"
+           " -R:  replace characters from new files\n");
+    printf(" -B:  rasterize vector fonts to bitmaps\n"
 #if HAS_POTRACE
-           " -V:    vectorize bitmap fonts to scalable fonts\n"
+           " -V:  vectorize bitmap fonts to scalable fonts\n"
 #endif
-           " -g:    save grid information for hinting\n"
-           " -b:    horizontal baseline in pixels\n"
-           " -u:    underline position in pixels (relative to baseline)\n"
-           " -a:    add a constant to advance (some fonts need it, others don't)\n"
-           " -o:    use original width and height instead of calculated one\n"
-           " -q:    quiet, don't report font errors\n"
-           " -S:    skip a UNICODE code point, this flag can be repeated\n");
-    printf(" -E:    don't care about rounding errors\n"
-           " -t:    set type b=bold, i=italic, 0=Serif, 1=Sans, 2=Decor, 3=Mono, 4=Hand\n"
-           " -n:    set font unique name\n"
-           " -f:    set font family (like FreeSerif, Vera, Helvetica)\n"
-           " -s:    set subfamily (like Regular, Medium, Bold, Oblique, Thin, etc.)\n"
-           " -v:    set font version / revision (like creation date for example)\n"
-           " -m:    set manufacturer (creator, designer, foundry)\n"
-           " -l:    set license (like MIT, GPL or URL to the license)\n");
-    printf(" -r:    code point range, this flag can be repeated before each input\n"
-           " in:    input font(s) SSFN,ASC,"
+           " -g:  save grid information for hinting\n"
+           " -b:  horizontal baseline in pixels (1-255)\n"
+           " -u:  underline position in pixels (relative to baseline)\n"
+           " -a:  add a constant to advance (1-255, some fonts need it, others don't)\n"
+           " -o:  use original width and height instead of calculated one\n"
+           " -q:  quiet, don't report font errors\n"
+           " -S:  skip a UNICODE code point, this flag can be repeated\n");
+    printf(" -E:  don't care about rounding errors\n"
+           " -t:  set type b=bold,i=italic,u,U,0=Serif,1/s=Sans,2/d=Decor,3/m=Mono,4/h=Hand\n"
+           " -n:  set font unique name\n"
+           " -f:  set font family (like FreeSerif, Vera, Helvetica)\n"
+           " -s:  set subfamily (like Regular, Medium, Bold, Oblique, Thin, etc.)\n"
+           " -v:  set font version / revision (like creation date for example)\n"
+           " -m:  set manufacturer (creator, designer, foundry)\n"
+           " -l:  set license (like MIT, GPL or URL to the license)\n");
+    printf(" -r:  code point range, this flag can be repeated before each input\n"
+           " in:  input font(s) SSFN,ASC,"
 #if HAS_FT
            "PST1,TTF,OTF,WinFNT,PCF,"
 #endif
            "PSF2,BDF,hex,TGA,PNG*\n"
-           " out:   output SSFN/ASC filename"
+           " out: output SSFN/ASC filename"
 #if HAS_ZLIB
            "**"
 #endif
@@ -275,11 +275,19 @@ int main(int argc, char **argv)
                 case 'S': if(++i>=argc) usage(); sfn_skipadd(getnum(argv[i])); continue;
                 case 't':
                     if(++i>=argc) usage();
-                    for(c = argv[i];*c == 'b' || *c == 'i'; c++) {
-                        if(*c == 'b') ctx.style |= SSFN_STYLE_BOLD;
-                        if(*c == 'i') ctx.style |= SSFN_STYLE_ITALIC;
+                    for(j = 0, c = argv[i]; *c; c++) {
+                        switch(*c) {
+                            case 'b': ctx.style |= SSFN_STYLE_BOLD; break;
+                            case 'i': ctx.style |= SSFN_STYLE_ITALIC; break;
+                            case 'u': ctx.style |= SSFN_STYLE_USRDEF1; break;
+                            case 'U': ctx.style |= SSFN_STYLE_USRDEF2; break;
+                            case '1': case 's': j = 1; break;
+                            case '2': case 'd': j = 2; break;
+                            case '3': case 'm': j = 3; break;
+                            case '4': case 'h': j = 4; break;
+                        }
                     }
-                    sfn_setfamilytype(atoi(c));
+                    sfn_setfamilytype(j);
                 continue;
                 case 'r':
                     if(++i>=argc) usage();
@@ -366,12 +374,12 @@ int main(int argc, char **argv)
             zip ? ", compress" : "", hinting ? ", hinting" : "");
         i = sfn_save(outfile, ascii, zip);
         if(!i)
-            printf("\r\x1b[KError saving!\n");
+            printf("\r\x1b[KError saving!\n\n");
         else {
             printf("\r\x1b[KDone.");
             if(ctx.total > 0 && i > 1)
                 printf(" Compressed to %ld.%ld%%", (long int)i*100/ctx.total, ((long int)i*10000/ctx.total)%100);
-            printf("\n");
+            printf("\n\n");
         }
     } else
     if(dump == -1) {

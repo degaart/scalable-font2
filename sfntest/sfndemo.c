@@ -220,7 +220,7 @@ void do_test(SDL_Surface *screen, char *fontfn)
 
     s = str5;
     ssfn_dst.x = 8;
-    ssfn_dst.y = 230;
+    ssfn_dst.y = 232;
     i = 0;
     do {
         ret = ssfn_select(&ctx, SSFN_FAMILY_SERIF, NULL, SSFN_STYLE_REGULAR | SSFN_STYLE_NOCACHE,
@@ -314,7 +314,7 @@ void do_test(SDL_Surface *screen, char *fontfn)
     };
 
     s = strD;
-    ssfn_dst.x = 380;
+    ssfn_dst.x = 370;
     ssfn_dst.y = 340;
     ssfn_select(&ctx, SSFN_FAMILY_SANS, NULL, SSFN_STYLE_REGULAR | SSFN_STYLE_NOCACHE, 27);
     while(*s) {
@@ -327,7 +327,7 @@ void do_test(SDL_Surface *screen, char *fontfn)
     };
 
     s = strF;
-    ssfn_dst.x = 710;
+    ssfn_dst.x = 700;
     ssfn_dst.y = 340;
     ssfn_select(&ctx, SSFN_FAMILY_SANS, NULL, SSFN_STYLE_REGULAR | SSFN_STYLE_NOCACHE, 16);
     while((ret = ssfn_render(&ctx, &ssfn_dst, s)) > 0) s += ret;
@@ -380,7 +380,7 @@ void do_test(SDL_Surface *screen, char *fontfn)
     };
 
     s = strD;
-    ssfn_dst.x = 380;
+    ssfn_dst.x = 370;
     ssfn_dst.y = 400;
     ssfn_select(&ctx, SSFN_FAMILY_SANS, NULL, SSFN_STYLE_REGULAR | SSFN_STYLE_NOCACHE, 27);
     while(*s) {
@@ -393,7 +393,7 @@ void do_test(SDL_Surface *screen, char *fontfn)
     };
 
     s = str10;
-    ssfn_dst.x = 710;
+    ssfn_dst.x = 700;
     ssfn_dst.y = 400;
     ssfn_select(&ctx, SSFN_FAMILY_SANS, NULL, SSFN_STYLE_REGULAR | SSFN_STYLE_NOCACHE, 16);
     while((ret = ssfn_render(&ctx, &ssfn_dst, s)) > 0) s += ret;
@@ -430,8 +430,8 @@ void do_test(SDL_Surface *screen, char *fontfn)
     if(ret != SSFN_OK) { fprintf(stderr, "ssfn select error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
     while(*s) {
         if(*s=='>') { ssfn_select(&ctx, SSFN_FAMILY_DECOR, NULL, SSFN_STYLE_REGULAR | SSFN_STYLE_ABS_SIZE | SSFN_STYLE_NOCACHE, 16); }
-        if(*s=='<') { ssfn_select(&ctx, SSFN_FAMILY_BYNAME, "Retro Chrome", SSFN_STYLE_REGULAR | SSFN_STYLE_ABS_SIZE | SSFN_STYLE_NOCACHE, 19); ssfn_dst.x -= 164; s++; continue; }
-        if(*s=='\n') { s++; ssfn_dst.x = 48; ssfn_dst.y += 24; continue; }
+        if(*s=='<') { ssfn_select(&ctx, SSFN_FAMILY_BYNAME, "Retro Chrome", SSFN_STYLE_REGULAR | SSFN_STYLE_ABS_SIZE | SSFN_STYLE_NOCACHE, 24); ssfn_dst.x -= 164; s++; continue; }
+        if(*s=='\n') { s++; ssfn_dst.x = 48; ssfn_dst.y += 28; continue; }
         ret = ssfn_render(&ctx, &ssfn_dst, s);
         if(ret < SSFN_OK) { fprintf(stderr, "ssfn render error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
         s += ret;
@@ -447,11 +447,11 @@ void do_test(SDL_Surface *screen, char *fontfn)
     while((ret = ssfn_render(&ctx, &ssfn_dst, s)) > 0) s += ret;
     if(ret != SSFN_OK) { fprintf(stderr, "ssfn render error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
 
-    ret = ssfn_select(&ctx, SSFN_FAMILY_SERIF, NULL, SSFN_STYLE_REGULAR | SSFN_STYLE_RTL | SSFN_STYLE_NOCACHE, 24);
+    ret = ssfn_select(&ctx, SSFN_FAMILY_SERIF, NULL, SSFN_STYLE_REGULAR | SSFN_STYLE_RTL | SSFN_STYLE_NOCACHE, 28);
     if(ret != SSFN_OK) { fprintf(stderr, "ssfn select error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
 
     s = str14;
-    ssfn_dst.x = screen->w - 16;
+    ssfn_dst.x = screen->w - 8;
     ssfn_dst.y = 550;
     while((ret = ssfn_render(&ctx, &ssfn_dst, s)) > 0) s += ret;
     if(ret != SSFN_OK) { fprintf(stderr, "ssfn render error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
@@ -464,7 +464,7 @@ void do_test(SDL_Surface *screen, char *fontfn)
     if(ret != SSFN_OK) { fprintf(stderr, "ssfn select error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
 
     s = strM;
-    ssfn_dst.x = 8;
+    ssfn_dst.x = 32;
     ssfn_dst.y = 585;
     while(*s) {
         if(*s=='@') { s++; ssfn_select(&ctx, SSFN_FAMILY_SERIF, NULL, SSFN_STYLE_BOLD | SSFN_STYLE_NOCACHE, 16); continue; }

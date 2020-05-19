@@ -222,29 +222,31 @@ if(cp==0x21) {
             if(pbar) (*pbar)(2, 3, i, numchars, PBAR_OUTLINE);
             if(FT_Load_Glyph(face, FT_Get_Char_Index(face, unicode), FT_LOAD_NO_SCALE) ||
                 (i && !face->glyph->glyph_index)) continue;
+            bbox = &ftchars[i].bbox;
             if(face->glyph->metrics.horiAdvance /*!face->glyph->metrics.vertBearingX && !face->glyph->metrics.vertBearingY*/) {
-                x = face->glyph->metrics.horiAdvance + face->glyph->metrics.horiAdvance * 5 / 100; y =0;
+                x = face->glyph->metrics.horiAdvance - bbox->xMin; y =0;
+                if(x < 0) x = 0;
             } else {
-                x = 0; y = face->glyph->metrics.vertAdvance + face->glyph->metrics.vertAdvance * 5 / 100;
+                x = 0; y = face->glyph->metrics.vertAdvance - bbox->yMin;
+                if(y < 0) y = 0;
             }
             if(face->glyph->metrics.width >= 2*avg_w+avg_w/2 || face->glyph->metrics.height >= 2*avg_h+avg_h/2) {
-                fprintf(stderr, "\rIrregular dimensions in font U+%06X:", unicode);
+                fprintf(stderr, "\rIrregular dimensions in font: U+%06X", unicode);
                 if(face->glyph->metrics.width >= 2*avg_w+avg_w/2) {
-                    fprintf(stderr, "  width: %ld ", face->glyph->metrics.width);
+                    fprintf(stderr, ", width: %ld ", face->glyph->metrics.width);
                     if(face->glyph->metrics.width >= 3*avg_w)
                         fprintf(stderr, "(%ld times the average, can't be right!!!)", face->glyph->metrics.width / avg_w);
                 }
                 if(face->glyph->metrics.height >= 2*avg_h+avg_h/2) {
-                    fprintf(stderr, "  height: %ld ", face->glyph->metrics.height);
+                    fprintf(stderr, ", height: %ld ", face->glyph->metrics.height);
                     if(face->glyph->metrics.height >= 3*avg_h)
                         fprintf(stderr, "(%ld times the average, can't be right!!!)", face->glyph->metrics.height / avg_h);
                 }
                 fprintf(stderr, "\n");
             }
             /* don't trust FT2's width and height, we'll recalculate them from the coordinates */
-            x = x * 255 / max_s; if(x) x++;
-            y = y * 255 / max_s; if(y) y++;
-            bbox = &ftchars[i].bbox;
+            x = x * 255 / max_s; if(face->glyph->metrics.horiAdvance) x += 4;
+            y = y * 255 / max_s; if(!face->glyph->metrics.horiAdvance) y += 4;
             if(sfn_charadd(unicode, 0, 0, x, y, bbox->xMin < 0 ? -bbox->xMin * 255 / max_s : 0)) {
                 error = FT_Outline_Decompose(&face->glyph->outline, &funcs, NULL);
                 if(error && !quiet) { fprintf(stderr, "Freetype2 decompose error %x\n", error); }
