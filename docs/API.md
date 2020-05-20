@@ -20,11 +20,10 @@ Before you can use any font renderer, you should be familiar with its font metri
         :....XX.:.... | | |
         |XX..XX.:.... | | |   glyph height
         :.XXXX..:...._|_|_v
-        :...:...:.... | |   advance y
-        :...:...:...._|_v
-        :...:...:.... |   absolute size
-    |---:...:...:...._v
-    |   |   |   | |  (font width, font height)
+        :...:...:.... | |   absolute size
+    |---:...:...:...._|_v (font width, font height)
+    |   |   |   | |   |
+    |   |   |   |_|___v   advance y
     |   |   |   | |
     |   |<->|   | |  vertical baseline (center of the glyph, always width / 2)
     |   |<----->| |  glyph width
@@ -249,11 +248,11 @@ Configuration is passed to it in two global variables (exclusive to this functio
 The define selects the destination buffer's pixel format. `SSFN_CONSOLEBITMAP_PALETTE` selects 1 byte
 (indexed), `SSFN_CONSOLEBITMAP_HICOLOR` selects 2 bytes (5-5-5 or 5-6-5 RGB) and `SSFN_CONSOLEBITMAP_TRUECOLOR`
 selects 4 bytes (8-8-8-8 xRGB). For performance reasons, 3 bytes (24 bit true color) mode is not supported.
-Normally SSFN prefers ARGB channel order (blue is the least significant byte). You can swap the channels to
-ABGR by specifying negative `ssfn_dst.w`, for example -1024. If `.w` and `.h` is not set, then no clipping will
-be performed. With `ssfn_dst.bg` being full 32 bit wide zero, `ssfn_putc` will operate in transparent background
-mode: it will only modify the destination buffer where the font face is set. To clear the glyph's background, set
-it to some value where the most significant byte (alpha channel for true-color mode) is 255, like 0xFF000000.
+If `.w` and `.h` is not set, then no clipping will be performed. With `ssfn_dst.bg` being full 32 bit wide
+zero, `ssfn_putc` will operate in transparent background mode: it will only modify the destination buffer
+where the font face is set. To clear the glyph's background, set it to some value where the most significant
+byte (alpha channel for true-color mode) is 255, like 0xFF000000. This will fill thebackground with the index
+0 (palette) or full black (hicolor and truecolor modes).
 
 ### Return value
 
@@ -313,7 +312,7 @@ also with a C-style character buffer.
 | Parameter | Description                                    |
 | --------- | ---------------------------------------------- |
 | ctx       | pointer to the renderer's context              |
-| data      | pointer to a font in memory font               |
+| data      | pointer to a font in memory                    |
 | len       | length, only needed if font is gzip compressed |
 
 You can load an SSFN file and pass it's address, or you can also use `ld -b binary` to convert an SSFN file
@@ -420,7 +419,7 @@ support ABGR buffers, specify the buffer's width as negative, for example -1920.
 | ----------- | --------------------------------------------------------------------------------- |
 | ctx         | pointer to the renderer's context                                                 |
 | dst         | destination pixel buffer to render to (see `ssfn_buf_t` fields below)             |
-| str         | UNICODE code point of the character to be rendered in UTF-8                       |
+| str         | UNICODE code point of the character in UTF-8 to be rendered                       |
 
 Destionation buffer descriptor struct:
 
@@ -432,8 +431,8 @@ Destionation buffer descriptor struct:
 | `.h`         | the buffer's height in pixels (optional)                                         |
 | `.fg`        | the foreground color in destination buffer's native format                       |
 | `.bg`        | the background color (only used if non-zero)                                     |
-| `.x` *       | the coordinate to draw to, will be modified by advance values and kerning        |
-| `.y` *       | the coordinate to draw to, will be modified by advance values and kerning        |
+| `.x`         | the coordinate to draw to, will be modified by advance values and kerning        |
+| `.y`         | the coordinate to draw to, will be modified by advance values and kerning        |
 
 ### Return value
 
@@ -464,7 +463,7 @@ if a new glyph appears in `str`.
 | Parameter   | Description                                                              |
 | ----------- | ------------------------------------------------------------------------ |
 | ctx         | pointer to the renderer's context                                        |
-| str         | pointer to an UTF-8 string                                               |
+| str         | pointer to a zero terminated UTF-8 string                                |
 | w           | pointer to an integer, returned width in pixels                          |
 | h           | pointer to an integer, returned height in pixels                         |
 | left        | pointer to an integer, returned left margin (overlap) in pixels          |
@@ -488,14 +487,15 @@ ssfn_buf_t *SSFN::Font.Text(const char *str, unsigned int fg);
 ```
 
 Allocates a new, transparent buffer of the required size and renders an UTF-8 string into it.
+This has the same arguments as SDL_ttf package's TTF_RenderUTF8_Blended() function.
 
 ### Parameters
 
 | Parameter   | Description                                                              |
 | ----------- | ------------------------------------------------------------------------ |
 | ctx         | pointer to the renderer's context                                        |
-| str         | pointer to an UTF-8 string                                               |
-| fg          | foreground color to use, ARGB (blue is the least significant byte)       |
+| str         | pointer to a zero terminated UTF-8 string                                |
+| fg          | foreground color to use in buffer's native format                        |
 
 ### Return value
 
@@ -515,7 +515,7 @@ int ssfn_mem(ssfn_t *ctx);
 int SSFN::Font.Mem();
 ```
 
-Returns how much memory a particular renderer context consumes. It is typically less than 32k, but strongly depends
+Returns how much memory a particular renderer context consumes. It is typically less than 64k, but strongly depends
 how big and much glyphs are stored in the internal cache. Internal buffers can be freed with `ssfn_free()`.
 
 ### Parameters

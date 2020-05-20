@@ -249,8 +249,11 @@ int main(int argc, char **argv)
         for(i++, font = (ssfn_font_t*)((uint8_t*)font + 8); font < end; font = (ssfn_font_t*)((uint8_t*)font + font->size)) {
             if(argc < 3) {
                 if(!j) { j = 1; printf("-t\t-n\n"); }
-                printf("%s%s%d\t%s\n", SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_BOLD ? "b":"",
-                    SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_ITALIC ? "i":"", SSFN_TYPE_FAMILY(font->type),
+                printf("%s%s%s%s%d\t%s\n", SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_BOLD ? "b":"",
+                    SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_ITALIC ? "i":"",
+                    SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_USRDEF1 ? "u":"",
+                    SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_USRDEF2 ? "U":"",
+                    SSFN_TYPE_FAMILY(font->type),
                     (char*)font + sizeof(ssfn_font_t));
             } else
                 save_file(argv[i++], font);
@@ -378,7 +381,8 @@ int main(int argc, char **argv)
         else {
             printf("\r\x1b[KDone.");
             if(ctx.total > 0 && i > 1)
-                printf(" Compressed to %ld.%ld%%", (long int)i*100/ctx.total, ((long int)i*10000/ctx.total)%100);
+                printf(" Compressed to %ld.%ld%% (%ld bytes)", (long int)i*100/ctx.total, ((long int)i*10000/ctx.total)%100,
+                    i - ctx.total);
             printf("\n\n");
         }
     } else

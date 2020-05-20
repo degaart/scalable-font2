@@ -52,8 +52,8 @@ Because vector font formats are just crazy, you can easily gain 60% - 80% extra 
 | ----------------- | ----: | ------: | --------- |
 | [FreeSerif.otf](https://www.gnu.org/software/freefont/)     | 2047K | 100.00% | OpenType  |
 | FreeSerif.sfn     |  840K |  41.04% | SSFN      |
-| FreeSerif.sfn.gz  |  497K |  29.02% | SSFN+zlib |
-| [UbuntuBold.ttf](http://www.daltonmaag.com/)    |  333K | 100.00% | Truetype  |
+| FreeSerif.sfn.gz  |  595K |  29.08% | SSFN+zlib |
+| UbuntuBold.ttf    |  333K | 100.00% | Truetype  |
 | UbuntuBold.sfn    |   68K |  20.63% | SSFN      |
 | UbuntuBold.sfn.gz |   40K |  11.99% | SSFN+zlib |
 | [Vera.ttf](https://www.gnome.org/fonts/)          |   65K | 100.00% | Truetype  |

@@ -30,6 +30,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #define SSFN_IMPLEMENTATION
+#define SSFN_PROFILING
 #define SSFN_CONSOLEBITMAP_TRUECOLOR
 #include "../ssfn.h"
 #if HAS_ZLIB
@@ -166,7 +167,7 @@ void do_test(SDL_Surface *screen, char *fontfn)
     ssfn_free(&ctx);
 
     /* load uvga first, then unifont */
-    ret = ssfn_load(&ctx, load_file("../fonts/u_vga16.sfn", &size), size);
+    ret = ssfn_load(&ctx, load_file("../fonts/u_vga16.sfn.gz", &size), size);
     if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
     ret = ssfn_load(&ctx, ssfn_src, size);
     if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
@@ -474,7 +475,11 @@ void do_test(SDL_Surface *screen, char *fontfn)
         s += ret;
     };
 
-    printf("Memory allocated: %d, sizeof(ssfn_t) = %d\n", ssfn_mem(&ctx), (int)sizeof(ssfn_t));
+    printf("Memory allocated: %d, sizeof(ssfn_t) = %d\n\n", ssfn_mem(&ctx), (int)sizeof(ssfn_t));
+    printf("Character lookup: %3ld.%06ld sec\n", ctx.lookup / 1000000L, ctx.lookup % 1000000L);
+    printf("Rasterization:    %3ld.%06ld sec\n", ctx.raster / 1000000L, ctx.raster % 1000000L);
+    printf("Blitting:         %3ld.%06ld sec\n", ctx.blit / 1000000L, ctx.blit % 1000000L);
+    printf("Kerning:          %3ld.%06ld sec\n", ctx.kern / 1000000L, ctx.kern % 1000000L);
     ssfn_free(&ctx);
     free(ssfn_src);
 }

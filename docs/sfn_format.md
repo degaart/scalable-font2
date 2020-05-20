@@ -191,7 +191,7 @@ N+1 times, if not, then the next N+1 bytes are all indeces.
 
 | 1st byte | More bytes | Description                                           |
 | -------- | ---------- | ----------------------------------------------------- |
-| 110NNNNN | n,c        | Kerning Group Records (up to 8192)                    |
+| 110cccNN | n          | Kerning Group Records (up to 1024)                    |
 
 For kerning groups there are (n + 1) times 8 bytes records: the first and last code points followed by a
 coordinate offset:
@@ -202,12 +202,12 @@ coordinate offset:
 |      2 |      1 | first code point most significant bits NNNNffff      |
 |      3 |      2 | last code point in group                             |
 |      5 |      1 | last code point most significant bits MMMMllll       |
-|      6 |      2 | kerning group offset ((N << 24) + (M << 16) + n) + 1 |
+|      6 |      2 | kerning group offset ((N << 20) + (M << 16) + n) + 1 |
 
 The code points represents an interval, the next character in the kerning relation. The offset points to a
 list of coordinates in the Kerning Table and those offsets are relative to the table and not to the font magic.
 
-The byte "c" in the header indicates kerning context, for future developments, it is zero for now.
+The bits "c" in the header indicates kerning context, for future developments, it is zero for now.
 
 ### Hinting information
 

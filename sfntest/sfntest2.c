@@ -92,7 +92,7 @@ int x,y;
 
     /* load and select a font */
     font = load_file(fontfn ? fontfn : (char*)"../fonts/Vera.sfn", &size);
-    /*font = load_file(fontfn ? fontfn : "../fonts/u_vga16.sfn", &size);*/
+    /*font = load_file(fontfn ? fontfn : "../fonts/u_vga16.sfn.gz", &size);*/
     /*font = load_file(fontfn ? fontfn : "../fonts/smilely.sfn", &size);*/
     err = ssfn_load(&ctx, font, size);
     if(err != SSFN_OK) { fprintf(stderr, "ssfn load error: err=%d %s\n", err, ssfn_error(err)); exit(2); }

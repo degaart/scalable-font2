@@ -97,7 +97,7 @@ void do_test(SDL_Surface *screen)
     int i;
 
     /* initialize the simple renderer */
-    ssfn_src = load_font("../fonts/u_vga16.sfn");
+    ssfn_src = load_font("../fonts/u_vga16.sfn.gz");
     ssfn_dst.ptr = (uint8_t*)screen->pixels;
     ssfn_dst.p = screen->pitch;
     ssfn_dst.fg = 0xFFFFFF;

@@ -36,8 +36,8 @@ widespread for lossless images, literally all image manipulator programs can han
 for fonts as it uses data-loss compression on pixels).
 
 In images, full black reads as transparency. For compatibility, the full black FF000000 is transparency with
-alpha channel too, but you can use FF000200. Green of 1 is also considered full black, and many programs
-saves FF000100.
+alpha channel too, but you can use FF000001 or FF000200. Green of 1 is also considered full black, because
+many programs (like the Gimp for example) saves FF000100.
 
 The glyphs can be either stored vertically or horizontally in the image file, and UNICODE range (flag `-r`)
 must be specified. If image is taller than wide, then image width will became the glyph's width, and image
@@ -63,10 +63,12 @@ Using the Converter
 ### Specifying Meta Information
 
 Because not all bitmap font formats has font type, name and licensing information, you can pass those
-as arguments on the command line.
+as arguments on the command line. In addition to bold and italic, there's two user-defined style, "u"
+and "U". You can use those to select a font from a font collection (see below). Family type can be
+specified using a number from 0 to 4, or alternatively with a letter.
 
 ```
- -t:    set type b=bold, i=italic, 0=Serif, 1=Sans, 2=Decor, 3=Mono, 4=Hand
+ -t:    set type b=bold,i=italic,u=usrdef1,U=usrdef2,0=Serif,1/s=Sans,2/d=Decorative,3/m=Monospace,4/h=Handwriting
 ```
 
 Example:
@@ -86,7 +88,7 @@ Strings can be specified as:
 
 Example:
 ```sh
-$ ./sfnconv -n "My Console Font" -f "MyOS" -f "Regular" -v "2020-05" -m "me https://github.com/me/myfont" -l "MIT" my.psf my.sfn
+$ ./sfnconv -n "My Console Font" -f "MyOS" -s "Regular" -v "2020-05" -m "me https://github.com/me/myfont" -l "MIT" my.psf my.sfn
 ```
 
 ### Specifying Input Glyphs
@@ -112,7 +114,7 @@ Or you can use UNICODE block names, for example:
 $ ./sfnconv -r "Cyrillic Extended-C" unifont.hex -r cjkunifiedideographs cjk.bdf console.sfn
 ```
 
-By default, the glyph in the first input file is used. you can replace glyphs from subsequent
+By default, the glyph in the first input file is used. You can replace glyphs from subsequent
 files when `-R` specified:
 
 ```sh
@@ -144,7 +146,7 @@ Saving 'UbuntuBold.sfn' (bin, compress)
 Done. Compressed to 14.69%
 ```
 
-You can exclude (skip) certain glyphs with `-S`, and you can specify this flag multiple times:
+You can exclude certain glyphs with `-S` (skip), and you can specify this flag multiple times:
 ```sh
 $ ./sfnconv -S U+EFFD -S U+F200 UbuntuBold.ttf UbuntuBold.sfn
       ...

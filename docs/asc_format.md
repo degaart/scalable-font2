@@ -33,11 +33,11 @@ by comments. Not all font prorepties are stored in an ASCII file, only those tha
 dimensions and number of characters are only there for the user's information, it is not parsed rather recalculated.
 
 The following keys are recognized: `$type` with a numeric argument (0=Serif, 1=Sans, 2=Decorative, 3=Monospace,
-4=Handwriting). Slant is defined by `$style`, with an argument. The argument is only parsed for `b` (bold) and
-`i` (for italic) characters, everything else is regular. Keys `$baseline` and `$underline` both have a numeric
-argument specifying the line's vertical position. Font's strings table given by `$name` (unique font name),
-`$family`, `$subfamily`, `$revision`, `$manufacturer` and `$license`. These keys have double quote '"' enclosed
-string arguments. Unknown keys are simply skipped.
+4=Handwriting). Slant is defined by `$style`, with an argument. The argument is only parsed for `b` (bold), `i`
+(for italic), `1` and `2` (two user-defined styles) characters, everything else is regular. Keys `$baseline` and
+`$underline` both have a numeric argument specifying the line's vertical position. Font's strings table given by
+`$name` (unique font name), `$family`, `$subfamily`, `$revision`, `$manufacturer` and `$license`. These keys have
+double quote '"' enclosed string arguments. Unknown keys are simply skipped.
 
 ### Glyphs
 
@@ -60,10 +60,12 @@ However it is not mandatory, but glyph definitions are always separated by an em
 #### Hinting Grids
 
 These define partritions of the coordinate system, and they are optional. Normally hinting grid is calculated
-automatically when font loaded. Specify only if you're not satisfied with the generated grid.
+automatically when font loaded. Specify only if you're not satisfied with the generated grid (up to 32 x 32
+coordinates).
+
 ```
-H (x0) (x1) (xN) ...
-V (y0) (y1) (yN) ...
+H (x0) (x1) ...(xN)
+V (y0) (y1) ...(yN)
 ```
 
 #### Foreground Color
@@ -98,9 +100,9 @@ rounded up to multiple of 8.
 #### Pixmaps
 
 Similar to bitmaps, but instead of a character there's a `(aarrggbb)` hex octet for each pixel, separated by spaces.
-Has as many lines and color codes in each line as the glyph's dimensions.  The values `00000000` and `FF000000` mean
-transparency, which can be written as eight hypens `--------` for increased visibility. To encode black foreground
-color, use `FF000001` (imaging tools like the Gimp might convert full black to `FF000100`).
+Has as many lines and color codes in each line as the glyph's dimensions.  The values `00000000`, `FF000000` and
+`FF000100` mean transparency, which can be written as eight hypens `--------` for increased visibility. To encode black
+foreground color, use `FF000001` or `FF000200` (imaging tools like the Gimp might convert full black to `FF000100`).
 
 ### Kerning
 

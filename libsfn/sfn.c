@@ -242,8 +242,8 @@ void sfn(unsigned char *ptr, int size)
                             free(bitmap);
                         } else if((frg[0] & 0x60) == 0x40) {
                             /* kerning relation */
-                            j = (((frg[0] & 0x1F) << 8) | frg[1]) + 1;
-                            for(i = 0, frg += 3; i < j; i++, frg += 8) {
+                            j = (((frg[0] & 0x3) << 8) | frg[1]) + 1;
+                            for(i = 0, frg += 2; i < j; i++, frg += 8) {
                                 y = ((frg[2] & 0xF) << 16) | (frg[1] << 8) | frg[0];
                                 m = ((frg[5] & 0xF) << 16) | (frg[4] << 8) | frg[3];
                                 cmd = (unsigned char*)font + font->kerning_offs + ((((frg[2] >> 4) & 0xF) << 24) |
@@ -306,10 +306,13 @@ void asc(char *ptr, int size)
                 case 's':
                     if(ptr[2]=='u' && *e == '\"') { e++; sfn_setstr(&ctx.subname, e, 0); } else
                     if(ptr[2]=='t') {
-                        for(; *e && *e != '\r' && *e != '\n'; e++) {
-                            if(*e == 'b') ctx.style |= SSFN_STYLE_BOLD;
-                            if(*e == 'i') ctx.style |= SSFN_STYLE_ITALIC;
-                        }
+                        for(; *e && *e != '\r' && *e != '\n'; e++)
+                            if(e[-1] == ' ') {
+                                if(*e == 'b') ctx.style |= SSFN_STYLE_BOLD;
+                                if(*e == 'i') ctx.style |= SSFN_STYLE_ITALIC;
+                                if(*e == '1') ctx.style |= SSFN_STYLE_USRDEF1;
+                                if(*e == '2') ctx.style |= SSFN_STYLE_USRDEF2;
+                            }
                     }
                 break;
                 case 'b': ctx.baseline = atoi(e); break;
@@ -834,9 +837,9 @@ int sfn_fragchr(int unicode, int type, int w, int h, int x, int y, void *data)
 {
     int i;
 
-    if(type == SSFN_FRAG_KERNING && w > 8191) {
-        if(!quiet) fprintf(stderr, "Too many kerning groups for U+%06X, truncated to 8191.\n", unicode);
-        w = 8191;
+    if(type == SSFN_FRAG_KERNING && w > 1024) {
+        if(!quiet) fprintf(stderr, "Too many kerning groups for U+%06X, truncated to 1024.\n", unicode);
+        w = 1024;
     }
     if(ctx.glyphs[unicode].numfrag >= 255) {
         if(!quiet) fprintf(stderr, "Too many fragments for U+%06X, truncated to 255.\n", unicode);
@@ -944,8 +947,11 @@ int sfn_dump(ssfn_font_t *font, int size, int dump)
             printf("\n---Fonts---\n");
             for(font = (ssfn_font_t*)((uint8_t*)font + 8); font < end; font = (ssfn_font_t*)((uint8_t*)font + font->size)) {
                 if(!memcmp(font->magic, "SSFN", 4)) printf("(obsolete SSFN1.0 font) %s\n", (char*)font + 64);
-                else printf("%c%c %d %s\n", SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_BOLD ? 'b':'.',
-                    SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_ITALIC ? 'i':'.', SSFN_TYPE_FAMILY(font->type),
+                else printf("%c%c%c%c %d %s\n", SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_BOLD ? 'b':'.',
+                    SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_ITALIC ? 'i':'.',
+                    SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_USRDEF1 ? 'u':'.',
+                    SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_USRDEF2 ? 'U':'.',
+                    SSFN_TYPE_FAMILY(font->type),
                     (char*)font + sizeof(ssfn_font_t));
             }
         }
@@ -962,9 +968,11 @@ int sfn_dump(ssfn_font_t *font, int size, int dump)
     if(!memcmp(font->magic, SSFN_MAGIC, 4)) {
         printf("font/x-ssfont Scalable Screen Font\n\n---Header---\nmagic:           '%c%c%c%c'\nsize:            %d\n",
             font->magic[0], font->magic[1], font->magic[2], font->magic[3], font->size);
-        printf("type:            %02x SSFN_FAMILY_%s%s%s\n", font->type, dump_fam[SSFN_TYPE_FAMILY(font->type)],
+        printf("type:            %02x SSFN_FAMILY_%s%s%s%s%s\n", font->type, dump_fam[SSFN_TYPE_FAMILY(font->type)],
             SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_BOLD ? ", SSFN_STYLE_BOLD" : "",
-            SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_ITALIC ? ", SSFN_STYLE_ITALIC" : "");
+            SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_ITALIC ? ", SSFN_STYLE_ITALIC" : "",
+            SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_USRDEF1 ? ", SSFN_STYLE_USRDEF1" : "",
+            SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_USRDEF2 ? ", SSFN_STYLE_USRDEF2" : "");
         ptr = (unsigned char *)font + sizeof(ssfn_font_t);
         printf("features:        %02x rev %d\n", font->features, font->features & 0xF);
         printf("width, height:   %d %d\n", font->width, font->height);
@@ -1067,9 +1075,9 @@ int sfn_dump(ssfn_font_t *font, int size, int dump)
                     } else
                     if((ptr[0] & 0x60) == 0x40) {
                         if(!font->kerning_offs) { fprintf(stderr, "kerning fragment without kerning table\n"); return 0; }
-                        j = (((ptr[0] & 0x1F) << 8) | ptr[1]) + 1;
-                        if(dump != 4) printf("%02x %02x SSFN_FRAG_KERNING n=%d c=%d\n", ptr[1], ptr[2], j, ptr[2]);
-                        for(ptr += 3, i = 0; i < j; i++, ptr += 8) {
+                        j = (((ptr[0] & 0x3) << 8) | ptr[1]) + 1;
+                        if(dump != 4) printf("%02x %02x SSFN_FRAG_KERNING n=%d c=%d\n", ptr[1], ptr[2], j, (ptr[2] >> 2) & 7);
+                        for(ptr += 2, i = 0; i < j; i++, ptr += 8) {
                             k = (((ptr[2] >> 4) & 0xF) << 24) | (((ptr[5] >> 4) & 0xF) << 16) | (ptr[7] << 8) | ptr[6];
                             if(dump != 4) {
                                 printf(" %02x %02x %02x %02x %02x %02x %02x %02x  U+%06X..U+%06X o=%06x\n",
@@ -1334,8 +1342,9 @@ int sfn_save(char *filename, int ascii, int compress)
             fprintf(f, "# Scalable Screen Font #\r\n\r\n");
             fprintf(f, "$glyphdim %d %d numchars %d numlayers %d\r\n", ctx.width, ctx.height, mc, ml);
             fprintf(f, "$type %d (%s)\r\n", ctx.family, fam[ctx.family < 5 ? ctx.family : 5]);
-            fprintf(f, "$style %s%s\r\n", !ctx.style ? "regular" : (ctx.style & SSFN_STYLE_BOLD ? "bold" : ""),
-                ctx.style & SSFN_STYLE_ITALIC ? "italic" : "");
+            fprintf(f, "$style%s%s%s%s\r\n", !ctx.style ? " regular" : (ctx.style & SSFN_STYLE_BOLD ? " bold" : ""),
+                ctx.style & SSFN_STYLE_ITALIC ? " italic" : "", ctx.style & SSFN_STYLE_USRDEF1 ? "usrdef1" : "",
+                ctx.style & SSFN_STYLE_USRDEF2 ? "usrdef2" : "");
             fprintf(f,"$baseline %d\r\n$underline %d\r\n", ctx.baseline, ctx.underline);
             fprintf(f,"$name \"%s\"\r\n", ctx.name ? ctx.name : "");
             fprintf(f,"$family \"%s\"\r\n", ctx.familyname ? ctx.familyname : "");
@@ -1738,9 +1747,8 @@ int sfn_save(char *filename, int ascii, int compress)
                     free(tmp);
                 break;
                 case SSFN_FRAG_KERNING:
-                    frg[fs++] = (((ctx.frags[i].w - 1) >> 8) & 0x1F) | 0xC0;
+                    frg[fs++] = (((ctx.frags[i].w - 1) >> 8) & 0x3) | 0xC0 | /*kerning context*/((0 & 7) << 2);
                     frg[fs++] = (ctx.frags[i].w - 1) & 0xFF;
-                    frg[fs++] = 0; /* kerning context */
                     for(j = 0, kgrpf = (sfnkgrp_t*)ctx.frags[i].data; j < ctx.frags[i].w; j++, kgrpf++) {
                         /* this is not efficient, but fast enough */
                         for(k = x = 0; k < ctx.numkpos; k++)

@@ -169,6 +169,11 @@ typedef struct {
     uint8_t y;                          /* advance y */
 } ssfn_chr_t;
 
+#ifdef SSFN_PROFILING
+#include <string.h>
+#include <sys/time.h>
+#endif
+
 /* renderer context */
 typedef struct {
     const ssfn_font_t **fnt[5];         /* font registry */
@@ -186,6 +191,9 @@ typedef struct {
     int family;                         /* required family */
     int style;                          /* required style */
     int size;                           /* required size */
+#ifdef SSFN_PROFILING
+    uint64_t lookup, raster, blit, kern;/* profiling accumulators */
+#endif
 } ssfn_t;
 
 /***** API function protoypes *****/
@@ -816,6 +824,7 @@ int ssfn_load(ssfn_t *ctx, const void *data, int len)
             } else
                 ctx->fnt[family][ctx->len[family]-1] = font;
         }
+        _ssfn_fc(ctx);
     }
     return SSFN_OK;
 }
@@ -932,6 +941,10 @@ int ssfn_render(ssfn_t *ctx, ssfn_buf_t *dst, const char *str)
     unsigned long int sR, sG, sB, sA;
     int ret = 0, i, j, k, l, p, m, n, o, s, x, y, w, h, a, A, b, B, nr, uix, uax;
     int ox, oy, y0, y1, x0, x1, xs, ys, xp, yp, pc, af;
+#ifdef SSFN_PROFILING
+    struct timeval tv0, tv1, tvd;
+    gettimeofday(&tv0, NULL);
+#endif
 
     if(!ctx || !str) return SSFN_ERR_INVINP;
     if(!*str) return 0;
@@ -981,6 +994,14 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
     if((unicode >> 16) > 0x10) return SSFN_ERR_INVINP;
     ctx->rc = (ssfn_chr_t*)ptr; ptr += sizeof(ssfn_chr_t);
 
+#ifdef SSFN_PROFILING
+    gettimeofday(&tv1, NULL);
+    tvd.tv_sec = tv1.tv_sec - tv0.tv_sec;
+    tvd.tv_usec = tv1.tv_usec - tv0.tv_usec;
+    if(tvd.tv_usec < 0) { tvd.tv_sec--; tvd.tv_usec += 1000000L; }
+    ctx->lookup += tvd.tv_sec * 1000000L + tvd.tv_usec;
+    memcpy(&tv0, &tv1, sizeof(struct timeval));
+#endif
     /* render glyph into cache */
     if(!(ctx->style & SSFN_STYLE_NOCACHE) && ctx->c[unicode >> 16] && ctx->c[unicode >> 16][(unicode >> 8) & 0xFF] &&
         ctx->c[unicode >> 16][(unicode >> 8) & 0xFF][unicode & 0xFF]) {
@@ -1165,6 +1186,14 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
             printf("\n");
         }
 #endif
+#ifdef SSFN_PROFILING
+        gettimeofday(&tv1, NULL);
+        tvd.tv_sec = tv1.tv_sec - tv0.tv_sec;
+        tvd.tv_usec = tv1.tv_usec - tv0.tv_usec;
+        if(tvd.tv_usec < 0) { tvd.tv_sec--; tvd.tv_usec += 1000000L; }
+        ctx->raster += tvd.tv_sec * 1000000L + tvd.tv_usec;
+        memcpy(&tv0, &tv1, sizeof(struct timeval));
+#endif
     }
     if(dst) {
         /* blit glyph from cache into buffer */
@@ -1253,6 +1282,14 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
                     }
                 }
             }
+#ifdef SSFN_PROFILING
+            gettimeofday(&tv1, NULL);
+            tvd.tv_sec = tv1.tv_sec - tv0.tv_sec;
+            tvd.tv_usec = tv1.tv_usec - tv0.tv_usec;
+            if(tvd.tv_usec < 0) { tvd.tv_sec--; tvd.tv_usec += 1000000L; }
+            ctx->blit += tvd.tv_sec * 1000000L + tvd.tv_usec;
+            memcpy(&tv0, &tv1, sizeof(struct timeval));
+#endif
         }
         /* add advance and kerning */
         dst->x += (ctx->style & SSFN_STYLE_RTL ? -s : s);
@@ -1294,6 +1331,13 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
                     }
                 } /* if kerning fragment */
             }
+#ifdef SSFN_PROFILING
+            gettimeofday(&tv1, NULL);
+            tvd.tv_sec = tv1.tv_sec - tv0.tv_sec;
+            tvd.tv_usec = tv1.tv_usec - tv0.tv_usec;
+            if(tvd.tv_usec < 0) { tvd.tv_sec--; tvd.tv_usec += 1000000L; }
+            ctx->kern += tvd.tv_sec * 1000000L + tvd.tv_usec;
+#endif
         }
     }
     return ret;
