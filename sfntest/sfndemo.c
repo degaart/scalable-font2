@@ -39,6 +39,8 @@
 
 #include <SDL.h>
 
+unsigned long int loadtim = 0;
+
 /**
  * Load a file
  */
@@ -49,6 +51,10 @@ ssfn_font_t *load_file(char *filename, int *size)
 #if HAS_ZLIB
     unsigned char hdr[2];
     gzFile g;
+#endif
+#ifdef SSFN_PROFILING
+    struct timeval tv0, tv1, tvd;
+    gettimeofday(&tv0, NULL);
 #endif
 
     f = fopen(filename, "rb");
@@ -79,6 +85,13 @@ ssfn_font_t *load_file(char *filename, int *size)
 #else
     fread(fontdata, *size, 1, f);
     fclose(f);
+#endif
+#ifdef SSFN_PROFILING
+    gettimeofday(&tv1, NULL);
+    tvd.tv_sec = tv1.tv_sec - tv0.tv_sec;
+    tvd.tv_usec = tv1.tv_usec - tv0.tv_usec;
+    if(tvd.tv_usec < 0) { tvd.tv_sec--; tvd.tv_usec += 1000000L; }
+    loadtim += tvd.tv_sec * 1000000L + tvd.tv_usec;
 #endif
     return (ssfn_font_t*)fontdata;
 }
@@ -476,6 +489,7 @@ void do_test(SDL_Surface *screen, char *fontfn)
     };
 
     printf("Memory allocated: %d, sizeof(ssfn_t) = %d\n\n", ssfn_mem(&ctx), (int)sizeof(ssfn_t));
+    printf("File load time:   %3ld.%06ld sec\n", loadtim / 1000000L, loadtim % 1000000L);
     printf("Character lookup: %3ld.%06ld sec\n", ctx.lookup / 1000000L, ctx.lookup % 1000000L);
     printf("Rasterization:    %3ld.%06ld sec\n", ctx.raster / 1000000L, ctx.raster % 1000000L);
     printf("Blitting:         %3ld.%06ld sec\n", ctx.blit / 1000000L, ctx.blit % 1000000L);

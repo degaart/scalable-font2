@@ -87,7 +87,7 @@ int x,y;
     buf.p = screen->pitch;
     buf.w = screen->w;
     buf.h = screen->h;
-    buf.fg = 0xFF2020FF;
+    buf.fg = 0xFF202020;
     buf.x = 4; buf.y = 48;
 
     /* load and select a font */
@@ -97,10 +97,10 @@ int x,y;
     err = ssfn_load(&ctx, font, size);
     if(err != SSFN_OK) { fprintf(stderr, "ssfn load error: err=%d %s\n", err, ssfn_error(err)); exit(2); }
 
-    err = ssfn_select(&ctx, SSFN_FAMILY_ANY, NULL, SSFN_STYLE_REGULAR | SSFN_STYLE_UNDERLINE, 40);
+    err = ssfn_select(&ctx, SSFN_FAMILY_ANY, NULL, SSFN_STYLE_REGULAR | SSFN_STYLE_UNDERLINE, 20);
     if(err != SSFN_OK) { fprintf(stderr, "ssfn select error: err=%d %s\n", err, ssfn_error(err)); exit(2); }
 
-    err = ssfn_render(&ctx, &buf, "S");
+    err = ssfn_render(&ctx, &buf, "i");
     if(err < 0) { fprintf(stderr, "ssfn render error: err=%d %s\n", err, ssfn_error(err)); exit(2); }
 
 for(y = 0; y < 64; y++) {

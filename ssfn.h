@@ -1201,6 +1201,9 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
             ctx->size : ctx->size * ctx->f->height / ctx->f->baseline;
         w = ctx->style & SSFN_STYLE_NOAA ? ctx->g->p : ctx->g->p * h / ctx->g->h;
         s = ctx->g->x * h / ctx->f->height - ctx->g->o * h / ctx->f->height;
+        n = ctx->size > 16 ? 2 : 1;
+        if(w < n) w = n;
+        if(s < n) s = n;
         if(dst->ptr) {
             if(ctx->g->x) {
                 ox = (ctx->g->o * h / ctx->f->height) + (ctx->style & SSFN_STYLE_RTL ? w : 0);
