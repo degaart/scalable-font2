@@ -51,6 +51,17 @@ enum {
     STAT_WRTCHARS,
     STAT_WRTFILE,
 
+    CPYRGT_0,
+    CPYRGT_1,
+    CPYRGT_2,
+    CPYRGT_3,
+    CPYRGT_4,
+    CPYRGT_5,
+    CPYRGT_6,
+    CPYRGT_7,
+    CPYRGT_8,
+    CPYRGT_9,
+
     MTOOL_ABOUT,
     MTOOL_LOAD,
     MTOOL_SAVE,

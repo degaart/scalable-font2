@@ -72,7 +72,7 @@ endif
 libsfn:
 	@make -C ../libsfn all
 
-%: %.c
+%: %.c icon.h lang.h
 	$(CC) $(CFLAGS) $< -c $@
 
 $(TARGET): libsfn $(OBJS)

@@ -59,6 +59,7 @@ void *winid = NULL;
 int winidx = 0;
 
 ssfn_t logofnt;
+int cursor = CURSOR_PTR, lastcursor = -1;
 
 /**
  * report an error and exit
@@ -103,6 +104,7 @@ int ui_maxfield(int idx)
 {
     if(!idx) {
         switch(wins[idx].tool) {
+            case MAIN_TOOL_ABOUT: return 6;
             case MAIN_TOOL_LOAD: return 4;
             case MAIN_TOOL_SAVE: return 4;
             case MAIN_TOOL_PROPS: return 4;
@@ -263,7 +265,7 @@ static void ui_loadrc()
 
     memset(&logofnt, 0, sizeof(ssfn_t));
     ssfn_load(&logofnt, &logo_sfn);
-    ssfn_select(&logofnt, SSFN_FAMILY_SERIF, NULL, SSFN_STYLE_REGULAR, 48);
+    ssfn_select(&logofnt, SSFN_FAMILY_SERIF, NULL, SSFN_STYLE_REGULAR, 56);
 }
 
 /**
@@ -424,16 +426,27 @@ void ui_main(char *fn)
             break;
             case E_REFRESH: ui_refreshwin(event.win, event.x, event.y, event.w, event.h); break;
             case E_MOUSEMOVE:
-                status = NULL;
+                status = NULL; cursor = CURSOR_PTR;
                 if(event.y < 23) {
                     i = (event.x - 1) / 24;
-                    if(i < (!event.win ? 6 : 3))
+                    if(i < (!event.win ? 6 : 3)) {
                         status = lang[(!event.win ? MTOOL_ABOUT : GTOOL_MEASURES) + i];
+                        cursor = CURSOR_GRAB;
+                    }
+                } else {
+                    if(!event.win) {
+                        switch(wins[0].tool) {
+                            case MAIN_TOOL_ABOUT: ctrl_about_onmove(); break;
+                        }
+                    }
                 }
                 ui_box(&wins[event.win], 0, wins[event.win].h - 18, wins[event.win].w, 18,
                     theme[THEME_DARK], theme[THEME_DARK], theme[THEME_DARK]);
                 if(status) ui_text(&wins[event.win], 0, wins[event.win].h - 18, status);
-                ui_cursorwin(&wins[event.win], status ? CURSOR_GRAB : CURSOR_PTR);
+                if(cursor != lastcursor) {
+                    ui_cursorwin(&wins[event.win], cursor);
+                    lastcursor = cursor;
+                }
                 ui_flushwin(&wins[event.win], 0, wins[event.win].h - 18, wins[event.win].w, 18);
             break;
             case E_KEY:
@@ -462,6 +475,12 @@ void ui_main(char *fn)
                             wins[event.win].field = wins[event.win].seltool = -1;
                             ui_resizewin(&wins[event.win], wins[event.win].w, wins[event.win].h);
                             ui_refreshwin(event.win, 0, 0, wins[event.win].w, wins[event.win].h);
+                        } else {
+                            if(!event.win) {
+                                switch(wins[0].tool) {
+                                    case MAIN_TOOL_ABOUT: ctrl_about_onenter(); break;
+                                }
+                            }
                         }
                     break;
                 }
@@ -482,6 +501,12 @@ void ui_main(char *fn)
                         wins[event.win].tool = !event.win && i > 1 && i < 6 && !ctx.filename ? 1 : i;
                         wins[event.win].field = -1;
                         ui_resizewin(&wins[event.win], wins[event.win].w, wins[event.win].h);
+                    }
+                } else {
+                    if(!event.win) {
+                        switch(wins[0].tool) {
+                            case MAIN_TOOL_ABOUT: ctrl_about_onclick(); break;
+                        }
                     }
                 }
                 wins[event.win].seltool = -1;

@@ -44,7 +44,7 @@ Display *display;
 Visual *visual;
 Atom wmDel;
 Cursor cursors[3];
-extern uint8_t *icons, *icon32;
+extern uint8_t *tools, *icon32;
 #define ICON_LENGTH (2 + 16 * 16 + 2 + 32 * 32)
 long icons[ICON_LENGTH];
 int screen_num = 0, red_shift,green_shift,blue_shift, btnflags = 0, keyflags = 0, keypressed = 0;
@@ -174,7 +174,7 @@ void ui_init()
     *ptr++ = 16;
     *ptr++ = 16;
     for(i=0; i < 16 * 16 * 4; i += 4)
-        *ptr++ = icons[i+2] | (icons[i+1] << 8) | (icons[i] << 16) | (icons[i+3] << 24);
+        *ptr++ = tools[i+2] | (tools[i+1] << 8) | (tools[i] << 16) | (tools[i+3] << 24);
     *ptr++ = 32;
     *ptr++ = 32;
     for(i=0; i < 32 * 32 * 4; i += 4)

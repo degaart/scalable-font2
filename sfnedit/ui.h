@@ -158,7 +158,7 @@ typedef struct {
 
 extern char verstr[];
 extern uint32_t theme[];
-extern int numwin;
+extern int numwin, cursor;
 extern ui_win_t *wins;
 extern ui_event_t event;
 extern uint8_t *icon16, *icon32, *tools, *numbers, *bga;
@@ -203,3 +203,8 @@ void view_coords(int idx);
 void view_layers(int idx);
 void view_kern(int idx);
 void view_color(int idx);
+
+/* controllers */
+void ctrl_about_onmove();
+void ctrl_about_onclick();
+void ctrl_about_onenter();
