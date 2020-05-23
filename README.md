@@ -182,5 +182,5 @@ by that helped me a lot to improve this code.
 Authors
 -------
 
-SSFN format, converter, editor and renderers: bzt
-STBI (original zlib decode): Sean Barrett
+- SSFN format, converter, editor and renderers: bzt
+- STBI (original zlib decode): Sean Barrett
