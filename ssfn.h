@@ -490,7 +490,6 @@ typedef struct
    char *zout;
    char *zout_start;
    char *zout_end;
-   int   z_expandable;
 
    _ssfn__zhuffman z_length, z_distance;
 } _ssfn__zbuf;
@@ -551,7 +550,6 @@ static int _ssfn__zexpand(_ssfn__zbuf *z, char *zout)
    char *q;
    int cur, limit;
    z->zout = zout;
-   if (!z->z_expandable) return 0;
    cur   = (int) (z->zout     - z->zout_start);
    limit = (int) (z->zout_end - z->zout_start);
    if(limit == 8) {
@@ -710,11 +708,11 @@ static void _ssfn__init_zdefaults(void)
 
 static int _ssfn__parse_zlib(_ssfn__zbuf *a)
 {
-   int final, type;
+   int fin, type;
    a->num_bits = 0;
    a->code_buffer = 0;
    do {
-      final = _ssfn__zreceive(a,1);
+      fin = _ssfn__zreceive(a,1);
       type = _ssfn__zreceive(a,2);
       if (type == 0) {
          if (!_ssfn__parse_uncompressed_block(a)) return 0;
@@ -729,7 +727,7 @@ static int _ssfn__parse_zlib(_ssfn__zbuf *a)
          }
          if (!_ssfn__parse_huffman_block(a)) return 0;
       }
-   } while (!final);
+   } while (!fin);
    return 1;
 }
 
@@ -742,7 +740,6 @@ static char *_ssfn_zlib_decode(const char *buffer)
    a.zout_start = p;
    a.zout       = p;
    a.zout_end   = p + 8;
-   a.z_expandable = 1;
    _ssfn__init_zdefaults();
    if (_ssfn__parse_zlib(&a)) {
       return a.zout_start;
@@ -783,7 +780,7 @@ int ssfn_load(ssfn_t *ctx, const void *data)
         ctx->bufs = (char**)SSFN_realloc(ctx->bufs, (ctx->numbuf + 1) * sizeof(char*));
         if(!ctx->bufs) { ctx->numbuf = 0; return SSFN_ERR_ALLOC; }
         ctx->bufs[ctx->numbuf++] = (char*)font;
-        ctx->lenbuf += r;
+        ctx->lenbuf += font->size;
     }
     if(!SSFN_memcmp(font->magic, SSFN_COLLECTION, 4)) {
         end = (ssfn_font_t*)((uint8_t*)font + font->size);
