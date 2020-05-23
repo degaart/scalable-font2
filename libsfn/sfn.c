@@ -1238,6 +1238,7 @@ int sfn_load(char *filename, int dump)
     fread(data, size, 1, f);
     fclose(f);
     ctx.total += (long int)size;
+    ctx.filename = filename;
 
     if(data[0] == 0x1f && data[1] == 0x8b) {
         o = data; data += 2;
@@ -1338,6 +1339,7 @@ int sfn_save(char *filename, int ascii, int compress)
         /* ----------------------------- output in text format ----------------------------- */
         f = fopen(filename, "w");
         if(f) {
+            ctx.filename = filename;
             /* header */
             fprintf(f, "# Scalable Screen Font #\r\n\r\n");
             fprintf(f, "$glyphdim %d %d numchars %d numlayers %d\r\n", ctx.width, ctx.height, mc, ml);
@@ -1859,6 +1861,7 @@ int sfn_save(char *filename, int ascii, int compress)
         if(compress) {
             g = gzopen(filename, "wb");
             if(g) {
+                ctx.filename = filename;
                 if(pbar) (*pbar)(5, 5, 0, 5, PBAR_WRTFILE);
                 gzwrite(g, hdr, hdr->fragments_offs);
                 if(pbar) (*pbar)(5, 5, 1, 5, PBAR_WRTFILE);
@@ -1887,6 +1890,7 @@ int sfn_save(char *filename, int ascii, int compress)
         {
             f = fopen(filename, "wb");
             if(f) {
+                ctx.filename = filename;
                 if(pbar) (*pbar)(5, 5, 0, 5, PBAR_WRTFILE);
                 fwrite(hdr, hdr->fragments_offs, 1, f);
                 if(pbar) (*pbar)(5, 5, 1, 5, PBAR_WRTFILE);

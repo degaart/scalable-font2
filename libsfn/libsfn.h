@@ -117,6 +117,7 @@ typedef struct {
     unsigned char height;
     unsigned char baseline;
     unsigned char underline;
+    char *filename;
     char *name;
     char *familyname;
     char *subname;
