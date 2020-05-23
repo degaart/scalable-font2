@@ -408,8 +408,6 @@ static void _ssfn_b(ssfn_t *ctx, int p,int h, int x0,int y0, int x1,int y1, int 
  * gzip deflate uncompressor from stb_image.h with minor modifications to reduce dependency
  * stb_image - v2.23 - public domain image loader - http://nothings.org/stb_image.h
  */
-#ifndef STBI_INCLUDE_STB_IMAGE_H
-
 #define SSFN__ZFAST_BITS  9
 #define SSFN__ZFAST_MASK  ((1 << SSFN__ZFAST_BITS) - 1)
 
@@ -753,7 +751,6 @@ static char *_ssfn_zlib_decode(const char *buffer)
       return NULL;
    }
 }
-#endif
 
 /*** Public API implementation ***/
 
