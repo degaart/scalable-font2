@@ -198,8 +198,10 @@ typedef struct {
 
 /***** API function protoypes *****/
 
+uint32_t ssfn_utf8(char **str);                                                     /* decode UTF-8 sequence */
+
 /* normal renderer */
-int ssfn_load(ssfn_t *ctx, const void *data, int len);                              /* add an SSFN to context */
+int ssfn_load(ssfn_t *ctx, const void *data);                                       /* add an SSFN to context */
 int ssfn_select(ssfn_t *ctx, int family, const char *name, int style, int size);    /* select font to use */
 int ssfn_render(ssfn_t *ctx, ssfn_buf_t *dst, const char *str);                     /* render a glyph to a pixel buffer */
 int ssfn_bbox(ssfn_t *ctx, const char *str, int *w, int *h, int *left, int *top);   /* get bounding box of a rendered string */
@@ -210,14 +212,16 @@ void ssfn_free(ssfn_t *ctx);                                                    
 extern const char *ssfn_errstr[];
 
 /* simple renderer */
-uint32_t ssfn_utf8(char **str);                                                     /* decode UTF-8 sequence */
+extern ssfn_font_t *ssfn_src;                                                       /* font buffer */
+extern ssfn_buf_t ssfn_dst;                                                         /* destination frame buffer */
 int ssfn_putc(uint32_t unicode);                                                    /* render console bitmap font */
 
 /***** renderer implementations *****/
 
 /*** these go for both renderers ***/
-#if defined(SSFN_IMPLEMENTATION) || defined(SSFN_CONSOLEBITMAP_PALETTE) || \
-    defined(SSFN_CONSOLEBITMAP_HICOLOR) || defined(SSFN_CONSOLEBITMAP_TRUECOLOR)
+#if (defined(SSFN_IMPLEMENTATION) || defined(SSFN_CONSOLEBITMAP_PALETTE) || \
+    defined(SSFN_CONSOLEBITMAP_HICOLOR) || defined(SSFN_CONSOLEBITMAP_TRUECOLOR)) && !defined(SSFN_COMMON)
+#define SSFN_COMMON
 
 /**
  * Error code strings
@@ -481,7 +485,7 @@ static int _ssfn__zbuild_huffman(_ssfn__zhuffman *z, unsigned char *sizelist, in
 
 typedef struct
 {
-   unsigned char *zbuffer, *zbuffer_end;
+   unsigned char *zbuffer;
    int num_bits;
    uint32_t code_buffer;
 
@@ -495,7 +499,6 @@ typedef struct
 
 inline static unsigned char _ssfn__zget8(_ssfn__zbuf *z)
 {
-   if (z->zbuffer >= z->zbuffer_end) return 0;
    return *z->zbuffer++;
 }
 
@@ -545,7 +548,7 @@ inline static int _ssfn__zhuffman_decode(_ssfn__zbuf *a, _ssfn__zhuffman *z)
    return _ssfn__zhuffman_decode_slowpath(a, z);
 }
 
-static int _ssfn__zexpand(_ssfn__zbuf *z, char *zout, int n)
+static int _ssfn__zexpand(_ssfn__zbuf *z, char *zout)
 {
    char *q;
    int cur, limit;
@@ -553,8 +556,10 @@ static int _ssfn__zexpand(_ssfn__zbuf *z, char *zout, int n)
    if (!z->z_expandable) return 0;
    cur   = (int) (z->zout     - z->zout_start);
    limit = (int) (z->zout_end - z->zout_start);
-   while (cur + n > limit)
-      limit *= 2;
+   if(limit == 8) {
+       if(z->zout_start[0] != 'S' || z->zout_start[1] != 'F' || z->zout_start[2] != 'N') return 0;
+       limit = *((uint32_t*)&z->zout_start[4]);
+   } else return 0;
    q = (char *) SSFN_realloc(z->zout_start, limit);
    if (q == NULL) return 0;
    z->zout_start = q;
@@ -585,7 +590,7 @@ static int _ssfn__parse_huffman_block(_ssfn__zbuf *a)
       if (z < 256) {
          if (z < 0) return 0;
          if (zout >= a->zout_end) {
-            if (!_ssfn__zexpand(a, zout, 1)) return 0;
+            if (!_ssfn__zexpand(a, zout)) return 0;
             zout = a->zout;
          }
          *zout++ = (char) z;
@@ -605,7 +610,7 @@ static int _ssfn__parse_huffman_block(_ssfn__zbuf *a)
          if (_ssfn__zdist_extra[z]) dist += _ssfn__zreceive(a, _ssfn__zdist_extra[z]);
          if (zout - a->zout_start < dist) return 0;
          if (zout + len > a->zout_end) {
-            if (!_ssfn__zexpand(a, zout, len)) return 0;
+            if (!_ssfn__zexpand(a, zout)) return 0;
             zout = a->zout;
          }
          p = (unsigned char *) (zout - dist);
@@ -684,9 +689,8 @@ inline static int _ssfn__parse_uncompressed_block(_ssfn__zbuf *a)
    len  = header[1] * 256 + header[0];
    nlen = header[3] * 256 + header[2];
    if (nlen != (len ^ 0xffff)) return 0;
-   if (a->zbuffer + len > a->zbuffer_end) return 0;
    if (a->zout + len > a->zout_end)
-      if (!_ssfn__zexpand(a, a->zout, len)) return 0;
+      if (!_ssfn__zexpand(a, a->zout)) return 0;
    for(k = 0; k < len; k++)
        a->zout[k] = a->zbuffer[k];
    a->zbuffer += len;
@@ -694,15 +698,6 @@ inline static int _ssfn__parse_uncompressed_block(_ssfn__zbuf *a)
    return 1;
 }
 
-static int _ssfn__parse_zlib_header(_ssfn__zbuf *a)
-{
-   int cmf   = _ssfn__zget8(a);
-   int cm    = cmf & 15;
-   /* int cinfo = cmf >> 4; */
-   int flg   = _ssfn__zget8(a);
-   if ((cmf*256+flg) % 31 != 0 || (flg & 32) || cm != 8) return 0;
-   return 1;
-}
 static unsigned char _ssfn__zdefault_length[288], _ssfn__zdefault_distance[32];
 static void _ssfn__init_zdefaults(void)
 {
@@ -715,11 +710,9 @@ static void _ssfn__init_zdefaults(void)
    for (i=0; i <=  31; ++i)     _ssfn__zdefault_distance[i] = 5;
 }
 
-static int _ssfn__parse_zlib(_ssfn__zbuf *a, int parse_header)
+static int _ssfn__parse_zlib(_ssfn__zbuf *a)
 {
    int final, type;
-   if (parse_header)
-      if (!_ssfn__parse_zlib_header(a)) return 0;
    a->num_bits = 0;
    a->code_buffer = 0;
    do {
@@ -742,32 +735,24 @@ static int _ssfn__parse_zlib(_ssfn__zbuf *a, int parse_header)
    return 1;
 }
 
-static int _ssfn__do_zlib(_ssfn__zbuf *a, char *obuf, int olen, int exp, int parse_header)
-{
-   a->zout_start = obuf;
-   a->zout       = obuf;
-   a->zout_end   = obuf + olen;
-   a->z_expandable = exp;
-   _ssfn__init_zdefaults();
-   return _ssfn__parse_zlib(a, parse_header);
-}
-
-static char *_ssfn_zlib_decode_malloc_guesssize_headerflag(const char *buffer, int len, int initial_size, int *outlen, int parse_header)
+static char *_ssfn_zlib_decode(const char *buffer)
 {
    _ssfn__zbuf a;
-   char *p = (char *) SSFN_realloc(NULL, initial_size);
+   char *p = (char *) SSFN_realloc(NULL, 8);
    if (p == NULL) return NULL;
    a.zbuffer = (unsigned char *) buffer;
-   a.zbuffer_end = (unsigned char *) buffer + len;
-   if (_ssfn__do_zlib(&a, p, initial_size, 1, parse_header)) {
-      if (outlen) *outlen = (int) (a.zout - a.zout_start);
+   a.zout_start = p;
+   a.zout       = p;
+   a.zout_end   = p + 8;
+   a.z_expandable = 1;
+   _ssfn__init_zdefaults();
+   if (_ssfn__parse_zlib(&a)) {
       return a.zout_start;
    } else {
       SSFN_free(a.zout_start);
       return NULL;
    }
 }
-#define stbi_zlib_decode_malloc_guesssize_headerflag _ssfn_zlib_decode_malloc_guesssize_headerflag
 #endif
 
 /*** Public API implementation ***/
@@ -777,10 +762,9 @@ static char *_ssfn_zlib_decode_malloc_guesssize_headerflag(const char *buffer, i
  *
  * @param ctx rendering context
  * @param font SSFN font or font collection in memory
- * @param len length of font buffer in bytes, only for gzipped fonts
  * @return error code
  */
-int ssfn_load(ssfn_t *ctx, const void *data, int len)
+int ssfn_load(ssfn_t *ctx, const void *data)
 {
     const ssfn_font_t *font = (const ssfn_font_t *)data;
     ssfn_font_t *fnt, *end;
@@ -792,12 +776,12 @@ int ssfn_load(ssfn_t *ctx, const void *data, int len)
         return SSFN_ERR_INVINP;
     if(((uint8_t *)font)[0] == 0x1f && ((uint8_t *)font)[1] == 0x8b) {
         ptr += 2;
-        if(*ptr++ != 8 || !len) return SSFN_ERR_BADFILE;
+        if(*ptr++ != 8) return SSFN_ERR_BADFILE;
         c = *ptr++; ptr += 6;
         if(c & 4) { r = *ptr++; r += (*ptr++ << 8); ptr += r; }
         if(c & 8) { while(*ptr++ != 0); }
         if(c & 16) { while(*ptr++ != 0); }
-        font = (ssfn_font_t*)stbi_zlib_decode_malloc_guesssize_headerflag((const char*)ptr, len, 4096, &r, 0);
+        font = (ssfn_font_t*)_ssfn_zlib_decode((const char*)ptr);
         if(!font) return SSFN_ERR_BADFILE;
         ctx->bufs = (char**)SSFN_realloc(ctx->bufs, (ctx->numbuf + 1) * sizeof(char*));
         if(!ctx->bufs) { ctx->numbuf = 0; return SSFN_ERR_ALLOC; }
@@ -806,7 +790,7 @@ int ssfn_load(ssfn_t *ctx, const void *data, int len)
     }
     if(!SSFN_memcmp(font->magic, SSFN_COLLECTION, 4)) {
         end = (ssfn_font_t*)((uint8_t*)font + font->size);
-        for(fnt = (ssfn_font_t*)((uint8_t*)font + 8); fnt < end && !ssfn_load(ctx, (const void *)fnt, 0);
+        for(fnt = (ssfn_font_t*)((uint8_t*)font + 8); fnt < end && !ssfn_load(ctx, (const void *)fnt);
             fnt = (ssfn_font_t*)((uint8_t*)fnt + fnt->size));
     } else {
         family = SSFN_TYPE_FAMILY(font->type);
@@ -1581,8 +1565,8 @@ namespace SSFN {
             ~Font() { ssfn_free(&this->ctx); }
 
         public:
-            int Load(const std::string &data) { return ssfn_load(&this->ctx,(const void*)data.data(),data.length()); }
-            int Load(const unsigned char *data, int len) { return ssfn_load(&this->ctx, (const void*)data, len); }
+            int Load(const std::string &data) { return ssfn_load(&this->ctx,(const void*)data.data()); }
+            int Load(const unsigned char *data) { return ssfn_load(&this->ctx, (const void*)data); }
             int Select(int family, const std::string &name, int style, int size)
                 { return ssfn_select(&this->ctx, family, (char*)name.data(), style, size); }
             int Select(int family, char *name, int style, int size) { return ssfn_select(&this->ctx,family,name,style,size); }

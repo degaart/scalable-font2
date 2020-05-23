@@ -30,9 +30,6 @@
 #include <stdio.h>
 #define SSFN_IMPLEMENTATION
 #include "../ssfn.h"
-#if HAS_ZLIB
-#include <zlib.h>
-#endif
 
 #include <SDL.h>
 
@@ -79,7 +76,7 @@ void do_test(SDL_Surface *screen, char *fontfn, int argc)
 
     /* load and select a font */
     font = load_file(fontfn ? fontfn : "../fonts/FreeSerif.sfn", &size);
-    ret = ssfn_load(&ctx, font, size);
+    ret = ssfn_load(&ctx, font);
     if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
 
     buf.y = 10;

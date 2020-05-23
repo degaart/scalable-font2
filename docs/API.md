@@ -105,7 +105,7 @@ To load a font:
 ssfn_t ctx;
 memset(&ctx, 0, sizeof(ssfn_t));
 
-ssfn_load(&ctx, &_binary_freeserif_sfn_start, 0);
+ssfn_load(&ctx, &_binary_freeserif_sfn_start);
 
 /* C++ */
 SSFN::Font font = new SSFN::Font;
@@ -297,11 +297,11 @@ Nothing special, just make sure the context is zerod out.
 
 ```c
 /* C */
-int ssfn_load(ssfn_t *ctx, const void *data, int len);
+int ssfn_load(ssfn_t *ctx, const void *data);
 
 /* C++ */
 int SSFN::Font.Load(const std::string &data);
-int SSFN::Font.Load(const void *data, int len);
+int SSFN::Font.Load(const void *data);
 ```
 
 Loads a font or font collection into the renderer context. For C++ there's a version with std::string and
@@ -313,7 +313,6 @@ also with a C-style character buffer.
 | --------- | ---------------------------------------------- |
 | ctx       | pointer to the renderer's context              |
 | data      | pointer to a font in memory                    |
-| len       | length, only needed if font is gzip compressed |
 
 You can load an SSFN file and pass it's address, or you can also use `ld -b binary` to convert an SSFN file
 into an object and link that with your code. In this case you'll have a `_binary_(filename)_start` label.
@@ -321,8 +320,7 @@ into an object and link that with your code. In this case you'll have a `_binary
 You can also pass an SSFN font collection to this function, in which case all fonts within the collection
 will be loaded into the context at once.
 
-The font can be gzip compressed, `ssfn_load()` will transparently uncompress it (thanks to stb!). In this
-case `len` must be specified correctly.
+The font can be gzip compressed, `ssfn_load()` will transparently uncompress it (thanks to stb!).
 
 ### Return value
 

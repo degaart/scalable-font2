@@ -71,11 +71,11 @@ ssfn_buf_t buf;                                     /* the destination pixel buf
 memset(&ctx, 0, sizeof(ssfn_t));
 
 /* add one or more fonts to the context. Fonts must be already in memory */
-ssfn_load(&ctx, &_binary_times_sfn_start, 0);       /* you can add different styles... */
-ssfn_load(&ctx, &_binary_timesbold_sfn_start, 0);
-ssfn_load(&ctx, &_binary_timesitalic_sfn_start, 0);
-ssfn_load(&ctx, &_binary_emoji_sfn_start, 0);       /* ...or different UNICODE ranges */
-ssfn_load(&ctx, &_binary_cjk_sfn_start, 0);
+ssfn_load(&ctx, &_binary_times_sfn_start);          /* you can add different styles... */
+ssfn_load(&ctx, &_binary_timesbold_sfn_start);
+ssfn_load(&ctx, &_binary_timesitalic_sfn_start);
+ssfn_load(&ctx, &_binary_emoji_sfn_start);          /* ...or different UNICODE ranges */
+ssfn_load(&ctx, &_binary_cjk_sfn_start);
 
 /* select the typeface to use */
 ssfn_select(&ctx,
