@@ -138,10 +138,10 @@ typedef struct {
 typedef struct {
     uint8_t *ptr;                       /* pointer to the buffer */
     int16_t w;                          /* width (positive: ARGB, negative: ABGR pixels) */
-    uint16_t h;                         /* height */
+    int16_t h;                          /* height */
     uint16_t p;                         /* pitch, bytes per line */
-    uint16_t x;                         /* cursor x */
-    uint16_t y;                         /* cursor y */
+    int16_t x;                          /* cursor x */
+    int16_t y;                          /* cursor y */
     uint32_t fg;                        /* foreground color */
     uint32_t bg;                        /* background color */
 } ssfn_buf_t;
@@ -1482,7 +1482,7 @@ int ssfn_putc(uint32_t unicode)
         for(m = 1; j && (!ssfn_dst.h || ssfn_dst.y + y < ssfn_dst.h); j--, y++, o += ssfn_dst.p)
             for(p = o, l = 0; l < k; l++, p += SSFN_PIXEL, m <<= 1) {
                 if(m > 0x80) { frg++; m = 1; }
-                if(!w || ssfn_dst.x + l < w) {
+                if(ssfn_dst.x + l >= 0 && (!w || ssfn_dst.x + l < w)) {
                     if(*frg & m) {
 # ifdef SSFN_CONSOLEBITMAP_PALETTE
                         *((uint8_t*)p) = (uint8_t)ssfn_dst.fg;

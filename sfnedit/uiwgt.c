@@ -96,7 +96,6 @@ void ui_icon(ui_win_t *win, int x, int y, int icon, int inactive)
 void ui_text(ui_win_t *win, int x, int y, char *str)
 {
     char *s = str;
-    if(x < 0 || y < 0) return;
     ssfn_dst.ptr = (uint8_t*)win->data;
     ssfn_dst.p = win->p*4;
     ssfn_dst.w = win->w;
