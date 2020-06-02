@@ -91,7 +91,7 @@ int x,y;
     buf.x = 4; buf.y = 48;
 
     /* load and select a font */
-    font = load_file(fontfn ? fontfn : (char*)"../fonts/Vera.sfn", &size);
+    font = load_file(fontfn ? fontfn : (char*)"../fonts/VeraR.sfn", &size);
     /*font = load_file(fontfn ? fontfn : "../fonts/u_vga16.sfn.gz", &size);*/
     /*font = load_file(fontfn ? fontfn : "../fonts/smilely.sfn", &size);*/
     err = ssfn_load(&ctx, font);

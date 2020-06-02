@@ -45,7 +45,17 @@ void about_open_repo()
         fclose(stdin);
         fclose(stdout);
         fclose(stderr);
-        sprintf(cmd, "xdg-open %s", repo_url);
+        sprintf(cmd,
+#ifdef __MACOSX__
+            "open %s"
+#else
+# ifdef __WIN32__
+            "start %s"
+# else
+            "xdg-open %s"
+# endif
+#endif
+            , repo_url);
         system(cmd);
         exit(0);
     }
@@ -67,6 +77,7 @@ void view_about()
     ssfn_dst.y = 160;
     ssfn_dst.fg = theme[THEME_FG];
     ssfn_dst.bg = 0;
+    ui_box(win, 0, 60, win->w, 120, theme[THEME_BG], theme[THEME_BG], theme[THEME_BG]);
     while((i = ssfn_render(&logofnt, &ssfn_dst, s)) > 0) s += i;
     ssfn_dst.fg = 0xFF000000;
     j = wins[0].field == 6 ? THEME_FG : THEME_BG;
@@ -74,14 +85,19 @@ void view_about()
     ui_text(win, p + 1, 181, repo_url);
     ssfn_dst.fg = theme[THEME_FG];
     ui_text(win, p, 180, repo_url);
-    ssfn_dst.y = win->h - 16 * 16;
+    ssfn_dst.y = win->h - 18 * 16;
     if(ssfn_dst.y < 208) ssfn_dst.y = 208;
-    ui_text(win, 8, ssfn_dst.y, "Copyright (C) 2020 bzt (bztsrc@gitlab)");
+    ui_text(win, 8, ssfn_dst.y, lang[HELPSTR]);
+    ui_text(win, ssfn_dst.x + 8, ssfn_dst.y, uniname_date);
+    ssfn_dst.y += 32;
+    ui_text(win, 8, ssfn_dst.y, "Copyright (C) 2020 bzt (bztsrc@gitlab) - MIT license");
     ssfn_dst.y += 16;
+    ssfn_dst.fg = theme[THEME_LIGHTER];
     for(i = CPYRGT_0; i <= CPYRGT_9 && (int)ssfn_dst.y < win->h - 18; i++) {
         ssfn_dst.y += 16;
         ui_text(win, 8, ssfn_dst.y, lang[i]);
     }
+    ssfn_dst.fg = theme[THEME_FG];
 }
 
 void ctrl_about_onmove()

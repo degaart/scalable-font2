@@ -42,17 +42,17 @@ fprintf($f,"/*
 
 ");
 system("convert bg.png -alpha extract bga.png");
-foreach(["icon32.png","icons.png","numbers.png","bga.png","logo.sfn"] as $fn) {
-    fprintf($f,"uint8_t ".str_replace(".","_",$fn)."[] = {\n");
+foreach(["icon32.png","icons.png","bga.png","logo.sfn"] as $fn) {
     $data=file_get_contents($fn);
+    fprintf($f,"uint8_t ".str_replace(".","_",$fn)."[".strlen($data)."] = {\n");
     for($i=0;$i<strlen($data);$i++)
-        fprintf($f,"0x%x,",ord($data[$i]));
+        fprintf($f,"%d,",ord($data[$i]));
     fprintf($f,"\n};\n\n");
 }
-fprintf($f,"uint8_t unifont_gz[] = {\n");
 $data=file_get_contents("../../fonts/unifont.sfn.gz");
+fprintf($f,"uint8_t unifont_gz[".strlen($data)."] = {\n");
 for($i=0;$i<strlen($data);$i++)
-    fprintf($f,"0x%x,",ord($data[$i]));
+    fprintf($f,"%d,",ord($data[$i]));
 fprintf($f,"\n};\n\n");
 fclose($f);
 unlink("bga.png");

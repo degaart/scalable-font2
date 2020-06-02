@@ -30,27 +30,34 @@
 #include <stdint.h>
 /*#include "hist.h"*/
 
+#ifdef __WIN32__
+# define DIRSEP '\\'
+# define DIRSEPS "\\"
+#else
+# define DIRSEP '/'
+# define DIRSEPS "/"
+#endif
+
 enum {
     THEME_BG,
     THEME_FG,
     THEME_LIGHT,
-    THEME_DARK
+    THEME_DARK,
+    THEME_LIGHTER,
+    THEME_DARKER,
+    THEME_INPBG,
+    THEME_BTNB,
+    THEME_BTN0L,
+    THEME_BTN0BL,
+    THEME_BTN0BD,
+    THEME_BTN0D,
+    THEME_BTN1L,
+    THEME_BTN1BL,
+    THEME_BTN1BD,
+    THEME_BTN1D,
+    THEME_SELBG,
+    THEME_CURSOR
 };
-
-#define THEME_INPUT     0
-#define THEME_TABA      1
-#define THEME_TABU      3
-#define THEME_INACT     4
-#define THEME_BGLOGO    5
-#define THEME_INPBG     7
-#define THEME_TABBG     8
-#define THEME_SAVEACT   9
-#define THEME_SAVEINACT 10
-#define THEME_BASELINE  11
-#define THEME_ONCURVE   12
-#define THEME_CONTROL   13
-#define THEME_ADVANCE   14
-#define THEME_HINTING   15
 
 #define MAIN_W          800
 #define MAIN_H          600
@@ -68,24 +75,22 @@ enum {
     ICON_LOAD,
     ICON_SAVE,
     ICON_PROPS,
-    ICON_RANGERS,
+    ICON_RANGES,
     ICON_GLYPHS,
     ICON_MEASURES,
-    ICON_LAYERS,
     ICON_KERNING,
+    ICON_LAYERS,
     ICON_FOLDER,
     ICON_FILE,
     ICON_SEARCH,
-    ICON_CHKBOX,
-    ICON_CHKBOX_ON,
-    ICON_VECTOR,
-    ICON_BITMAP,
-    ICON_PIXMAP,
-    ICON_DELETE,
     ICON_BOUNDING,
     ICON_HINTING,
     ICON_VERT,
-    ICON_HORIZ
+    ICON_HORIZ,
+    ICON_VECTOR,
+    ICON_BITMAP,
+    ICON_PIXMAP,
+    ICON_DELETE
 };
 
 #define WINTYPE_MAIN  -1U
@@ -126,8 +131,8 @@ enum {
 
 enum {
     GLYPH_TOOL_COORD,
-    GLYPH_TOOL_LAYER,
     GLYPH_TOOL_KERN,
+    GLYPH_TOOL_LAYER,
     GLYPH_TOOL_COLOR
 };
 
@@ -141,7 +146,7 @@ typedef struct {
     int h;
     int p;
     int field;
-    int tool, seltool;
+    int tool;
     int zoom;
     int histmin, histmax;
 /*    hist_t *hist;*/
@@ -156,12 +161,14 @@ typedef struct {
     int h;
 } ui_event_t;
 
-extern char verstr[];
+extern char verstr[], ws[], *status;
 extern uint32_t theme[];
-extern int numwin, cursor;
+extern int numwin, cursor, zip, ascii, selfield, rs, re;
 extern ui_win_t *wins;
 extern ui_event_t event;
 extern uint8_t *icon16, *icon32, *tools, *numbers, *bga;
+extern int input_maxlen, input_refresh;
+extern char *input_str;
 
 /* driver specific */
 void *ui_createwin(int w, int h);
@@ -176,11 +183,21 @@ void ui_fini();
 void ui_getevent();
 
 /* ui widgets */
+void ui_toolbox(int idx);
+void ui_rect(ui_win_t *win, int x, int y, int w, int h, uint32_t l, uint32_t d);
 void ui_box(ui_win_t *win, int x, int y, int w, int h, uint32_t l, uint32_t b, uint32_t d);
 void ui_icon(ui_win_t *win, int x, int y, int icon, int inactive);
+int ui_textwidth(char *str);
 void ui_text(ui_win_t *win, int x, int y, char *str);
+char *ui_input(ui_win_t *win, int x, int y, int w, char *str, int active, int maxlen, int callback);
+void ui_button(ui_win_t *win, int x, int y, int w, char *str, int pressed, int active);
+void ui_bool(ui_win_t *win, int x, int y, char *s, int state, int active);
+void ui_tri(ui_win_t *win, int x, int y, int up);
+void ui_num(ui_win_t *win, int x, int y, int num, int active, int sel);
+void ui_number(ui_win_t *win, int x, int y, int n, uint32_t c);
 
 /* common */
+int ui_casecmp(char *a, char *b, int l);
 void ui_error(char *subsystem, int fmt, ...);
 void ui_openwin(uint32_t unicode);
 void ui_updatetitle(int idx);
@@ -190,9 +207,9 @@ void ui_refreshwin(int idx, int wx, int wy, int ww, int wh);
 void ui_refreshall();
 void ui_main(char *fn);
 void ui_quit(int sig);
+void ui_inputfinish();
 
 /* views */
-void view_toolbox(int idx);
 void view_about();
 void view_fileops(int save);
 void view_dosave();
@@ -208,3 +225,19 @@ void view_color(int idx);
 void ctrl_about_onmove();
 void ctrl_about_onclick();
 void ctrl_about_onenter();
+void ctrl_fileops_onenter(int save);
+void ctrl_fileops_onkey();
+void ctrl_fileops_onbtnpress(int save);
+void ctrl_fileops_onclick(int save);
+void ctrl_props_onenter();
+void ctrl_props_onkey();
+void ctrl_props_onbtnpress();
+void ctrl_props_onclick();
+void ctrl_ranges_onenter();
+void ctrl_ranges_onkey();
+void ctrl_ranges_onbtnpress();
+void ctrl_glyphs_onenter();
+void ctrl_glyphs_onkey();
+void ctrl_glyphs_onbtnpress();
+void ctrl_glyphs_onclick();
+void ctrl_glyphs_onmove();

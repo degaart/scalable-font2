@@ -10,6 +10,7 @@ ifeq ("$(USE_X11)","")
 # MacOSX
 ifneq ("$(wildcard /Library/Frameworks/SDL*)","")
 SRCS += ui_sdl.c
+CFLAGS += -D__MACOSX__=1
 LIBS += -framework SDL
 DRIVER = sdl
 else
@@ -75,9 +76,10 @@ libsfn:
 %: %.c icon.h lang.h
 	$(CC) $(CFLAGS) $< -c $@
 
+# include libsfn .o files directly so that we don't rely on ar under windows
 $(TARGET): libsfn $(OBJS)
 	$(CC) ../libsfn/*.o $(OBJS) -o $(TARGET) $(LIBDIRS) $(LIBS)
 
 clean:
-	@#make -C ../libsfn clean || true
+	@make -C ../libsfn clean || true
 	@rm $(TARGET) *.o 2>/dev/null || true

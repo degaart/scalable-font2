@@ -37,7 +37,7 @@ right is +x, +y.
 
 Glyphs must be aligned on `baseline`. When displaying, horizontal baseline must be
 substracted from current pen y position, or when advance y is not zero, then vertical
-baseline must be substracted from pen x (see Text Directions below).
+baseline must be substracted from pen x. The renderer takes care of this.
 
 The `overlap` tells how much you should move your pen BEFORE the glyph is drawn. It applies
 only to horizontal fonts, and it is usually 0. For some characters in Serif Italic, this is
@@ -105,9 +105,7 @@ To load a font:
 #include <ssfn.h>
 
 /* C */
-ssfn_t ctx;
-memset(&ctx, 0, sizeof(ssfn_t));
-
+ssfn_t ctx = { 0 };
 ssfn_load(&ctx, &_binary_freeserif_sfn_start);
 
 /* C++ */
@@ -117,16 +115,17 @@ font.Load(&_binary_freeserif_sfn_start, 0);
 
 To render a text to an existing pixel buffer or to the screen:
 ```c
-ssfn_buf_t buf;
 int ret;
 char *str = "String to render";
-
-buf.ptr = sdlsurface->pixels;
-buf.w = sdlsurface->w;
-buf.h = sdlsurface->h;
-buf.p = sdlsurface->pitch;
-buf.fg = 0xFF808080;
-buf.x = buf.y = 100;
+ssfn_buf_t buf = {
+    .ptr = sdlsurface->pixels,
+    .w = sdlsurface->w,
+    .h = sdlsurface->h,
+    .p = sdlsurface->pitch,
+    .fg = 0xFF808080,
+    .x = 100,
+    .y = 100
+};
 
 /* C */
 while((ret = ssfn_render(&ctx, &buf, str)) > 0)
@@ -173,8 +172,21 @@ Variable Types
 | -------------- | ------------------------------------------------------- |
 | `ssfn_t`       | the renderer context, it's internals are irrelevant     |
 | `ssfn_font_t`  | the font stucture, same as the [SSFN file header](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/sfn_format.md) |
-| `ssfn_buf_t`   | the pixel buffer to render to (see `ssfn_render` below) |
+| `ssfn_buf_t`   | the pixel buffer to render to (see fields below)        |
 | `int`          | the returned error code (if any)                        |
+
+Destination buffer descriptor struct:
+
+| `ssfn_buf_t` | Description                                                                      |
+| ------------ | -------------------------------------------------------------------------------- |
+| `.ptr`       | the buffer's address (probably the linear frame buffer, but could be off-screen) |
+| `.p`         | the buffer's bytes per line (pitch, not in pixels, in bytes!)                    |
+| `.w`         | the buffer's width in pixels (optional, negative means ABGR, otherwise ARGB)     |
+| `.h`         | the buffer's height in pixels (optional)                                         |
+| `.fg`        | the foreground color in destination buffer's native format                       |
+| `.bg`        | the background color (only used if non-zero)                                     |
+| `.x`         | the coordinate to draw to, will be modified by advance values and kerning        |
+| `.y`         | the coordinate to draw to, will be modified by advance values and kerning        |
 
 Error Codes
 -----------
@@ -246,7 +258,7 @@ Configuration is passed to it in two global variables (exclusive to this functio
 | Global Variable            | Description                                                                      |
 | -------------------------- | -------------------------------------------------------------------------------- |
 | `ssfn_font_t *ssfn_src`    | pointer to an SSFN font with bitmap glyphs only                                  |
-| `ssfn_buf_t *ssfn_dst`     | the destination pixel buffer (see `ssfn_render` below)                           |
+| `ssfn_buf_t *ssfn_dst`     | the destination pixel buffer (see Variable Types above)                          |
 
 The define selects the destination buffer's pixel format. `SSFN_CONSOLEBITMAP_PALETTE` selects 1 byte
 (indexed), `SSFN_CONSOLEBITMAP_HICOLOR` selects 2 bytes (5-5-5 or 5-6-5 RGB) and `SSFN_CONSOLEBITMAP_TRUECOLOR`
@@ -254,7 +266,7 @@ selects 4 bytes (8-8-8-8 xRGB). For performance reasons, 3 bytes (24 bit true co
 If `.w` and `.h` is not set, then no clipping will be performed. With `ssfn_dst.bg` being full 32 bit wide
 zero, `ssfn_putc` will operate in transparent background mode: it will only modify the destination buffer
 where the font face is set. To clear the glyph's background, set it to some value where the most significant
-byte (alpha channel for true-color mode) is 255, like 0xFF000000. This will fill thebackground with the index
+byte (alpha channel for true-color mode) is 255, like 0xFF000000. This will fill the background with the index
 0 (palette) or full black (hicolor and truecolor modes).
 
 ### Return value
@@ -294,7 +306,8 @@ ssfn_t ctx = { 0 };
 font = new SSFN::Font;
 ```
 
-Nothing special, just make sure the context is zerod out.
+Nothing special, just make sure the context is zerod out. You can put it in the BSS section or call memset
+zero manually.
 
 ## Load Fonts
 
@@ -345,6 +358,9 @@ Sets up renderer context to use a particular font family, style and size. Size s
 glyph size in pixels. In other words, if you set `size` to 32, then you'll get an exatly 32 pixel tall
 'A', but a taller 'g'. See Font Metrics above. Passing `SSFN_STYLE_ABS_SIZE` will scale the glyph's
 height to `size`. This is also the default for Monospace fonts.
+
+By passing `SSFN_STYLE_NOCACHE` the rasterized glyphs won't be cached which reduces the memory footprint
+significantly (from a few megabytes to about ~80k), but slows down rendering on the long run.
 
 ### Parameters
 
@@ -419,21 +435,12 @@ support ABGR buffers, specify the buffer's width as negative, for example -1920.
 | Parameter   | Description                                                                       |
 | ----------- | --------------------------------------------------------------------------------- |
 | ctx         | pointer to the renderer's context                                                 |
-| dst         | destination pixel buffer to render to (see `ssfn_buf_t` fields below)             |
+| dst         | destination pixel buffer to render to (see Variable Types above)                  |
 | str         | UNICODE code point of the character in UTF-8 to be rendered                       |
 
-Destionation buffer descriptor struct:
-
-| `ssfn_buf_t` | Description                                                                      |
-| ------------ | -------------------------------------------------------------------------------- |
-| `.ptr`       | the buffer's address (probably the linear frame buffer, but could be off-screen) |
-| `.p`         | the buffer's bytes per line (pitch, not in pixels, in bytes!)                    |
-| `.w`         | the buffer's width in pixels (optional, negative means ABGR, otherwise ARGB)     |
-| `.h`         | the buffer's height in pixels (optional)                                         |
-| `.fg`        | the foreground color in destination buffer's native format                       |
-| `.bg`        | the background color (only used if non-zero)                                     |
-| `.x`         | the coordinate to draw to, will be modified by advance values and kerning        |
-| `.y`         | the coordinate to draw to, will be modified by advance values and kerning        |
+You can render to a cropped area on the framebuffer using the dst `ssfn_buf_t` struct. Set `.x` and `.y`
+to zero, and `.ptr` to "base address + offsy * pitch + offsx * 4". Then the rendered text will be limited
+to (offsx, offsy) - (offsx + w, offsy + h), and no pixels will be modified outside of this area.
 
 ### Return value
 
@@ -458,7 +465,7 @@ int SSFN::Font.BBox(const char *str, int *w, int *h, int *left, int *top);
 
 Returns the dimensions of a rendered text. This function handles horizontal and vertical texts, but not
 mixed ones. It does not render the glyphs to any pixel buffers, but it refreshes the internal glyph cache
-if a new glyph appears in `str`.
+if a new glyph appears in `str`, thus speeds up subsequent rendering calls.
 
 ### Parameters
 
@@ -467,7 +474,7 @@ if a new glyph appears in `str`.
 | ctx         | pointer to the renderer's context                                        |
 | str         | pointer to a zero terminated UTF-8 string                                |
 | w           | pointer to an integer, returned width in pixels                          |
-| h           | pointer to an integer, returned height in pixels                         |
+| h           | pointer to an integer, returned height in pixels (line height)           |
 | left        | pointer to an integer, returned left margin (overlap) in pixels          |
 | top         | pointer to an integer, returned ascender (horizontal baseline) in pixels |
 
@@ -501,7 +508,7 @@ This has the same arguments as SDL_ttf package's TTF_RenderUTF8_Blended() functi
 
 ### Return value
 
-A newly allocated pixel buffer or NULL on error. The pixel buffer has to be freed with
+A newly allocated pixel buffer or `NULL` on error. The pixel buffer has to be freed with
 ```c
 free(ret->ptr);
 free(ret);

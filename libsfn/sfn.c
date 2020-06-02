@@ -943,17 +943,15 @@ int sfn_dump(ssfn_font_t *font, int size, int dump)
     if(!memcmp(font->magic, SSFN_COLLECTION, 4)) {
         printf("font/x-ssfont Scalable Screen Font Collection\n\n---Header---\nmagic: '%c%c%c%c'\nsize:  %d\n",
             font->magic[0], font->magic[1], font->magic[2], font->magic[3], font->size);
-        if(dump > 1) {
-            printf("\n---Fonts---\n");
-            for(font = (ssfn_font_t*)((uint8_t*)font + 8); font < end; font = (ssfn_font_t*)((uint8_t*)font + font->size)) {
-                if(!memcmp(font->magic, "SSFN", 4)) printf("(obsolete SSFN1.0 font) %s\n", (char*)font + 64);
-                else printf("%c%c%c%c %d %s\n", SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_BOLD ? 'b':'.',
-                    SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_ITALIC ? 'i':'.',
-                    SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_USRDEF1 ? 'u':'.',
-                    SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_USRDEF2 ? 'U':'.',
-                    SSFN_TYPE_FAMILY(font->type),
-                    (char*)font + sizeof(ssfn_font_t));
-            }
+        printf("\n---Fonts---\n");
+        for(font = (ssfn_font_t*)((uint8_t*)font + 8); font < end; font = (ssfn_font_t*)((uint8_t*)font + font->size)) {
+            if(!memcmp(font->magic, "SSFN", 4)) printf("(obsolete SSFN1.0 font) %s\n", (char*)font + 64);
+            else printf("%c%c%c%c %d %3d %s\n", SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_BOLD ? 'b':'.',
+                SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_ITALIC ? 'i':'.',
+                SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_USRDEF1 ? 'u':'.',
+                SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_USRDEF2 ? 'U':'.',
+                SSFN_TYPE_FAMILY(font->type), font->height,
+                (char*)font + sizeof(ssfn_font_t));
         }
         return 1;
     } else
@@ -978,11 +976,18 @@ int sfn_dump(ssfn_font_t *font, int size, int dump)
         printf("width, height:   %d %d\n", font->width, font->height);
         printf("baseline:        %d\n", font->baseline);
         printf("underline:       %d\n", font->underline);
-        printf("fragments_offs:  0x%08x\n", font->fragments_offs);
-        printf("characters_offs: 0x%08x\n", font->characters_offs);
-        printf("ligature_offs:   0x%08x\n", font->ligature_offs);
-        printf("kerning_offs:    0x%08x\n", font->kerning_offs);
-        printf("cmap_offs:       0x%08x\n", font->cmap_offs);
+        i = font->fragments_offs && font->characters_offs ? font->characters_offs - font->fragments_offs : 0;
+        printf("fragments_offs:  0x%08x (%d bytes)\n", font->fragments_offs, i);
+        i = font->characters_offs ? (font->ligature_offs ? font->ligature_offs : (font->kerning_offs ?
+            font->kerning_offs : (font->cmap_offs ? font->cmap_offs : font->size - 4))) - font->characters_offs : 0;
+        printf("characters_offs: 0x%08x (%d bytes)\n", font->characters_offs, i);
+        i = font->ligature_offs ? (font->kerning_offs ?
+            font->kerning_offs : (font->cmap_offs ? font->cmap_offs : font->size - 4)) - font->ligature_offs : 0;
+        printf("ligature_offs:   0x%08x (%d bytes)\n", font->ligature_offs, i);
+        i = font->kerning_offs ? (font->cmap_offs ? font->cmap_offs : font->size - 4) - font->kerning_offs : 0;
+        printf("kerning_offs:    0x%08x (%d bytes)\n", font->kerning_offs, i);
+        i = font->cmap_offs ? font->size - 4 - font->cmap_offs : 0;
+        printf("cmap_offs:       0x%08x (%d bytes)\n", font->cmap_offs, i);
         if(dump != 2 && dump != 99)
             printf("name:            \"%s\"%s\n", (unsigned char *)font + sizeof(ssfn_font_t),
                 dump < 2 ? " (use -dd to see all strings)" : "");
@@ -1657,7 +1662,7 @@ int sfn_save(char *filename, int ascii, int compress)
         o = y = sizeof(ssfn_font_t) + (ctx.name ? strlen(ctx.name) : 0) + 1 + (ctx.familyname ? strlen(ctx.familyname) : 0) + 1 +
             (ctx.subname ? strlen(ctx.subname) : 0) + 1 + (ctx.revision ? strlen(ctx.revision) : 0) + 1 +
             (ctx.manufacturer ? strlen(ctx.manufacturer) : 0) + 1 + (ctx.license ? strlen(ctx.license) : 0) + 1;
-        for(ls = 0; ls < SSFN_LIG_LAST-SSFN_LIG_FIRST+1 && ctx.ligatures[ls]; ls++) {
+        for(ls = 0; ls < SSFN_LIG_LAST-SSFN_LIG_FIRST+1 && ctx.ligatures[ls] && ctx.ligatures[ls][0]; ls++) {
             if(o + strlen(ctx.ligatures[ls]) + 1 > 65535) break;
             o += strlen(ctx.ligatures[ls]) + 1;
         }

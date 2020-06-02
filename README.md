@@ -99,9 +99,9 @@ ssfn_render(&ctx, &buf, "A");
 ssfn_free(&ctx);                                    /* free the renderer context's internal buffers */
 ```
 
-There's more, you can select font by it's name and you can also query the bounding box for example, and
-`ssfn_text` will render entire strings into newly allocated pixel buffers, read the
-[API reference](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/API.md).
+There's more, you can use the C++ wrapper class, you can select font by it's name and you can also query the
+bounding box for example, and `ssfn_text` will render entire strings into newly allocated pixel buffers,
+read the [API reference](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/API.md).
 
 As with the simple renderer, the header contains everything, no additional linking required! Gzip uncompressor
 also included, no need to link with zlib!
@@ -119,16 +119,16 @@ Dependencies
 ------------
 
 The simple renderer calls no functions at all and therefore has no dependencies whatsoever (not even libc
-or compiler built-ins). Absolutely nothing save for it's two global variables.
+nor compiler built-ins). Absolutely nothing save for it's two global variables.
 
 As for the normal renderer all dependencies are provided as built-ins by gcc or by libc:
  - `realloc()` and `free()` from libc (stdlib.h)
  - `memcmp()` and `memset()` from libc (string.h)
 
-The scalable font converter is built on the freetype2 library to read vector font files. The bitmap font
-converter has no dependencies. Libsfn can be built optionally with zlib to write gzip deflate compressed
-files on-the-fly (read is supported without zlib). Pixel map fonts might take advantage of libimagequant
-if installed (converter works without, but poorer quality). For vectorization, potrace library is needed.
+The scalable font converter is built on the **freetype2** library to read vector font files. The bitmap font
+converter has no dependencies. Libsfn can be built optionally with **zlib** to write gzip deflate compressed
+files on-the-fly (read is supported without zlib). Pixel map fonts might take advantage of **libimagequant**
+if installed (converter works without, but poorer quality). For vectorization, **potrace** library is needed.
 
 The editor uses SDL2 with an X11 fallback.
 

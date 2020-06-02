@@ -96,3 +96,38 @@ to 254 individual colors, hence the great advantage over truecolor PNG.
 | emoji.png         |   29K | 100.00% | PNG       |
 | emoji.sfn         |   16K |  55.56% | SSFN      |
 | emoji.sfn.gz      |    9K |  30.44% | SSFN+zlib |
+
+Code Size and Performance
+-------------------------
+
+I've compiled and run the [sfndemo](https://gitlab.com/bztsrc/scalable-font2/blob/master/tests/sfndemo.c)
+app in the tests directory on an Intel(R) Core(TM) i5-3317U CPU @ 1.70GHz (running at 800 Mhz, 3394 bogomips).
+I encourage you to repeat these tests on your own computer. A few notes: file load time includes the time took
+to load from disk and also to uncompress gzipped fonts. This sfndemo does not use the internal glyph cache, so
+it rasterized each glyph every time they occured.
+
+Here are the results:
+
+### Unoptimized Code (-O0)
+
+```
+Simple renderer: 1613 bytes
+Normal renderer: 28721 bytes
+File load time:      0.039027 sec
+Character lookup:    0.001327 sec
+Rasterization:       0.129250 sec
+Blitting:            0.127505 sec
+Kerning:             0.000532 sec
+```
+
+### With Optimization (-O3)
+
+```
+Simple renderer: 1240 bytes
+Normal renderer: 28992 bytes
+File load time:      0.038136 sec
+Character lookup:    0.000991 sec
+Rasterization:       0.041149 sec
+Blitting:            0.070309 sec
+Kerning:             0.000389 sec
+```

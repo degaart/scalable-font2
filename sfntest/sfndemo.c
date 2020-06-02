@@ -39,7 +39,7 @@
 
 #include <SDL.h>
 
-unsigned long int loadtim = 0;
+long int loadtim = 0;
 
 /**
  * Load a file
@@ -91,7 +91,7 @@ ssfn_font_t *load_file(char *filename, int *size)
     tvd.tv_sec = tv1.tv_sec - tv0.tv_sec;
     tvd.tv_usec = tv1.tv_usec - tv0.tv_usec;
     if(tvd.tv_usec < 0) { tvd.tv_sec--; tvd.tv_usec += 1000000L; }
-    loadtim += tvd.tv_sec * 1000000L + tvd.tv_usec;
+    loadtim += (long int)(tvd.tv_sec * 1000000L + tvd.tv_usec);
 #endif
     return (ssfn_font_t*)fontdata;
 }
@@ -188,7 +188,7 @@ void do_test(SDL_Surface *screen, char *fontfn)
     if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
     ret = ssfn_load(&ctx, load_file("../fonts/FreeSans.sfn", &size));
     if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
-    ret = ssfn_load(&ctx, load_file("../fonts/Vera.sfn", &size));
+    ret = ssfn_load(&ctx, load_file("../fonts/VeraR.sfn", &size));
     if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
     ret = ssfn_load(&ctx, load_file("../fonts/emoji.sfn", &size));
     if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
@@ -489,11 +489,14 @@ void do_test(SDL_Surface *screen, char *fontfn)
     };
 
     printf("Memory allocated: %d, sizeof(ssfn_t) = %d\n\n", ssfn_mem(&ctx), (int)sizeof(ssfn_t));
-    printf("File load time:   %3ld.%06ld sec\n", loadtim / 1000000L, loadtim % 1000000L);
-    printf("Character lookup: %3ld.%06ld sec\n", ctx.lookup / 1000000L, ctx.lookup % 1000000L);
-    printf("Rasterization:    %3ld.%06ld sec\n", ctx.raster / 1000000L, ctx.raster % 1000000L);
-    printf("Blitting:         %3ld.%06ld sec\n", ctx.blit / 1000000L, ctx.blit % 1000000L);
-    printf("Kerning:          %3ld.%06ld sec\n", ctx.kern / 1000000L, ctx.kern % 1000000L);
+    printf("File load time:    %3ld.%06ld sec\n", loadtim / 1000000L, loadtim % 1000000L);
+    printf("Character lookup:  %3ld.%06ld sec\n", ctx.lookup / 1000000L, ctx.lookup % 1000000L);
+    printf("Rasterization:     %3ld.%06ld sec\n", ctx.raster / 1000000L, ctx.raster % 1000000L);
+    printf("Blitting:          %3ld.%06ld sec\n", ctx.blit / 1000000L, ctx.blit % 1000000L);
+    printf("Kerning:           %3ld.%06ld sec\n", ctx.kern / 1000000L, ctx.kern % 1000000L);
+    loadtim = ctx.blit - ctx.raster;
+    if(loadtim < 0) { i = '-'; loadtim = -loadtim; } else i = ' ';
+    printf("Raster/blit diff: %c%3ld.%06ld sec\n", i, loadtim / 1000000L, loadtim % 1000000L);
     ssfn_free(&ctx);
     free(ssfn_src);
 }

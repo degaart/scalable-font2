@@ -178,7 +178,7 @@ void progressbar(int step, int numstep, int curr, int total, int msg)
     int i, n;
     char *str[] = { "", "Measuring BBox", "Querying outlines", "Querying all kerning combinations", "Quantizing image",
         "Reading bitmap", "Reading tall pixel map", "Reading wide pixel map", "Generating fragments", "Compressing fragments",
-        "Serializing fragments", "Writing character map", "Writing file" };
+        "Serializing fragments", "Writing character map", "Writing file", "Rasterizing", "Vectorizing" };
 
     n = (long int)(curr + 1) * 100L / (long int)(total + 1);
     if(n == lastpercent) return;
@@ -247,13 +247,13 @@ int main(int argc, char **argv)
         }
         end = (ssfn_font_t*)((uint8_t*)font + font->size);
         for(i++, font = (ssfn_font_t*)((uint8_t*)font + 8); font < end; font = (ssfn_font_t*)((uint8_t*)font + font->size)) {
-            if(argc < 3) {
-                if(!j) { j = 1; printf("-t\t-n\n"); }
-                printf("%s%s%s%s%d\t%s\n", SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_BOLD ? "b":"",
+            if(argc < 4) {
+                if(!j) { j = 1; printf("-t\t-B\t-n\n"); }
+                printf("%s%s%s%s%d\t%d\t%s\n", SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_BOLD ? "b":"",
                     SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_ITALIC ? "i":"",
                     SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_USRDEF1 ? "u":"",
                     SSFN_TYPE_STYLE(font->type) & SSFN_STYLE_USRDEF2 ? "U":"",
-                    SSFN_TYPE_FAMILY(font->type),
+                    SSFN_TYPE_FAMILY(font->type), font->height,
                     (char*)font + sizeof(ssfn_font_t));
             } else
                 save_file(argv[i++], font);

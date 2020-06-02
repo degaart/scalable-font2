@@ -146,6 +146,7 @@ void do_test(SDL_Surface *screen)
 
     /* display strings */
     s = str2;
+    ssfn_dst.bg = 0;
     ssfn_dst.x = 16;
     ssfn_dst.y = 320;
     while(*s)

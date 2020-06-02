@@ -116,7 +116,7 @@ typedef struct {
 #define SSFN_STYLE_NOKERN     128       /* no kerning */
 #define SSFN_STYLE_NODEFGLYPH 256       /* don't draw default glyph */
 #define SSFN_STYLE_NOCACHE    512       /* don't cache rasterized glyph */
-#define SSFN_STYLE_NOHINTING 1024       /* no auto hinting grid */
+#define SSFN_STYLE_NOHINTING 1024       /* no auto hinting grid (not used as of now) */
 #define SSFN_STYLE_RTL       2048       /* render right-to-left */
 #define SSFN_STYLE_ABS_SIZE  4096       /* scale absoulte height */
 
@@ -915,12 +915,12 @@ familyfound:
 int ssfn_render(ssfn_t *ctx, ssfn_buf_t *dst, const char *str)
 {
     ssfn_font_t **fl;
-    uint8_t *ptr = NULL, *frg, *end, *tmp, color, ci = 0, cb = 0;
+    uint8_t *ptr = NULL, *frg, *end, *tmp, color, ci = 0, cb = 0, cs;
     uint16_t *r;
     uint32_t unicode, P, O, *Op, *Ol;
     unsigned long int sR, sG, sB, sA;
     int ret = 0, i, j, k, l, p, m, n, o, s, x, y, w, h, a, A, b, B, nr, uix, uax;
-    int ox, oy, y0, y1, Y0, Y1, Y2, Y3, x0, x1, X0, X1, X2, xs, ys, yp, pc, af, PfR, PfG, PfB, PfA, PbR, PbG, PbB, PbA;
+    int ox, oy, y0, y1, Y0, Y1, x0, x1, X0, X1, X2, xs, ys, yp, pc, af, fB, fG, fR, fA, bB, bG, bR;
 #ifdef SSFN_PROFILING
     struct timeval tv0, tv1, tvd;
     gettimeofday(&tv0, NULL);
@@ -941,10 +941,19 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
         for(; n <= m; n++) {
             fl = (ssfn_font_t **)ctx->fnt[n];
             if(ctx->style & 3) {
-                /* check if we have a specific ctx->f for the requested style */
+                /* check if we have a specific ctx->f for the requested style and size */
                 for(i=0;i<ctx->len[n];i++)
-                    if(((fl[i]->type>>4) & 3) == (ctx->style & 3) && (ptr = _ssfn_c(fl[i], str, &ret, &unicode)))
-                        { ctx->f = fl[i]; break; }
+                    if(((fl[i]->type>>4) & 3) == (ctx->style & 3) && fl[i]->height == ctx->size &&
+                        (ptr = _ssfn_c(fl[i], str, &ret, &unicode))) { ctx->f = fl[i]; break; }
+                /* if not, check if we have the requested size (for bitmap fonts) */
+                if(!ptr)
+                    for(i=0;i<ctx->len[n];i++)
+                        if(fl[i]->height == ctx->size && (ptr = _ssfn_c(fl[i], str, &ret, &unicode))) { ctx->f = fl[i]; break; }
+                /* if neither size+style nor size matched, look for style match */
+                if(!ptr)
+                    for(i=0;i<ctx->len[n];i++)
+                        if(((fl[i]->type>>4) & 3) == (ctx->style & 3) && (ptr = _ssfn_c(fl[i], str, &ret, &unicode)))
+                            { ctx->f = fl[i]; break; }
                 /* if bold italic was requested, check if we have at least bold or italic */
                 if(!ptr && (ctx->style & 3) == 3)
                     for(i=0;i<ctx->len[n];i++)
@@ -1180,7 +1189,7 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
         h = (ctx->style & SSFN_STYLE_ABS_SIZE) || SSFN_TYPE_FAMILY(ctx->f->type) == SSFN_FAMILY_MONOSPACE || !ctx->f->baseline ?
             ctx->size : ctx->size * ctx->f->height / ctx->f->baseline;
         if(h > ctx->line) ctx->line = h;
-        w = ctx->style & SSFN_STYLE_NOAA ? ctx->g->p : ctx->g->p * h / ctx->g->h;
+        w = ctx->g->p * h / ctx->g->h;
         s = ctx->g->x * h / ctx->f->height - ctx->g->o * h / ctx->f->height;
         n = ctx->size > 16 ? 2 : 1;
         if(w < n) w = n;
@@ -1191,47 +1200,47 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
                 oy = ctx->g->a * h / ctx->f->height;
             } else { ox = w / 2; oy = 0; }
             j = dst->w < 0 ? -dst->w : dst->w;
+            cs = dst->w < 0 ? 16 : 0;
             cb = (h + 64) >> 6; uix = w > s ? w : s; uax = 0;
             n = ctx->f->underline * h / ctx->f->height;
 #ifdef SSFN_DEBUGGLYPH
             printf("Scaling to w %d h %d (glyph %d %d, cache %d %d, font %d)\n",
                 w,h,ctx->rc->w,ctx->rc->h,ctx->g->p,ctx->g->h,ctx->f->height);
 #endif
-            Y2 = (h >> 1) - cb; Y3 = (h >> 1);
-            PfR = (dst->fg >> 16) & 0xFF; PfG = (dst->fg >> 8) & 0xFF; PfB = (dst->fg >> 0) & 0xFF; PfA = (dst->fg >> 24) & 0xFF;
-            PbR = (dst->bg >> 16) & 0xFF; PbG = (dst->bg >> 8) & 0xFF; PbB = (dst->bg >> 0) & 0xFF; PbA = (dst->bg >> 24) & 0xFF;
-            Op = (uint32_t*)(dst->ptr + dst->p * (dst->y - oy) + ((dst->x - ox) << 2)); tmp = (uint8_t*)&O;
+            fR = (dst->fg >> 16) & 0xFF; fG = (dst->fg >> 8) & 0xFF; fB = (dst->fg >> 0) & 0xFF; fA = (dst->fg >> 24) & 0xFF;
+            Op = (uint32_t*)(dst->ptr + dst->p * (dst->y - oy) + ((dst->x - ox) << 2));
             for (y = 0; y < h && dst->y + y - oy < dst->h; y++, Op += dst->p >> 2) {
                 if(dst->y + y - oy < 0) continue;
                 y0 = (y << 8) * ctx->g->h / h; Y0 = y0 >> 8; y1 = ((y + 1) << 8) * ctx->g->h / h; Y1 = y1 >> 8; Ol = Op;
                 for (x = 0; x < w && dst->x + x - ox < j; x++, Ol++) {
                     if(dst->x + x - ox < 0) continue;
-                    if((ctx->style & SSFN_STYLE_STHROUGH) && y >= Y2 && y <= Y3) {
-                        sR = PfR; sG = PfG; sB = PfB; sA = PfA;
-                    } else {
-                        m = 0; sR = sG = sB = sA = 0;
-                        x0 = (x << 8) * ctx->g->p / w; X0 = x0 >> 8; x1 = ((x + 1) << 8) * ctx->g->p / w; X1 = x1 >> 8;
-                        for(ys = y0; ys < y1; ys += 256) {
-                            if(ys >> 8 == Y0) { yp = 256 - (ys & 0xFF); ys &= ~0xFF; if(yp > y1 - y0) yp = y1 - y0; }
-                            else if(ys >> 8 == Y1) yp = y1 & 0xFF;
-                            else yp = 256;
-                            X2 = (ys >> 8) * ctx->g->p;
-                            for(xs = x0; xs < x1; xs += 256) {
-                                if (xs >> 8 == X0) {
-                                    k = 256 - (xs & 0xFF); xs &= ~0xFF; if(k > x1 - x0) k = x1 - x0;
-                                    pc = k == 256 ? yp : (k * yp) >> 8;
-                                } else
-                                if (xs >> 8 == X1) { k = x1 & 0xFF; pc = k == 256 ? yp : (k * yp) >> 8; }
-                                else pc = yp;
-                                m += pc;
-                                k = ctx->g->data[X2 + (xs >> 8)];
-                                if(k == 0xFF) {
-                                    af = (256 - PbA) * pc;
-                                    sR += PbR * af; sG += PbG * af; sB += PbB * af; sA += PbA * pc;
-                                } else
+                    m = 0; sR = sG = sB = sA = 0;
+                    /* real linear frame buffers should be accessed only as uint32_t on 32 bit boundary */
+                    O = *Ol;
+                    bR = (O >> (16 - cs)) & 0xFF;
+                    bG = (O >> 8) & 0xFF;
+                    bB = (O >> cs) & 0xFF;
+                    x0 = (x << 8) * ctx->g->p / w; X0 = x0 >> 8; x1 = ((x + 1) << 8) * ctx->g->p / w; X1 = x1 >> 8;
+                    for(ys = y0; ys < y1; ys += 256) {
+                        if(ys >> 8 == Y0) { yp = 256 - (ys & 0xFF); ys &= ~0xFF; if(yp > y1 - y0) yp = y1 - y0; }
+                        else if(ys >> 8 == Y1) yp = y1 & 0xFF;
+                        else yp = 256;
+                        X2 = (ys >> 8) * ctx->g->p;
+                        for(xs = x0; xs < x1; xs += 256) {
+                            if (xs >> 8 == X0) {
+                                k = 256 - (xs & 0xFF); xs &= ~0xFF; if(k > x1 - x0) k = x1 - x0;
+                                pc = k == 256 ? yp : (k * yp) >> 8;
+                            } else
+                            if (xs >> 8 == X1) { k = x1 & 0xFF; pc = k == 256 ? yp : (k * yp) >> 8; }
+                            else pc = yp;
+                            m += pc;
+                            k = ctx->g->data[X2 + (xs >> 8)];
+                            if(k == 0xFF) {
+                                sB += bB * pc; sG += bG * pc; sR += bR * pc;
+                            } else {
                                 if(k == 0xFE || !ctx->f->cmap_offs) {
-                                    af = (256 - PfA) * pc;
-                                    sR += PfR * af; sG += PfG * af; sB += PfB * af; sA += PfA * pc;
+                                    af = (256 - fA) * pc;
+                                    sB += fB * af; sG += fG * af; sR += fR * af; sA += fA * pc;
                                 } else {
                                     P = *((uint32_t*)((uint8_t*)ctx->f + ctx->f->cmap_offs + (k << 2)));
                                     af = (256 - (P >> 24)) * pc;
@@ -1242,22 +1251,12 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
                                 }
                             }
                         }
-                        if(m) { sR /= m; sG /= m; sB /= m; sA /= m; }
-                        else { sR = (sR >> 8); sG = (sG >> 8); sB = (sB >> 8); sA = (sA >> 8); }
                     }
+                    if(m) { sR /= m; sG /= m; sB /= m; sA /= m; }
+                    else { sR >>= 8; sG >>= 8; sB >>= 8; sA >>= 8; }
                     if(sA > 15) {
-                        if(sR > 255) sR = 255;
-                        if(sG > 255) sG = 255;
-                        if(sB > 255) sB = 255;
-                        if(sA > 255) sA = 255;
-                        /* real linear frame buffers should be accessed only as uint32_t on 32 bit boundary */
-                        O = *Ol;
-                        m = dst->w < 0 ? 2 : 0;
-                        tmp[m] = (sB * sA + (256 - sA) * tmp[m]) >> 8;
-                        tmp[1] = (sG * sA + (256 - sA) * tmp[1]) >> 8;
-                        tmp[2-m] = (sR * sA + (256 - sA) * tmp[2-m]) >> 8;
-                        tmp[3] = sA;
-                        *Ol = O;
+                        *Ol = ((sA > 255 ? 255 : sA) << 24) | ((sR > 255 ? 255 : sR) << (16 - cs)) |
+                            ((sG > 255 ? 255 : sG) << 8) | ((sB > 255 ? 255 : sB) << cs);
                         if(y == n) {
                             if(uix > x) uix = x;
                             if(uax < x) uax = x;
@@ -1266,19 +1265,40 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
                 }
             }
             if(ctx->style & SSFN_STYLE_UNDERLINE) {
-                uix -= cb + 1; uax += cb + 2; if(uax < uix) uax = uix + 1;
-                m = dst->w < 0 ? 2 : 0; k = (w > s ? w : s);
+                uix -= cb + 1; uax += cb + 2;
+                if(uax < uix) uax = uix + 1;
+                k = (w > s ? w : s);
                 Op = (uint32_t*)(dst->ptr + dst->p * (dst->y - oy + n) + ((dst->x - ox - 1) << 2));
                 for (y = n; y < n + cb && dst->y + y - oy < dst->h; y++, Op += dst->p >> 2) {
                     if(dst->y + y - oy < 0) continue;
                     for (Ol = Op, x = 0; x <= k && dst->x + x - ox < j; x++, Ol++) {
                         if(dst->x + x - ox < 0 || (x > uix && x < uax)) continue;
                         O = *Ol;
-                        tmp[m] = (PfB * PfA + (256 - PfA) * tmp[m]) >> 8;
-                        tmp[1] = (PfG * PfA + (256 - PfA) * tmp[1]) >> 8;
-                        tmp[2-m] = (PfR * PfA + (256 - PfA) * tmp[2-m]) >> 8;
-                        tmp[3] = PfA;
-                        *Ol = O;
+                        bR = (O >> (16 - cs)) & 0xFF;
+                        bG = (O >> 8) & 0xFF;
+                        bB = (O >> cs) & 0xFF;
+                        bB += ((fB - bB) * fA) >> 8;
+                        bG += ((fG - bG) * fA) >> 8;
+                        bR += ((fR - bR) * fA) >> 8;
+                        *Ol = (fA << 24) | (bR << (16 - cs)) | (bG << 8) | (bB << cs);
+                    }
+                }
+            }
+            if(ctx->style & SSFN_STYLE_STHROUGH) {
+                n = (h >> 1); k = (w > s ? w : s) + 1;
+                Op = (uint32_t*)(dst->ptr + dst->p * (dst->y - oy + n) + ((dst->x - ox - 1) << 2));
+                for (y = n; y < n + cb && dst->y + y - oy < dst->h; y++, Op += dst->p >> 2) {
+                    if(dst->y + y - oy < 0) continue;
+                    for (Ol = Op, x = 0; x <= k && dst->x + x - ox < j; x++, Ol++) {
+                        if(dst->x + x - ox < 0) continue;
+                        O = *Ol;
+                        bR = (O >> (16 - cs)) & 0xFF;
+                        bG = (O >> 8) & 0xFF;
+                        bB = (O >> cs) & 0xFF;
+                        bB += ((fB - bB) * fA) >> 8;
+                        bG += ((fG - bG) * fA) >> 8;
+                        bR += ((fR - bR) * fA) >> 8;
+                        *Ol = (fA << 24) | (bR << (16 - cs)) | (bG << 8) | (bB << cs);
                     }
                 }
             }
@@ -1305,7 +1325,7 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
                 else { m = (ptr[4] << 16) | (ptr[3] << 8) | ptr[2]; ptr += 5; }
                 frg = (uint8_t*)ctx->f +  m;
                 if((frg[0] & 0xE0) == 0xC0) {
-                    k = (((frg[0] & 0x1F) << 8) | frg[1]) + 1; frg += 3;
+                    k = (((frg[0] & 0x1F) << 8) | frg[1]) + 1; frg += 2;
                     /* check if there's a kerning group for the next code point */
                     while(k--) {
                         m = ((frg[2] & 0xF) << 16) | (frg[1] << 8) | frg[0];
@@ -1382,7 +1402,7 @@ int ssfn_bbox(ssfn_t *ctx, const char *str, int *w, int *h, int *left, int *top)
         ctx->size : ctx->size * ctx->f->height / ctx->f->baseline;
     *w = buf.w * s / ctx->f->height;
     *h = buf.h * s / ctx->f->height;
-    *left = buf.x * s / ctx->f->height;
+    *left = ctx->style & SSFN_STYLE_RTL ? *w : buf.x * s / ctx->f->height;
     *top = buf.y * s / ctx->f->height;
     return SSFN_OK;
 }

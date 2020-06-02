@@ -116,7 +116,7 @@ void ui_cursorwin(ui_win_t *win __attribute__((unused)), int cursor)
 void ui_init()
 {
 
-    if(SDL_Init(SDL_INIT_VIDEO|SDL_INIT_EVENTS)) error("sdl", ERR_DISPLAY);
+    if(SDL_Init(SDL_INIT_VIDEO|SDL_INIT_EVENTS)) ui_error("sdl", ERR_DISPLAY);
 
     icons = SDL_CreateRGBSurfaceFrom((Uint32 *)icon32, 32, 32, 32, 32*4, 0xFF, 0xFF00, 0xFF0000, 0xFF000000);
     cursors[CURSOR_LOADING] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_WAITARROW);

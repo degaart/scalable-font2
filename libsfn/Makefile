@@ -5,7 +5,7 @@ OBJS = $(SRCS:.c=.o)
 
 all: $(OBJS)
 
-unicode.h: Blocks.txt UnicodeData.txt
+unicode.h:
 	php unicode.php
 
 %: %.c unicode.h

@@ -15,6 +15,16 @@
  *   http://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
  */
 
+// download files if they are missing
+foreach(["Blocks.txt", "UnicodeData.txt"] as $fn) {
+    if(!file_exists($fn) || !filesize($fn)) {
+        echo("Downloading UNICODE database ".$fn."... ");
+        @file_put_contents($fn, @file_get_contents("http://www.unicode.org/Public/UCD/latest/ucd/".$fn));
+        if(@filesize($fn) > 0) echo("OK\n"); else { @unlink($fn); die("ERROR!!!\n"); }
+    }
+}
+
+// calculate
 echo("Counting UNICODE blocks... ");
 $blocks = [];
 foreach(file("Blocks.txt") as $line) {
@@ -35,6 +45,8 @@ foreach(file("UnicodeData.txt") as $line) {
     foreach($blocks as $k=>$b)
         if($i >= $b[1] && $i <= $b[2]) { if($j) $blocks[$k][0]=0; else $blocks[$k][0]--; }
 }
+
+// save output
 $s="/*
  * libsfn/unicode.h
  *
@@ -99,8 +111,10 @@ typedef struct {
 #define UNICODE_NUMNAMES ".count($u)."
 #ifndef _UNICODE_NAMESDATA
 extern uniname_t uninames[UNICODE_NUMNAMES+1];
+extern char uniname_date[];
 #else
 uniname_t uninames[UNICODE_NUMNAMES+1];
+char uniname_date[] = \"".date("Y-m-d", filemtime("UnicodeData.txt"))."\";
 ";
 echo("OK\nCompressing UNICODE names... ");
 

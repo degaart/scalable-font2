@@ -13,7 +13,7 @@ The `sfnconv` tool uses the [freetype2](http://www.freetype.org) library so it c
 that freetype2 can read. This includes all the common formats, TrueType (.ttf) and OpenType (.otf).
 
 SSFN uses a data-loss compression. See the [comparition](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/compare.md)
-table on how this influence the resulting file sizes. Storing a font in SSFN usually requires half the
+table on how this influences the resulting file sizes. Storing a font in SSFN usually requires half the
 file size.
 
 ### Converting Bitmap Fonts
@@ -29,11 +29,11 @@ Bitmap fonts are also compressed, but with a loss-less deduplication algorithm.
 ### Converting Pixmap Fonts
 
 Pixmaps differ to bitmaps in that they contain not bits, but pixels, so they can include colored glyphs.
-This is primarly used for fancy colorful emoji icons. The converter can read [Truevision TARGA](http://www.gamers.org/dEngine/quake3/TGA.txt)
-(.tga) and Portable Network Graphics (.png) files to generate such pixmap SSFN fonts. TGA is a very simple
-and common format (the Gimp can save it, and Imagemagick can convert to it too), and PNG is the most
-widespread for lossless images, literally all image manipulator programs can handle it (JPEG is not good
-for fonts as it uses data-loss compression on pixels).
+This is primarily used for fancy colorful emoji icons. The converter can read [Truevision TARGA](http://www.gamers.org/dEngine/quake3/TGA.txt)
+(.tga) and [Portable Network Graphics](http://www.libpng.org/pub/png/) (.png) files to generate such pixmap
+SSFN fonts. TGA is a very simple and common format (the Gimp can save it, and Imagemagick can convert to it
+too), and PNG is the most widespread for lossless images, literally all image manipulator programs can handle
+it (JPEG is not good for fonts as it uses data-loss compression on pixels).
 
 In images, full black reads as transparency. For compatibility, the full black FF000000 is transparency with
 alpha channel too, but you can use FF000001 or FF000200. Green of 1 is also considered full black, because
@@ -93,9 +93,9 @@ $ ./sfnconv -n "My Console Font" -f "MyOS" -s "Regular" -v "2020-05" -m "me http
 
 ### Specifying Input Glyphs
 
-You can add one or more input files on the command line. They can be mixed, bitmaps and vector
-fonts for example. All input file can be prefixed with a range specifier, which will load only
-the specified range from that input file.
+You can add one or more input files on the command line. They can be mixed, bitmaps and vector fonts
+for example. All input file can be prefixed with a `-r` (range) specifier, which will load only the
+specified range from that input file.
 
 ```sh
 $ ./sfnconv -r 0x900 0x97F unifont.hex console.sfn
@@ -115,7 +115,7 @@ $ ./sfnconv -r "Cyrillic Extended-C" unifont.hex -r cjkunifiedideographs cjk.bdf
 ```
 
 By default, the glyph in the first input file is used. You can replace glyphs from subsequent
-files when `-R` specified:
+files when `-R` (replace) specified:
 
 ```sh
 $ ./sfnconv unifont.hex -R fixedglyphs.bdf console.sfn
@@ -192,22 +192,24 @@ Creating and Extracting Font Collections
 
 You can put more fonts into a single file. This has the advatange that you can load them
 at once using `ssfn_load`. It is typical to create Italic and Bold variations for a typeface,
-and then pack them with the regular font into one file.
+and then pack them with the regular font into one file. For bitmap fonts, you can place
+the same font at different sizes into a collection.
 
 ```sh
 $ ./sfnconv -c VeraR.sfn VeraB.sfn VeraI.sfn VeraBI.sfn Vera.sfn
 ```
 
 If you call extract without specifying file names, the converter will list the fonts in the
-collection. The first coloumn is the same as with the `-t` flag, and separated by a tab the
-rest of the line is the font's unique name (specified by `-n`):
+collection. The first coloumn is the same as with the `-t` (type) flag, and separated by a tab
+the size if used by `-B` (rasterize to bitmap), and after another tab the rest of the line is
+the font's unique name (specified by `-n`):
 ```sh
 $ ./sfnconv -e Vera.sfn
--t      -n
-1       Bitstream Vera Sans
-b1      Bitstream Vera Sans Bold
-i1      Bitstream Vera Sans Oblique
-bi1     Bitstream Vera Sans Bold Oblique
+-t      -B      -n
+1       241     Bitstream Vera Sans
+b1      214     Bitstream Vera Sans Bold
+i1      254     Bitstream Vera Sans Oblique
+bi1     220     Bitstream Vera Sans Bold Oblique
 ```
 Then you must specify exactly as many filenames as the number of fonts in the collection to
 actually extract the fonts:
@@ -218,8 +220,8 @@ $ ./sfnconv -e Vera.sfn VeraR.sfn VeraBd.sfn VeraIt.sfn VeraBI.sfn
 UNICODE Code Point Coverage Reports
 -----------------------------------
 
-You can use the `-C` flag to quickly check the code point range coverage in an SSFN font. This will
-generate reports like this:
+You can use the `-C` (coverage) flag to quickly check the code point range coverage in an
+SSFN font. This will generate reports like this:
 
 ```sh
 $ ./sfnconv -C u_vga16.sfn
