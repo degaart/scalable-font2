@@ -66,7 +66,7 @@ void about_open_repo()
 void view_about()
 {
     int i, j, p;
-    char *s = "Scalable Screen Font Editor";
+    char *s = "Scalable Screen Font Editor", *ptr = ((char*)ssfn_src + 32);
     ui_win_t *win = &wins[0];
     p = (win->w - 320) / 2;
     ssfn_dst.ptr = (uint8_t*)win->data;
@@ -89,6 +89,12 @@ void view_about()
     if(ssfn_dst.y < 208) ssfn_dst.y = 208;
     ui_text(win, 8, ssfn_dst.y, lang[HELPSTR]);
     ui_text(win, ssfn_dst.x + 8, ssfn_dst.y, uniname_date);
+    ui_text(win, ssfn_dst.x, ssfn_dst.y, ", unifont:");
+    while(*ptr) ptr++;
+    ptr++; while(*ptr) ptr++;
+    ptr++; while(*ptr) ptr++;
+    ptr++;
+    ui_text(win, ssfn_dst.x + 8, ssfn_dst.y, ptr);
     ssfn_dst.y += 32;
     ui_text(win, 8, ssfn_dst.y, "Copyright (C) 2020 bzt (bztsrc@gitlab) - MIT license");
     ssfn_dst.y += 16;
