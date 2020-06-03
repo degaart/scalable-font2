@@ -76,10 +76,10 @@ void view_about()
     ssfn_dst.x = (win->w - 620) / 2;
     ssfn_dst.y = 160;
     ssfn_dst.fg = theme[THEME_FG];
-    ssfn_dst.bg = 0;
-    ui_box(win, 0, 60, win->w, 120, theme[THEME_BG], theme[THEME_BG], theme[THEME_BG]);
+    ssfn_dst.bg = theme[THEME_BG];
     while((i = ssfn_render(&logofnt, &ssfn_dst, s)) > 0) s += i;
     ssfn_dst.fg = 0xFF000000;
+    ssfn_dst.bg = 0;
     j = wins[0].field == 6 ? THEME_FG : THEME_BG;
     ui_box(win, p - 2, 180, 324, 18, theme[j], theme[wins[0].field == 6 ? THEME_LIGHT: THEME_BG], theme[j]);
     ui_text(win, p + 1, 181, repo_url);

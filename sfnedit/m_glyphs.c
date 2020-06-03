@@ -86,6 +86,7 @@ void view_glyphs()
     i = gsize * 16; x = (win->w - i) / 2 + 1;
     pageglyphs = ((win->h - 26 - 53) / gsize - 1) * 16; if(pageglyphs < 16) pageglyphs = 16;
     ui_rect(win, x - 1, 51, i + 1, win->h - 26 - 51, theme[THEME_DARKER], theme[THEME_LIGHT]);
+    ssfn_dst.w = x + i;
     if(greset || (input_refresh && !gsearch[0])) {
         gsearch[0] = 0;
         for(i = 0; i < 0x110000; i++) gres[i] = i;
@@ -115,7 +116,6 @@ void view_glyphs()
         }
     }
     greset = input_refresh = 0;
-    ssfn_dst.w = x + i;
     ssfn_dst.h = win->h - 26;
     for(i = scrollglyphs, j = 0, y = 52; i < numglyphs && y < ssfn_dst.h; i++, j++) {
         if(j == 16) { j = 0; y += gsize; }
