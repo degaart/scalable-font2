@@ -107,7 +107,7 @@ typedef struct {
     sfnlayer_t *layers;
     int numkern, kgrp;
     sfnkern_t *kern;
-    unsigned char hintv[32], hinth[32];
+    unsigned char rtl, hintv[32], hinth[32];
     int numfrag;
     int *frags;
 } sfnglyph_t;
@@ -137,6 +137,8 @@ typedef struct {
     int numskip;
     int *skip;
     long int total;
+    uint16_t *p;
+    int np, ap, mx, my, lx, ly;
 } sfnctx_t;
 extern sfnctx_t ctx;
 extern sfnprogressbar_t pbar;

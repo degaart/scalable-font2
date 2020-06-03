@@ -175,7 +175,7 @@ void sfn(unsigned char *ptr, int size)
         else if((ptr[0] & 0xC0) == 0xC0) { k = (((ptr[0] & 0x3F) << 8) | ptr[1]) + 1; unicode += k; ptr += 2; }
         else if((ptr[0] & 0xC0) == 0x80) { k = (ptr[0] & 0x3F) + 1; unicode += k; ptr++; }
         else {
-            if(pbar) (*pbar)(0, 0, unicode, 0x10FFFF, PBAR_BITMAP);
+            if(pbar) (*pbar)(0, 0, unicode, 0x10FFFF, PBAR_OUTLINE);
             n = ptr[1]; k = ptr[0];
             u = unicode >= rs && unicode <= re ? sfn_charadd(unicode, ptr[2], ptr[3], ptr[4], ptr[5], ptr[0] & 0x3F) : 0;
             ptr += 6; color = 0xFE;
@@ -276,6 +276,10 @@ void sfn(unsigned char *ptr, int size)
             unicode++;
         }
     }
+
+    /* color map */
+    if(font->cmap_offs)
+        memcpy(ctx.cpal, (uint8_t*)font + font->cmap_offs, font->size - font->cmap_offs - 4);
 }
 
 /**
@@ -564,6 +568,7 @@ int sfn_charadd(int unicode, int w, int h, int ax, int ay, int ox)
     ctx.glyphs[unicode].adv_x = ax + (ax ? adv : 0);
     ctx.glyphs[unicode].adv_y = ay + (!ax ? adv: 0);
     ctx.glyphs[unicode].ovl_x = ox;
+    ctx.glyphs[unicode].rtl = uninames[uniname(unicode)].rtl;
     return 1;
 }
 
@@ -601,7 +606,7 @@ sfnlayer_t *sfn_layeradd(int unicode, int t, int x, int y, int w, int h, int c, 
             l = (x + w) * ctx.glyphs[unicode].height;
             data2 = (unsigned char*)malloc(l);
             if(!data2) { fprintf(stderr,"memory allocation error\n"); return NULL; }
-            memset(data2, 0, l);
+            memset(data2, 0xFF, l);
             for(j = 0; j < ctx.glyphs[unicode].height; j++)
                 for(i = 0; i < ctx.glyphs[unicode].width; i++)
                     data2[j * (x + w) + i] = lyr->data[ctx.glyphs[unicode].width * j + i];
@@ -632,7 +637,7 @@ sfnlayer_t *sfn_layeradd(int unicode, int t, int x, int y, int w, int h, int c, 
             l = ctx.glyphs[unicode].width * ctx.glyphs[unicode].height;
             lyr->data = (unsigned char*)malloc(l);
             if(!lyr->data) { fprintf(stderr,"memory allocation error\n"); return NULL; }
-            memset(lyr->data, 0, l);
+            memset(lyr->data, 0xFF, l);
         }
     }
     if(t != SSFN_FRAG_CONTOUR && data) {

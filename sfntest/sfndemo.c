@@ -138,6 +138,7 @@ void do_test(SDL_Surface *screen, char *fontfn)
     ssfn_dst.w = screen->w;
     ssfn_dst.h = screen->h;
     ssfn_dst.fg = 0xFF202020;
+    /*ssfn_dst.bg = 0xFF20FF20;*/
 
     /* load and select a font */
     ssfn_src = load_file("../fonts/unifont.sfn.gz", &size);

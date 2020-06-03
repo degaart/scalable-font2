@@ -195,6 +195,7 @@ void ui_bool(ui_win_t *win, int x, int y, char *s, int state, int active);
 void ui_tri(ui_win_t *win, int x, int y, int up);
 void ui_num(ui_win_t *win, int x, int y, int num, int active, int sel);
 void ui_number(ui_win_t *win, int x, int y, int n, uint32_t c);
+void ui_glyph(ui_win_t *win, int x, int y, int size, int unicode, int layer);
 
 /* common */
 int ui_casecmp(char *a, char *b, int l);

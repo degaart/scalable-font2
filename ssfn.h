@@ -1001,6 +1001,8 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
         cb = (ctx->style & SSFN_STYLE_BOLD) && !(SSFN_TYPE_STYLE(ctx->f->type) & SSFN_STYLE_BOLD) ? (ctx->f->height+64)>>6 : 0;
         w = ctx->rc->w * h / ctx->f->height;
         p = w + (ci ? h / SSFN_ITALIC_DIV : 0) + cb;
+        /* failsafe, should never happen */
+        if(p * h >= SSFN_DATA_MAX) return SSFN_ERR_BADSIZE;
         if(!(ctx->style & SSFN_STYLE_NOCACHE)) {
             if(!ctx->c[unicode >> 16]) {
                 ctx->c[unicode >> 16] = (ssfn_glyph_t***)SSFN_realloc(NULL, 256 * sizeof(void*));
@@ -1063,7 +1065,7 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
                     }
                 }
                 /* close path */
-                if(ctx->mx != ctx->lx || ctx->my != ctx->ly) _ssfn_l(ctx, p, h, ctx->mx, ctx->my);
+                if(ctx->mx != ctx->lx || ctx->my != ctx->ly) _ssfn_l(ctx, p << SSFN_PREC, h << SSFN_PREC, ctx->mx, ctx->my);
                 /* add rasterized vector layers to cached glyph */
                 if(ctx->np > 4) {
                     for(b = A = B = o = 0; b < h; b++, B += p) {
@@ -1208,6 +1210,7 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
                 w,h,ctx->rc->w,ctx->rc->h,ctx->g->p,ctx->g->h,ctx->f->height);
 #endif
             fR = (dst->fg >> 16) & 0xFF; fG = (dst->fg >> 8) & 0xFF; fB = (dst->fg >> 0) & 0xFF; fA = (dst->fg >> 24) & 0xFF;
+            bR = (dst->bg >> 16) & 0xFF; bG = (dst->bg >> 8) & 0xFF; bB = (dst->bg >> 0) & 0xFF;
             Op = (uint32_t*)(dst->ptr + dst->p * (dst->y - oy) + ((dst->x - ox) << 2));
             for (y = 0; y < h && dst->y + y - oy < dst->h; y++, Op += dst->p >> 2) {
                 if(dst->y + y - oy < 0) continue;
@@ -1215,11 +1218,13 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
                 for (x = 0; x < w && dst->x + x - ox < j; x++, Ol++) {
                     if(dst->x + x - ox < 0) continue;
                     m = 0; sR = sG = sB = sA = 0;
-                    /* real linear frame buffers should be accessed only as uint32_t on 32 bit boundary */
-                    O = *Ol;
-                    bR = (O >> (16 - cs)) & 0xFF;
-                    bG = (O >> 8) & 0xFF;
-                    bB = (O >> cs) & 0xFF;
+                    if(!dst->bg) {
+                        /* real linear frame buffers should be accessed only as uint32_t on 32 bit boundary */
+                        O = *Ol;
+                        bR = (O >> (16 - cs)) & 0xFF;
+                        bG = (O >> 8) & 0xFF;
+                        bB = (O >> cs) & 0xFF;
+                    }
                     x0 = (x << 8) * ctx->g->p / w; X0 = x0 >> 8; x1 = ((x + 1) << 8) * ctx->g->p / w; X1 = x1 >> 8;
                     for(ys = y0; ys < y1; ys += 256) {
                         if(ys >> 8 == Y0) { yp = 256 - (ys & 0xFF); ys &= ~0xFF; if(yp > y1 - y0) yp = y1 - y0; }
@@ -1237,18 +1242,17 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
                             k = ctx->g->data[X2 + (xs >> 8)];
                             if(k == 0xFF) {
                                 sB += bB * pc; sG += bG * pc; sR += bR * pc;
+                            } else
+                            if(k == 0xFE || !ctx->f->cmap_offs) {
+                                af = (256 - fA) * pc;
+                                sB += fB * af; sG += fG * af; sR += fR * af; sA += fA * pc;
                             } else {
-                                if(k == 0xFE || !ctx->f->cmap_offs) {
-                                    af = (256 - fA) * pc;
-                                    sB += fB * af; sG += fG * af; sR += fR * af; sA += fA * pc;
-                                } else {
-                                    P = *((uint32_t*)((uint8_t*)ctx->f + ctx->f->cmap_offs + (k << 2)));
-                                    af = (256 - (P >> 24)) * pc;
-                                    sR += (((P >> 16) & 0xFF) * af);
-                                    sG += (((P >> 8) & 0xFF) * af);
-                                    sB += (((P >> 0) & 0xFF) * af);
-                                    sA += (((P >> 24) & 0xFF) * pc);
-                                }
+                                P = *((uint32_t*)((uint8_t*)ctx->f + ctx->f->cmap_offs + (k << 2)));
+                                af = (256 - (P >> 24)) * pc;
+                                sR += (((P >> 16) & 0xFF) * af);
+                                sG += (((P >> 8) & 0xFF) * af);
+                                sB += (((P >> 0) & 0xFF) * af);
+                                sA += (((P >> 24) & 0xFF) * pc);
                             }
                         }
                     }
@@ -1569,6 +1573,7 @@ namespace SSFN {
             int BBox(const char *str, int *w, int *h, int *left, int *top);
             ssfn_buf_t *Text(const std::string &str, unsigned int fg);
             ssfn_buf_t *Text(const char *str, unsigned int fg);
+            int LineHeight();
             int Mem();
             const std::string ErrorStr(int err);
     };
@@ -1595,6 +1600,7 @@ namespace SSFN {
             ssfn_buf_t *Text(const std::string &str, unsigned int fg)
                 { return ssfn_text(&this->ctx,(const char*)str.data(), fg); }
             ssfn_buf_t *Text(const char *str, unsigned int fg) { return ssfn_text(&this->ctx, str, fg); }
+            int LineHeight() { return this->ctx->line; }
             int Mem() { return ssfn_mem(&this->ctx); }
             const std::string ErrorStr(int err) { return std::string(ssfn_error(err)); }
     };

@@ -20,11 +20,11 @@ require less space, and also the renderer can work a lot faster than other rende
  - [sfnedit](https://gitlab.com/bztsrc/scalable-font2/tree/master/sfnedit) SSFN font converter and editor with a GUI (WiP)
  - [sfntest](https://gitlab.com/bztsrc/scalable-font2/tree/master/sfntest) test applications and [API](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/API.md) usage examples
 
-The SSFN renderer comes in two flavours: there's the normal renderer with a few functions and libc dependency, and a
-specialized renderer for OS kernel consoles with just one function and no dependencies at all.
-
 Example Code
 ------------
+
+The SSFN renderer comes in two flavours: there's the normal renderer with a few functions and libc dependency, and a
+specialized renderer for OS kernel consoles with just one function and no dependencies at all.
 
 ### Simple Renderer
 
@@ -64,11 +64,16 @@ Very easy to use, here's an example without error handling:
 #define SSFN_IMPLEMENTATION                         /* use the normal renderer implementation */
 #include <ssfn.h>
 
-ssfn_t ctx;                                         /* the renderer context */
-ssfn_buf_t buf;                                     /* the destination pixel buffer */
-
-/* you don't need to initialize the library, just make sure the context is zerod out */
-memset(&ctx, 0, sizeof(ssfn_t));
+ssfn_t ctx = { 0 };                                 /* the renderer context */
+ssfn_buf_t buf = {                                  /* the destination pixel buffer */
+    .ptr = sdlsurface->pixels,                      /* address of the buffer */
+    .w = sdlsurface->w,                             /* width */
+    .h = sdlsurface->h,                             /* height */
+    .p = sdlsurface->pitch,                         /* bytes per line */
+    .x = 100,                                       /* pen position */
+    .y = 100,
+    .fg = 0xFF808080                                /* foreground color */
+};
 
 /* add one or more fonts to the context. Fonts must be already in memory */
 ssfn_load(&ctx, &_binary_times_sfn_start);          /* you can add different styles... */
@@ -83,14 +88,6 @@ ssfn_select(&ctx,
     SSFN_STYLE_REGULAR | SSFN_STYLE_UNDERLINE,      /* style */
     64                                              /* size */
 );
-
-/* describe the destination buffer. Could be a 32 bit linear framebuffer as well */
-buf.ptr = sdlsurface->pixels;                       /* address of the buffer */
-buf.w = sdlsurface->w;                              /* width */
-buf.h = sdlsurface->h;                              /* height */
-buf.p = sdlsurface->pitch;                          /* bytes per line */
-buf.x = buf.y = 100;                                /* pen position */
-buf.fg = 0xFF808080;                                /* foreground color */
 
 /* rasterize the first glyph in an UTF-8 string into a 32 bit packed pixel buffer */
 ssfn_render(&ctx, &buf, "A");
@@ -130,7 +127,7 @@ converter has no dependencies. Libsfn can be built optionally with **zlib** to w
 files on-the-fly (read is supported without zlib). Pixel map fonts might take advantage of **libimagequant**
 if installed (converter works without, but poorer quality). For vectorization, **potrace** library is needed.
 
-The editor uses SDL2 with an X11 fallback.
+The editor uses SDL2 with an X11 fallback, and naturally depends on libsfn.
 
 The test applications use SDL2 to create a window and display the rendered texts.
 

@@ -98,7 +98,7 @@ void ui_resizewin(ui_win_t *win, int w, int h)
     }
     xi = XCreateImage(display, visual, DefaultDepth(display, screen_num), ZPixmap, 0, NULL, w, h, 8, w * 4);
     win->data = (uint32_t*)malloc(w * h * sizeof(uint32_t));
-    if(!xi || !win->data) error("x11", ERR_MEM);
+    if(!xi || !win->data) ui_error("x11", ERR_MEM);
     xi->data = (char*)win->data;
     xi->byte_order= LSBFirst;
     xi->bits_per_pixel = 32;
@@ -161,12 +161,12 @@ void ui_init()
     long *ptr = icons;
 
     display = XOpenDisplay(getenv("DISPLAY"));
-    if (!display) error("x11", ERR_DISPLAY);
+    if (!display) ui_error("x11", ERR_DISPLAY);
 
     screen_num = DefaultScreen(display);
     visual = DefaultVisual(display, screen_num);
     red_shift = green_shift = blue_shift = 24;
-    if(!DisplayWidth(display, screen_num)) error("x11", ERR_DISPLAY);
+    if(!DisplayWidth(display, screen_num)) ui_error("x11", ERR_DISPLAY);
     for (i = visual->red_mask; !(i&0x80000000); i <<= 1) red_shift--;
     for (i = visual->green_mask; !(i&0x80000000); i <<= 1) green_shift--;
     for (i = visual->blue_mask; !(i&0x80000000); i <<= 1) blue_shift--;

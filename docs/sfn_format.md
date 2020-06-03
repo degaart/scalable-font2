@@ -92,7 +92,7 @@ Note(1): type bits are:
 
 Note(2): font format revision must be 0 as of writing
 
-Note(3): only if there's a color map. The number of color entires is (font size - 12 - color map offset) / 4.
+Note(3): only if there's a color map. The number of color entires is (font size - 4 - color map offset) / 4.
 
 String Table
 ------------
@@ -327,7 +327,7 @@ Color Map (optional)
 --------------------
 
 Color map only exists if there's at least one pixmap fragment or color descriptor in the font. Its offset is
-stored in the font header, and the size can be calculated as `font size - 12 - color map offset`. Color map stores
+stored in the font header, and the size can be calculated as `font size - 4 - color map offset`. Color map stores
 four A,R,G,B bytes for each color (blue is the least significant byte), for index 0-253. Values for indeces 254 and
 255 are *not* stored, as those encode foreground and background colors.
 

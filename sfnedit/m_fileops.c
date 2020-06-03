@@ -332,7 +332,7 @@ void ctrl_fileops_onenter(int save)
                     ui_flushwin(&wins[0], wins[0].w - 12 - j, wins[0].h - 44, j, 32);
                     if(sfn_load(fn, 0)) {
                         strcpy(filename, files[selfiles].name);
-                        wins[0].tool = MAIN_TOOL_PROPS;
+                        wins[0].tool = MAIN_TOOL_GLYPHS;
                         wins[0].field = selfield = -1;
                         ui_updatetitle(0);
                     }

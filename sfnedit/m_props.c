@@ -42,7 +42,6 @@ void view_props()
 {
     int i, j, k;
     ui_win_t *win = &wins[0];
-
     if(!fieldtexts) {
         for(i = PROP_TYPE; i <= PROP_LICENSE; i++) {
             j = ui_textwidth(lang[i]) + 28;

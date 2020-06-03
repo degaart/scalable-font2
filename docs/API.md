@@ -146,6 +146,32 @@ ssfn_buf_t *buf = font.Text(str, 0xFF101010);
 ```
 This latter is a drop-in replacement to SDL_ttf package's TTF_RenderUTF8_Blended() function.
 
+To handle new lines in strings:
+```c
+char *str = "String to render\nAnother line";
+int linestart = buf.x;
+
+/* C */
+while((ret = ssfn_render(&ctx, &buf, str)) > 0) {
+    str += ret;
+    while(*str == '\n') {
+        str++;
+        buf.x = linestart;
+        buf.y += ctx.line;
+    }
+}
+
+/* C++ */
+while((ret = font.Render(&buf, str)) > 0) {
+    str += ret;
+    while(*str == '\n') {
+        str++;
+        buf.x = linestart;
+        buf.y += font.LineHeight();
+    }
+}
+```
+
 Configuration
 -------------
 
@@ -154,6 +180,19 @@ Configuration
 ```
 
 Include the normal renderer implementation as well, not just the file format defines and function prototypes.
+
+The normal renderer has memory-related dependencies. If you really want to use this renderer from a kernel,
+you can replace all dependent functions with your own implemenations using the following defines:
+
+```c
+#define SSFN_memcmp  memcmp
+#define SSFN_memset  memset
+#define SSFN_realloc realloc
+#define SSFN_free    free
+```
+
+If you don't specify these, then the SSFN header will try to figure it out if they are supported as built-ins
+or provided by libc. That's all, no more dependencies. :-)
 
 ```c
 #define SSFN_CONSOLEBITMAP_PALETTE
@@ -173,7 +212,7 @@ Variable Types
 | `ssfn_t`       | the renderer context, it's internals are irrelevant     |
 | `ssfn_font_t`  | the font stucture, same as the [SSFN file header](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/sfn_format.md) |
 | `ssfn_buf_t`   | the pixel buffer to render to (see fields below)        |
-| `int`          | the returned error code (if any)                        |
+| `int`          | the returned negative error code (if any)               |
 
 Destination buffer descriptor struct:
 
@@ -228,11 +267,10 @@ other functions check for valid input, this is an exception because it's expecte
 
 UNICODE code point, and `str` pointer adjusted to the next multibyte sequence.
 
+## Render a Glyph
 
 The following function is only available if the header is included with one of the `SSFN_CONSOLEBITMAP_x` defines
 (independently to `SSFN_IMPLEMENTATION`).
-
-## Render a Glyph
 
 ```c
 int ssfn_putc(uint32_t unicode);
@@ -265,9 +303,9 @@ The define selects the destination buffer's pixel format. `SSFN_CONSOLEBITMAP_PA
 selects 4 bytes (8-8-8-8 xRGB). For performance reasons, 3 bytes (24 bit true color) mode is not supported.
 If `.w` and `.h` is not set, then no clipping will be performed. With `ssfn_dst.bg` being full 32 bit wide
 zero, `ssfn_putc` will operate in transparent background mode: it will only modify the destination buffer
-where the font face is set. To clear the glyph's background, set it to some value where the most significant
-byte (alpha channel for true-color mode) is 255, like 0xFF000000. This will fill the background with the index
-0 (palette) or full black (hicolor and truecolor modes).
+where the font face is set. To clear the glyph's background, set `ssfn_dst.bg` to some value where the most
+significant byte (alpha channel for true-color mode) is 255, like 0xFF000000. This will fill the background
+with the index 0 (palette) or full black (hicolor and truecolor modes).
 
 ### Return value
 
@@ -280,21 +318,7 @@ Normal Renderer Functions
 
 The following functions are only available if the header is included with `SSFN_IMPLEMENTATION` define.
 They allocate memory and therefore depend on libc (or crafted compilers like gcc have all four functions
-as built-ins), hence are expected to be used by normal user space applications. If you really want to use
-this renderer from a kernel, you can replace all dependent functions with your own implemenations using the
-following defines:
-
-```c
-#define SSFN_memcmp memcmp
-#define SSFN_memset memset
-#define SSFN_realloc realloc
-#define SSFN_free free
-```
-
-If you don't specify these, then the SSFN header will try to figure it out if they are supported as built-ins
-or provided by libc.
-
-That's all, no more dependencies. :-)
+as built-ins), hence are expected to be used by normal user space applications.
 
 ## Initilization
 
@@ -306,8 +330,7 @@ ssfn_t ctx = { 0 };
 font = new SSFN::Font;
 ```
 
-Nothing special, just make sure the context is zerod out. You can put it in the BSS section or call memset
-zero manually.
+Nothing special, just make sure the context is zerod out.
 
 ## Load Fonts
 
@@ -395,7 +418,7 @@ Parameter defines:
 | `SSFN_STYLE_STHROUGH`   | strike-through glyphs. Not stored either, always generated         |
 | `SSFN_STYLE_NOAA`       | don't use anti-aliasing (might be unreadable for small sizes)      |
 | `SSFN_STYLE_NOKERN`     | don't use kerning relation when calculating advance offsets        |
-| `SSFN_STYLE_NODEFGLYPH` | don't draw default default glyph for missing ones                  |
+| `SSFN_STYLE_NODEFGLYPH` | don't draw default glyph for missing ones                          |
 | `SSFN_STYLE_NOCACHE`    | don't use internal glyph cache (slower, but memory efficient)      |
 | `SSFN_STYLE_RTL`        | render in Right-to-Left direction                                  |
 | `SSFN_STYLE_ABS_SIZE`   | use absolute size (glyph's total height will be scaled to size)    |
@@ -418,17 +441,10 @@ int SSFN::Font.Render(ssfn_buf_t *dst, const char *str);
 
 Render one glyph. It is possible to load more fonts with different UNICODE code range coverage, the
 renderer will pick the ones which have a glyph defined for `str`. If more fonts have glyphs for this
-character, then the renderer will look for the best variant and style match to figure out which font to
+character, then the renderer will look for the best size and style match to figure out which font to
 use, unless you've asked for a specific font with `SSFN_FAMILY_BYNAME`. If there's no font for the
 requested style, then the renderer will mimic bold or italic. It is also possible that one of the fonts
 have ligatures, and more characters will be parsed for a single glyph.
-
-Unlike the simple render, for which you can choose a pixel format using defines, this one only supports
-32 bit packed pixel buffers. As it takes care for the anti-aliasing and alpha-blending as well, it
-depends on a packed pixel format which has a separate alpha channel.
-
-The renderer will assume ARGB channel order (blue is the least significant byte, alpha the most). To
-support ABGR buffers, specify the buffer's width as negative, for example -1920.
 
 ### Parameters
 
@@ -438,9 +454,20 @@ support ABGR buffers, specify the buffer's width as negative, for example -1920.
 | dst         | destination pixel buffer to render to (see Variable Types above)                  |
 | str         | UNICODE code point of the character in UTF-8 to be rendered                       |
 
-You can render to a cropped area on the framebuffer using the dst `ssfn_buf_t` struct. Set `.x` and `.y`
-to zero, and `.ptr` to "base address + offsy * pitch + offsx * 4". Then the rendered text will be limited
-to (offsx, offsy) - (offsx + w, offsy + h), and no pixels will be modified outside of this area.
+Unlike the simple render, for which you can choose a pixel format using defines, this one only supports
+32 bit packed pixel buffers. As it takes care for the anti-aliasing and alpha-blending as well, it
+depends on a packed pixel format which has a separate alpha channel.
+
+The renderer will assume ARGB channel order (blue is the least significant byte, alpha the most). To
+support ABGR buffers, specify the buffer's width as negative, for example -1920.
+
+You can render to a cropped area on the framebuffer using the dst `ssfn_buf_t` struct. Set `dst.x` and
+`dst.y` to zero, and `dst.ptr` to "base address + offsy * pitch + offsx * 4". Then the rendered text will
+be limited to (offsx, offsy) - (offsx + w, offsy + h), and no pixels will be modified outside of this area.
+
+This renderer never clears the background. If `dst.bg` is zero, then the alpha-blending will be calculated
+against the pixels already in the buffer. With a color given as background, that will be used to calculate
+gradients of anti-aliased edges.
 
 ### Return value
 
@@ -449,7 +476,7 @@ generates the glyph and (if `SSFN_STYLE_NOCACHE` is not specified) stores it in 
 After that ssfn_render will blit the glyph to the pixel buffer using scaling and alpha-blending. Finally
 it takes care of the advance and (if `SSFN_STYLE_NOKERN` not given) kerning offsets automatically, and
 updates `.x` and `.y` fields in `dst`. The rendered line's height will be accumulated in `ctx->line` until
-you reset it.
+you reset it to zero. For C++, ctx->line is returned by the `font.LineHeight()` method.
 
 ## Get Bounding Box
 

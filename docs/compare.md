@@ -100,7 +100,7 @@ to 254 individual colors, hence the great advantage over truecolor PNG.
 Code Size and Performance
 -------------------------
 
-I've compiled and run the [sfndemo](https://gitlab.com/bztsrc/scalable-font2/blob/master/tests/sfndemo.c)
+I've compiled and run the [sfndemo](https://gitlab.com/bztsrc/scalable-font2/blob/master/sfntest/sfndemo.c)
 app in the tests directory on an Intel(R) Core(TM) i5-3317U CPU @ 1.70GHz (running at 800 Mhz, 3394 bogomips).
 I encourage you to repeat these tests on your own computer. A few notes: file load time includes the time took
 to load from disk and also to uncompress gzipped fonts. This sfndemo does not use the internal glyph cache, so
@@ -112,7 +112,7 @@ Here are the results:
 
 ```
 Simple renderer: 1613 bytes
-Normal renderer: 28721 bytes
+Normal renderer: 28848 bytes
 File load time:      0.039027 sec
 Character lookup:    0.001327 sec
 Rasterization:       0.129250 sec

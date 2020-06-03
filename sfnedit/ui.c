@@ -425,7 +425,6 @@ void ui_inputfinish()
 {
     char *s = input_str;
     if(!input_maxlen || !input_str || !input_callback) return;
-    printf("input callback %d str '%s'\n", input_callback, input_str);
     switch(input_callback) {
         case 1:
             if((input_str[0] == 'U' || input_str[0] == 'u') && input_str[1] == '+') rs = (int)gethex(input_str + 2, 6);
@@ -474,7 +473,7 @@ void ui_main(char *fn)
     ui_refreshwin(0, 0, 0, wins[0].w, wins[0].h);
     wins[0].tool = -1;
     if(fn && sfn_load(fn, 0)) {
-        wins[0].tool = MAIN_TOOL_PROPS;
+        wins[0].tool = MAIN_TOOL_GLYPHS;
         ui_updatetitle(0);
         ui_resizewin(&wins[0], wins[0].w, wins[0].h);
         ui_refreshwin(0, 0, 0, wins[0].w, wins[0].h);
@@ -698,7 +697,7 @@ void ui_main(char *fn)
                         }
                     }
                 }
-                seltool = -1;
+                seltool = selfield = -1;
                 ui_resizewin(&wins[event.win], wins[event.win].w, wins[event.win].h);
                 ui_refreshwin(event.win, 0, 0, wins[event.win].w, wins[event.win].h);
             break;

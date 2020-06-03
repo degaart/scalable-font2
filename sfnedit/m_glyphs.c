@@ -46,6 +46,7 @@ void view_glyphs()
 {
     int i, j, k, l, x, y, n;
     ui_win_t *win = &wins[0];
+    char cp[8], *s = NULL;
 
     ssfn_dst.ptr = (uint8_t*)win->data;
     ssfn_dst.p = win->p*4;
@@ -69,9 +70,16 @@ void view_glyphs()
     ui_box(win, 116, 29, win->w - 150, 18, theme[THEME_BG], theme[THEME_BG], theme[THEME_BG]);
     if(!gsearch[0]) {
         for(i = 0; i < UNICODE_NUMBLOCKS && (scrollglyphs < ublocks[i].start || scrollglyphs > ublocks[i].end); i++);
-        if(i < UNICODE_NUMBLOCKS) ui_text(win, 116, 29, ublocks[i].name);
+        if(i < UNICODE_NUMBLOCKS) s = ublocks[i].name;
     } else
-        ui_text(win, 116, 29, lang[GLYPHS_RESULTS]);
+        s = lang[GLYPHS_RESULTS];
+    if(s) {
+        ssfn_dst.fg = theme[THEME_LIGHTER];
+        ui_text(win, 116, 29, s);
+        ssfn_dst.fg = theme[THEME_DARKER];
+        ui_text(win, 115, 28, s);
+        ssfn_dst.fg = theme[THEME_FG];
+    }
     ui_input(win, win->w - 150, 29, 120, gsearch, wins[0].field == 8, 31, 0);
     ui_icon(win, win->w - 8 - 16, 30, ICON_SEARCH, 0);
     gsize = (win->w - 14) / 16;
@@ -107,17 +115,32 @@ void view_glyphs()
         }
     }
     greset = input_refresh = 0;
+    ssfn_dst.w = x + i;
     ssfn_dst.h = win->h - 26;
-    ssfn_dst.fg = theme[THEME_DARKER];
     for(i = scrollglyphs, j = 0, y = 52; i < numglyphs && y < ssfn_dst.h; i++, j++) {
         if(j == 16) { j = 0; y += gsize; }
         if(ctx.glyphs[gres[i]].numlayer || (iswhitespace(gres[i]) && ctx.glyphs[gres[i]].adv_x+ctx.glyphs[gres[i]].adv_y > 0)) {
             ui_box(win, x + j * gsize, y, gsize - 1, gsize - 1, theme[THEME_DARKER], theme[THEME_DARKER], theme[THEME_DARKER]);
+            ssfn_dst.fg = theme[THEME_FG];
+            ui_glyph(win, x + j * gsize, y, gsize - 1, gres[i], -1);
         } else if(gdef[gres[i]]) {
             ui_box(win, x + j * gsize, y, gsize - 1, gsize - 1, theme[THEME_LIGHT], theme[THEME_LIGHT], theme[THEME_LIGHT]);
             ssfn_dst.x = x + j * gsize + 1;
             ssfn_dst.y = y + 1;
-            ssfn_putc(gres[i]);
+            ssfn_dst.fg = theme[THEME_DARKER];
+            if(ssfn_putc(gres[i])) {
+                sprintf(cp, "%06X", gres[i]);
+                ssfn_dst.x = x + j * gsize + 1;
+                ssfn_dst.y = y + 1;
+                ssfn_putc(cp[0]);
+                ssfn_putc(cp[1]);
+                ssfn_putc(cp[2]);
+                ssfn_dst.x = x + j * gsize + 1;
+                ssfn_dst.y = y + 17;
+                ssfn_putc(cp[3]);
+                ssfn_putc(cp[4]);
+                ssfn_putc(cp[5]);
+            }
         } else
             ui_box(win, x + j * gsize, y, gsize - 1, gsize - 1, theme[THEME_DARK], theme[THEME_BG], theme[THEME_LIGHT]);
     }
@@ -127,6 +150,7 @@ void view_glyphs()
             ui_box(win, x + j * gsize, y, gsize - 1, gsize - 1, theme[THEME_BG], theme[THEME_BG], theme[THEME_BG]);
         }
     ssfn_dst.fg = theme[THEME_FG];
+    ssfn_dst.w = win->w;
     ssfn_dst.h = win->h;
 }
 
@@ -191,6 +215,7 @@ void ctrl_glyphs_onbtnpress()
     ui_win_t *win = &wins[0];
 
     selfield = -1;
+    if(event.w != 1) glast = -1;
     if(event.y > 29 && event.y < 50) {
 #ifdef HAS_POTRACE
         if(event.x >= 8 && event.x < 28) selfield = 0; else

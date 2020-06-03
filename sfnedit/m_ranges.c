@@ -112,7 +112,6 @@ void ctrl_ranges_onenter()
 {
     if(wins[0].field == 6) { showallrange ^= 1; input_refresh = 1; } else
     if(wins[0].field == 8 && selranges >= 0 && selranges < numranges) {
-        printf("selected %d %d '%s'\n", selranges, rres[selranges], ublocks[rres[selranges]].name);
         wins[0].tool = MAIN_TOOL_GLYPHS;
         wins[0].field = selfield = -1;
         greset = 1;

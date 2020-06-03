@@ -87,7 +87,10 @@ void do_test(SDL_Surface *screen, char *fontfn, int argc)
         sprintf(str0,"%d How much can you read this?",i);
         s = str0;
         buf.x = 5;
-        while((ret = ssfn_render(&ctx, &buf, s)) > 0) s += ret;
+        while((ret = ssfn_render(&ctx, &buf, s)) > 0) {
+            s += ret;
+            if(*s == 'H') buf.x = 64;
+        }
         if(ret != SSFN_OK) { fprintf(stderr, "ssfn render error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
         buf.y += i;
     }
@@ -101,7 +104,10 @@ void do_test(SDL_Surface *screen, char *fontfn, int argc)
     s = str0;
     buf.x = 5;
     buf.y += 10;
-    while((ret = ssfn_render(&ctx, &buf, s)) > 0) s += ret;
+    while((ret = ssfn_render(&ctx, &buf, s)) > 0) {
+        s += ret;
+        if(*s == 'H') buf.x = 64;
+    }
     if(ret != SSFN_OK) { fprintf(stderr, "ssfn render error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
 
     printf("Memory allocated: %d\n", ssfn_mem(&ctx));

@@ -31,6 +31,7 @@ enum {
     /* error messages */
     ERR_MEM = 0,
     ERR_DISPLAY,
+    ERR_SIZE,
     /* status bar */
     STAT_MEASURE,
     STAT_OUTLINE,
