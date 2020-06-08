@@ -45,7 +45,7 @@ char verstr[8];
 
 uint8_t *icon32, *icon64, *tools, *bga;
 
-uint32_t theme[] = { 0xFF454545, 0xFFBEBEBE, 0xFF545454, 0xFF3C3C3C, 0xFF5C5C5C, 0xFF343434, 0xFF3C3C3C,
+uint32_t theme[] = { 0xFF454545, 0xFFBEBEBE, 0xFF5C5C5C, 0xFF343434, 0xFF606060, 0xFF303030, 0xFF3C3C3C,
     0xFF101010, 0xFF686868, 0xFF515151, 0xFF484848, 0xFF404040, 0xFF744C4C, 0xFF5D3535, 0xFF542C2C, 0xFF4C2424,
     0xFF5C5C5C, 0xFFF0F0F0, 0xFF909090, 0xFF4E4E4E };
 /*
@@ -68,6 +68,33 @@ int zip = 1, ascii = 0, selfield = -1;
 
 extern int lastsave, input_maxlen, input_callback, selstart, selend, selfiles, clkfiles, selranges, clkranges;
 extern char *input_str, *input_cur, *input_scr, *input_end, gstat[];
+
+/**
+ * Read in a theme from a GIMP Palette file
+ */
+void ui_gettheme(char *fn)
+{
+    FILE *f;
+    char line[256], *s;
+    int i = 0, r,g,b;
+    f = fopen(fn, "r");
+    if(f) {
+        while(i < THEME_UNDEF && !feof(f)) {
+            line[0] = 0; fgets(line, 256, f);
+            if(!line[0] || line[0] == '\r' || line[0] == '\n' || line[0] == '#' ||
+                !memcmp(line, "GIMP", 4) || !memcmp(line, "Name", 4)) continue;
+            line[255] = 0; s = line;
+            for(; *s && *s == ' '; s++);
+            r = atoi(s); for(; *s && *s != ' '; s++);
+            for(; *s && *s == ' '; s++);
+            g = atoi(s); for(; *s && *s != ' '; s++);
+            for(; *s && *s == ' '; s++);
+            b = atoi(s); for(; *s && *s != ' '; s++);
+            theme[i] = 0xFF000000 | ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF);
+        }
+        fclose(f);
+    }
+}
 
 /**
  * Compare two strings
@@ -128,8 +155,9 @@ int ui_maxfield(int idx)
             case MAIN_TOOL_SAVE: return 12;
             case MAIN_TOOL_PROPS: return 16;
             case MAIN_TOOL_RANGES: return 8;
-            case MAIN_TOOL_GLYPHS: return 9;
+            case MAIN_TOOL_GLYPHS: return 15;
             case MAIN_TOOL_DOSAVE: return 7;
+            case MAIN_TOOL_NEW: return 7;
         }
     } else {
         switch(wins[idx].tool) {
@@ -315,6 +343,7 @@ static void ui_loadrc()
  */
 void ui_quit(int sig __attribute__((unused)))
 {
+    copypaste_fini();
     ui_fini();
     ssfn_free(&logofnt);
     sfn_free();
@@ -391,6 +420,7 @@ void ui_refreshwin(int idx, int wx, int wy, int ww, int wh)
             case MAIN_TOOL_RANGES: view_ranges(); break;
             case MAIN_TOOL_GLYPHS: view_glyphs(); break;
             case MAIN_TOOL_DOSAVE: view_dosave(); break;
+            case MAIN_TOOL_NEW: view_new(); break;
         }
     } else {
         switch(wins[idx].tool) {
@@ -422,14 +452,19 @@ void ui_refreshall()
 
     for(i=0; i < numwin; i++)
         if(wins[i].winid) {
+            if(wins[i].unicode < 0x110000 && !ctx.glyphs[wins[i].unicode].numlayer &&
+                !ctx.glyphs[wins[i].unicode].adv_x && !ctx.glyphs[wins[i].unicode].adv_y)
+                    ui_closewin(i);
+            else {
 /*
-            if(wins[i].hist) {
-                hist_cleanup(&wins[i], 0);
-                free(wins[i].hist);
-            }
+                if(wins[i].hist) {
+                    hist_cleanup(&wins[i], 0);
+                    free(wins[i].hist);
+                }
 */
-            ui_resizewin(&wins[i], wins[i].w, wins[i].h);
-            ui_refreshwin(i, 0, 0, wins[i].w, wins[i].h);
+                ui_resizewin(&wins[i], wins[i].w, wins[i].h);
+                ui_refreshwin(i, 0, 0, wins[i].w, wins[i].h);
+            }
         }
 }
 
@@ -590,8 +625,6 @@ void ui_main(char *fn)
                             ui_refreshwin(event.win, 0, 0, wins[event.win].w, wins[event.win].h);
                         } else {
                             if(wins[event.win].field > -1 && wins[event.win].field < (!event.win ? 6 : 3)) {
-                                if(!event.win && wins[event.win].field > 1 && wins[event.win].field < 6 && !ctx.filename)
-                                    wins[event.win].field = 1;
                                 wins[event.win].tool = wins[event.win].field;
                                 wins[event.win].field = seltool = selfield = -1;
                                 ui_resizewin(&wins[event.win], wins[event.win].w, wins[event.win].h);
@@ -605,6 +638,8 @@ void ui_main(char *fn)
                                         case MAIN_TOOL_PROPS: ctrl_props_onenter(); break;
                                         case MAIN_TOOL_RANGES: ctrl_ranges_onenter(); break;
                                         case MAIN_TOOL_GLYPHS: ctrl_glyphs_onenter(); break;
+                                        case MAIN_TOOL_DOSAVE: ctrl_dosave_onenter(); break;
+                                        case MAIN_TOOL_NEW: ctrl_new_onenter(); break;
                                         break;
                                     }
                                 }
@@ -667,6 +702,7 @@ void ui_main(char *fn)
                                     case MAIN_TOOL_PROPS: ctrl_props_onkey(); break;
                                     case MAIN_TOOL_RANGES: ctrl_ranges_onkey(); break;
                                     case MAIN_TOOL_GLYPHS: ctrl_glyphs_onkey(); break;
+                                    case MAIN_TOOL_NEW: ctrl_new_onkey(); break;
                                 }
                             }
                         }
@@ -697,6 +733,8 @@ void ui_main(char *fn)
                             case MAIN_TOOL_PROPS: ctrl_props_onbtnpress(); break;
                             case MAIN_TOOL_RANGES: ctrl_ranges_onbtnpress(); break;
                             case MAIN_TOOL_GLYPHS: ctrl_glyphs_onbtnpress(); break;
+                            case MAIN_TOOL_DOSAVE: ctrl_dosave_onbtnpress(); break;
+                            case MAIN_TOOL_NEW: ctrl_new_onbtnpress(); break;
                         }
                     }
                     ui_refreshwin(event.win, 0, 0, wins[event.win].w, wins[event.win].h);
@@ -718,6 +756,8 @@ void ui_main(char *fn)
                             case MAIN_TOOL_SAVE: ctrl_fileops_onclick(1); break;
                             case MAIN_TOOL_PROPS: ctrl_props_onclick(); break;
                             case MAIN_TOOL_GLYPHS: ctrl_glyphs_onclick(); break;
+                            case MAIN_TOOL_DOSAVE: ctrl_dosave_onclick(); break;
+                            case MAIN_TOOL_NEW: ctrl_new_onclick(); break;
                         }
                     }
                 }

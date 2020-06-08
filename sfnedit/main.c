@@ -182,6 +182,8 @@ int APIENTRY WinMain(__attribute__((unused)) HINSTANCE hInstance, __attribute__(
 }
 #endif
 
+extern uint32_t theme[];
+
 /**
  * Main sfnedit function
  */
@@ -189,10 +191,17 @@ int main(int argc, char **argv)
 {
     int i;
 
-    if(argc > 2 && argv[1] && argv[1][0] == '-' && argv[1][1] == 'l') {
-        loc = argv[2];
-        argv += 2;
-        argc -= 2;
+    while(argc > 2 && argv[1] && argv[1][0] == '-') {
+        if(argv[1][1] == 'l') {
+            loc = argv[2];
+            argv += 2;
+            argc -= 2;
+        } else
+        if(argv[1][1] == 't') {
+            ui_gettheme(argv[2]);
+            argv += 2;
+            argc -= 2;
+        }
     }
     if(!loc) loc = getenv("LANG");
     if(!loc) loc = "en";

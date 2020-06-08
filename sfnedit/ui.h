@@ -85,14 +85,19 @@ enum {
     ICON_FOLDER,
     ICON_FILE,
     ICON_SEARCH,
+    ICON_ZOOMOUT,
+    ICON_ZOOMIN,
+    ICON_CUT,
+    ICON_COPY,
+    ICON_PASTE,
+    ICON_DELETE,
     ICON_BOUNDING,
     ICON_HINTING,
     ICON_VERT,
     ICON_HORIZ,
     ICON_VECTOR,
     ICON_BITMAP,
-    ICON_PIXMAP,
-    ICON_DELETE
+    ICON_PIXMAP
 };
 
 #define WINTYPE_MAIN  -1U
@@ -128,7 +133,8 @@ enum {
     MAIN_TOOL_PROPS,
     MAIN_TOOL_RANGES,
     MAIN_TOOL_GLYPHS,
-    MAIN_TOOL_DOSAVE
+    MAIN_TOOL_DOSAVE,
+    MAIN_TOOL_NEW
 };
 
 enum {
@@ -165,12 +171,18 @@ typedef struct {
 
 extern char verstr[], ws[], *status, *errstatus;
 extern uint32_t theme[];
-extern int numwin, cursor, zip, ascii, selfield, rs, re;
+extern int numwin, cursor, zip, ascii, selfield, rs, re, modified;
 extern ui_win_t *wins;
 extern ui_event_t event;
 extern uint8_t *icon16, *icon64, *tools, *bga;
 extern int input_maxlen, input_refresh;
 extern char *input_str;
+
+/* copy'n'paste functions */
+void copypaste_start(int minunicode);
+void copypaste_copy(int fromunicode, int layer);
+void copypaste_paste(int tounicode, int oneunicode);
+void copypaste_fini();
 
 /* driver specific */
 void *ui_createwin(int w, int h);
@@ -201,12 +213,14 @@ void ui_hex(ui_win_t *win, char c);
 void ui_glyph(ui_win_t *win, int x, int y, int size, int unicode, int layer);
 
 /* common */
+void ui_gettheme(char *fn);
 int ui_casecmp(char *a, char *b, int l);
 void ui_error(char *subsystem, int fmt, ...);
 void ui_openwin(uint32_t unicode);
 void ui_updatetitle(int idx);
 void ui_closewin(int idx);
 int ui_getwin(void *wid);
+void ui_pb(int step, int numstep, int curr, int total, int msg);
 void ui_refreshwin(int idx, int wx, int wy, int ww, int wh);
 void ui_refreshall();
 void ui_main(char *fn);
@@ -217,6 +231,7 @@ void ui_inputfinish();
 void view_about();
 void view_fileops(int save);
 void view_dosave();
+void view_new();
 void view_props();
 void view_ranges();
 void view_glyphs();
@@ -233,6 +248,13 @@ void ctrl_fileops_onenter(int save);
 void ctrl_fileops_onkey();
 void ctrl_fileops_onbtnpress(int save);
 void ctrl_fileops_onclick(int save);
+void ctrl_dosave_onenter();
+void ctrl_dosave_onbtnpress();
+void ctrl_dosave_onclick();
+void ctrl_new_onenter();
+void ctrl_new_onkey();
+void ctrl_new_onbtnpress();
+void ctrl_new_onclick();
 void ctrl_props_onenter();
 void ctrl_props_onkey();
 void ctrl_props_onbtnpress();

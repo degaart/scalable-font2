@@ -57,6 +57,7 @@ char *dict[NUMLANGS][NUMTEXTS + 1] = {
         "Writing file",
         "Rasterizing",
         "Vectorizing",
+        "Copying to clipboard",
 
         "If anytime you feel lost, press [F1]. UNICODE database:",
         "Permission is hereby granted, free of charge, to any person",
@@ -88,8 +89,9 @@ char *dict[NUMLANGS][NUMTEXTS + 1] = {
         "Import",
         "Save",
         "Save modified font?",
-        "No, don't save",
-        "Yes, save",
+        "Drop all glyphs and start anew?",
+        "No",
+        "Yes",
         "Sunday",
         "Monday",
         "Tuesday",
@@ -127,8 +129,15 @@ char *dict[NUMLANGS][NUMTEXTS + 1] = {
         "Vectorize font",
         "Unable to vectorize, compiled without potrace",
         "Rasterize font at given size",
+        "Zoom out, smaller glyphs",
+        "Zoom in, larger glyphs",
+        "Copy and delete glyphs",
+        "Copy glyphs",
+        "Paste glyphs",
+        "Delete glyphs",
         "Search results",
         "undefined by UNICODE",
-        "SSFN LIGATURE"
+        "SSFN LIGATURE",
+        "Selected"
     }
 };

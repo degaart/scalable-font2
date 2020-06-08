@@ -51,7 +51,8 @@ enum {
     PBAR_WRTCHARS,
     PBAR_WRTFILE,
     PBAR_RASTERIZE,
-    PBAR_VECTORIZE
+    PBAR_VECTORIZE,
+    PBAR_COPY
 };
 typedef void (*sfnprogressbar_t)(int step, int numstep, int curr, int total, int msg);
 

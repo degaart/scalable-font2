@@ -67,7 +67,7 @@ typedef struct {
 filelist_t *files = NULL;
 
 int numfiles = 0, scrollfiles = 0, pagefiles = 0, selfiles = -1, ordering = 0, pathX[PATH_MAX/FILENAME_MAX+64] = { 0 }, pathlen;
-int lastsave = -1, clkfiles = 0;
+int lastsave = -1, clkfiles = 0, question_y = 0;
 char fn[PATH_MAX+64] = {0}, filename[FILENAME_MAX+64] = {0}, path[PATH_MAX/FILENAME_MAX+64][FILENAME_MAX], fsearch[256] = { 0 };
 char strrs[16] = { 0 }, strre[16] = { 0 }, fstatus[256];
 
@@ -553,7 +553,6 @@ void ctrl_fileops_onclick(int save)
     selfield = 0;
 }
 
-
 /**
  * Save modified font question window
  */
@@ -561,5 +560,108 @@ void view_dosave()
 {
     ui_win_t *win = &wins[0];
 
-    ui_text(win, 20, 40, lang[FILEOP_DOSAVE]);
+    question_y = (win->h / 2) + 16;
+    ui_text(win, (win->w - ui_textwidth(lang[FILEOP_DOSAVE])) / 2, question_y - 48, lang[FILEOP_DOSAVE]);
+    ui_button(win, 20, question_y, (win->w - 80) / 2, lang[FILEOP_YES], selfield == 1, win->field == 6);
+    ui_button(win, win->w / 2 + 20, question_y, (win->w - 80) / 2, lang[FILEOP_NO], selfield == 2 ? 3 : 2, win->field == 7);
+}
+
+/**
+ * On enter handler
+ */
+void ctrl_dosave_onenter()
+{
+    if(wins[0].field != 7) {
+        wins[0].tool = MAIN_TOOL_SAVE;
+        wins[0].field = 12; selfield = -1;
+        ui_resizewin(&wins[0], wins[0].w, wins[0].h);
+        ui_refreshwin(0, 0, 0, wins[0].w, wins[0].h);
+        ctrl_fileops_onenter(1);
+    }
+    modified = 0;
+}
+
+/**
+ * On button press handler
+ */
+void ctrl_dosave_onbtnpress()
+{
+    selfield = 0;
+    if(question_y && event.y >= question_y && event.y < question_y + 20)
+        selfield = (event.x < wins[0].w / 2) ? 1 : 2;
+}
+
+/**
+ * On click (button release) handler
+ */
+void ctrl_dosave_onclick()
+{
+    int x = wins[0].w / 2;
+    if(question_y && event.y >= question_y && event.y < question_y + 20) {
+        if(event.x < x && selfield == 1) { wins[0].field = 6; ctrl_dosave_onenter(); }
+        if(event.x > x && selfield == 2) { wins[0].field = 7; ctrl_dosave_onenter(); }
+    }
+}
+
+/**
+ * Start new font question window
+ */
+void view_new()
+{
+    ui_win_t *win = &wins[0];
+
+    question_y = (win->h / 2) + 16;
+    ui_text(win, (win->w - ui_textwidth(lang[FILEOP_NEW])) / 2, question_y - 48, lang[FILEOP_NEW]);
+    ui_button(win, 20, question_y, (win->w - 80) / 2, lang[FILEOP_YES], selfield == 1 ? 3 : 2, win->field == 6);
+    ui_button(win, win->w / 2 + 20, question_y, (win->w - 80) / 2, lang[FILEOP_NO], selfield == 2, win->field == 7);
+}
+
+/**
+ * On enter handler
+ */
+void ctrl_new_onenter()
+{
+    int i;
+    if(wins[0].field != 7) {
+        for(i=1; i < numwin; i++)
+            if(wins[i].winid)
+                ui_closewin(i);
+        numwin = 1;
+        sfn_free(); sfn_init(ui_pb);
+    }
+    wins[0].tool = MAIN_TOOL_GLYPHS;
+    wins[0].field = selfield = -1;
+}
+
+/**
+ * On key handler
+ */
+void ctrl_new_onkey()
+{
+    if(event.x == K_BACKSPC) {
+        wins[0].tool = MAIN_TOOL_GLYPHS;
+        wins[0].field = selfield = -1;
+    }
+}
+
+/**
+ * On button press handler
+ */
+void ctrl_new_onbtnpress()
+{
+    selfield = 0;
+    if(question_y && event.y >= question_y && event.y < question_y + 20)
+        selfield = (event.x < wins[0].w / 2) ? 1 : 2;
+}
+
+/**
+ * On click (button release) handler
+ */
+void ctrl_new_onclick()
+{
+    int x = wins[0].w / 2;
+    if(question_y && event.y >= question_y && event.y < question_y + 20) {
+        if(event.x < x && selfield == 1) { wins[0].field = 6; ctrl_new_onenter(); }
+        if(event.x > x && selfield == 2) { wins[0].field = 7; ctrl_new_onenter(); }
+    }
 }

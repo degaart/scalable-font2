@@ -15,6 +15,12 @@ LIBS += -framework SDL
 DRIVER = sdl
 else
 # Linux
+ifneq ("$(wildcard /usr/local/include/SDL2/SDL.h)","")
+SRCS += ui_sdl.c
+CFLAGS += -I/usr/local/include/SDL2
+LIBS += -L/usr/local/lib -lSDL2
+DRIVER = sdl
+else
 ifneq ("$(wildcard /usr/include/SDL2/SDL.h)","")
 SRCS += ui_sdl.c
 CFLAGS += -I/usr/include/SDL2
@@ -28,6 +34,7 @@ CFLAGS += -I$(MINGWSDL)/i686-w64-mingw32/include/SDL2
 LIBDIRS = -static-libgcc -L$(MINGWSDL)/i686-w64-mingw32/lib -L$(MINGWSDL)/i686-w64-mingw32/bin
 LIBS += -lSDL2
 DRIVER = sdl
+endif
 endif
 endif
 endif
@@ -51,11 +58,18 @@ CFLAGS += -I/opt/local/include/X11
 LIBS += -lX11 -L/opt/X11/lib -L/opt/local/lib
 DRIVER = x11
 else
+ifneq ("$(wildcard /usr/local/lib/libX11*)","")
+SRCS += ui_x11.c
+CFLAGS += -I/usr/local/include/X11
+LIBS += -L/usr/local/lib -L/usr/local/X11/lib -lX11
+DRIVER = x11
+else
 ifneq ("$(wildcard /usr/lib/libX11*)","")
 SRCS += ui_x11.c
 CFLAGS += -I/usr/include/X11
 LIBS += -lX11
 DRIVER = x11
+endif
 endif
 endif
 endif
@@ -73,7 +87,7 @@ endif
 %: %.c icon.h lang.h
 	$(CC) $(CFLAGS) $< -c $@
 
-# include libsfn .o files directly so that we don't rely on ar under windows
+# include libsfn .o files directly so that we don't rely on 'ar' under mingw
 $(TARGET): $(OBJS)
 ifeq ($(wildcard ../libsfn/*.o),)
 	@make -C ../libsfn all

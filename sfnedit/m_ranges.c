@@ -36,7 +36,7 @@
 
 int showallrange = 0, numranges = 0, scrollranges = 0, pageranges = 0, selranges = 0, clkranges = -1, rres[UNICODE_NUMBLOCKS];
 char rsearch[32] = { 0 };
-extern int scrollglyphs, selstart, selend, greset;
+extern int scrollglyphs, selstart, selend, greset, gzoom;
 
 /**
  * UNICODE ranges window
@@ -119,7 +119,7 @@ void ctrl_ranges_onenter()
         greset = 1;
         selstart = ublocks[rres[selranges]].start;
         selend = ublocks[rres[selranges]].end;
-        scrollglyphs = selstart & ~15;
+        scrollglyphs = selstart & ~((1<<gzoom) - 1);
     }
     ui_resizewin(&wins[0], wins[0].w, wins[0].h);
     ui_refreshwin(0, 0, 0, wins[0].w, wins[0].h);

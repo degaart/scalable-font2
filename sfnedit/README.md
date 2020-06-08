@@ -3,28 +3,23 @@ Scalable Screen Font 2.0 Editor
 
 This is a GUI font editor. For further details, read the [documentation](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/sfnedit.md).
 
+```sh
+$ ./sfnedit [-l (lang)] [-t (themefile)] [fontfile]
+```
+
+- language is autodetected, but you can override that. The flag's argument is a two letter language code, eg. `-l hu`
+- theme can be loaded from GIMP Palette files, like `-t theme.gpl`. For the default theme see [theme.gpl](https://gitlab.com/bztsrc/scalable-font2/blob/master/sfnedit/misc/theme.gpl)
+- finally `fontfile` (if specified) will be loaded on execution
+
 Supported Formats
 -----------------
 
 It uses the same [libsfn](https://gitlab.com/bztsrc/scalable-font2/tree/master/libsfn) as the converter tool, so it can
+import [SSFN](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/sfn_format.md) (.sfn),
+[ASC](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/asc_format.md) (.asc), PostScript (.pfa, .pfb),
+TrueType (.ttf), OpenType (.otf), X11 fonts (.bdf, .pcf), console fonts (.psf, .fnt, .fon) etc.
 
-### Import Fonts
-
-- [SSFN](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/sfn_format.md) (.sfn)
-- [ASC](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/asc_format.md) (.asc)
-- PostScript Type 1 (.ps)
-- TrueType (.ttf)
-- OpenType (.otf)
-- Windows FNT (.fnt, .fon)
-- X11 Bitmap Distribution Format (.bdf)
-- X11 Portable Compiled Format (.pcf)
-- PC Screen Font 2.0 (.psf, .psfu)
-- GNU unifont hex (.hex)
-
-### Save Fonts
-
-- SSFN
-- ASC
+It saves in SSFN and ASC formats.
 
 Dependencies
 ------------

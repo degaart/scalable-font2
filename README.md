@@ -6,12 +6,12 @@ related libc dependency and it does not use floating point numbers. It's extreme
 very easy on memory, perfect for embedded systems and hobby OS kernels. It was a hobby project for me, so donations
 and contributions would be much appreciated if it turns out to be useful to you.
 
-<img alt="Scalable Screen Font Features" src="https://gitlab.com/bztsrc/scalable-font2/raw/master/features.png">
-
  - [ssfn.h](https://gitlab.com/bztsrc/scalable-font2/blob/master/ssfn.h) the SSFN renderer itself
  - [sfnconv](https://gitlab.com/bztsrc/scalable-font2/tree/master/sfnconv) a command line SSFN converter tool
  - [sfnedit](https://gitlab.com/bztsrc/scalable-font2/tree/master/sfnedit) multiplatform SSFN font converter and editor with a GUI (WiP)
  - [sfntest](https://gitlab.com/bztsrc/scalable-font2/tree/master/sfntest) test applications and [API](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/API.md) usage examples
+
+<img alt="Scalable Screen Font Features" src="https://gitlab.com/bztsrc/scalable-font2/raw/master/features.png">
 
 SSFN renderer does not use existing font formats directly (because most formats are inefficient or just insane),
 so you first have to compress those into [SSFN](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/sfnconv.md).
