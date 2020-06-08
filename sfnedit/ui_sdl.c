@@ -35,7 +35,7 @@
 
 extern uint8_t *icon32;
 SDL_Surface *icons = NULL;
-SDL_Cursor *cursors[3];
+SDL_Cursor *cursors[5];
 int btnflags = 0, keyflags = 0, mx = 0, my = 0, ti = 0;
 
 /**

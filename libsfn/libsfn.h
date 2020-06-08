@@ -32,12 +32,16 @@
 
 #define iswhitespace(x) ((x)==0x20||(x)==0xA0)
 
+/**
+ * Messages for progress bar and progress bar callback prototype
+ */
 enum {
     PBAR_NONE = 0,
     PBAR_MEASURE,
     PBAR_OUTLINE,
     PBAR_GETKERN,
     PBAR_QUANT,
+    PBAR_RDFILE,
     PBAR_BITMAP,
     PBAR_TALLPIX,
     PBAR_WIDEPIX,
@@ -51,16 +55,9 @@ enum {
 };
 typedef void (*sfnprogressbar_t)(int step, int numstep, int curr, int total, int msg);
 
-typedef struct {
-    unsigned char type;
-    unsigned char px;
-    unsigned char py;
-    unsigned char c1x;
-    unsigned char c1y;
-    unsigned char c2x;
-    unsigned char c2y;
-} sfncont_t;
-
+/**
+ * Fragments structure, private
+ */
 typedef struct {
     unsigned char type;
     int w, h;
@@ -71,25 +68,18 @@ typedef struct {
     unsigned char *data;
 } sfnfrag_t;
 
-typedef struct {
-    unsigned char type;
-    unsigned char color;
-    int len, miny, minx;
-    unsigned char *data;
-} sfnlayer_t;
-
-typedef struct {
-    int n;
-    char x;
-    char y;
-} sfnkern_t;
-
+/**
+ * Kerning group, private
+ */
 typedef struct {
     int first;
     int last;
     int idx;
 } sfnkgrp_t;
 
+/**
+ * Kerning position, private
+ */
 typedef struct {
     int idx;
     int pos;
@@ -97,54 +87,100 @@ typedef struct {
     unsigned char *data;
 } sfnkpos_t;
 
+
+/**
+ * Contour command
+ */
 typedef struct {
-    unsigned char width;
-    unsigned char height;
-    unsigned char ovl_x;
-    unsigned char adv_x;
-    unsigned char adv_y;
-    unsigned char numlayer;
-    sfnlayer_t *layers;
-    int numkern, kgrp;
-    sfnkern_t *kern;
-    unsigned char rtl, hintv[32], hinth[32];
-    int numfrag;
+    unsigned char type;         /* one of SSFN_CONTOUR_x defines */
+    unsigned char px;           /* on curve point coordinates */
+    unsigned char py;
+    unsigned char c1x;          /* control point #1 coordinates */
+    unsigned char c1y;
+    unsigned char c2x;          /* control point #2 coordinates */
+    unsigned char c2y;
+} sfncont_t;
+
+/**
+ * One glyph layer
+ */
+typedef struct {
+    unsigned char type;         /* one of SSFN_FRAG_x defines */
+    unsigned char color;        /* color palette index, 0xFE foreground, 0xFF background */
+    int len, miny, minx;        /* private properties, len = sfncont_t array length */
+    unsigned char *data;        /* either color index map, or sfncont_t array */
+} sfnlayer_t;
+
+/**
+ * One kerning relation
+ */
+typedef struct {
+    int n;                      /* next code point in relation */
+    char x;                     /* relative horizontal offset */
+    char y;                     /* relative vertical offset */
+} sfnkern_t;
+
+/**
+ * One glyph
+ */
+typedef struct {
+    unsigned char width;        /* glyph width */
+    unsigned char height;       /* glyph height */
+    unsigned char ovl_x;        /* overlay x */
+    unsigned char adv_x;        /* horizontal advance */
+    unsigned char adv_y;        /* vertical advance */
+    unsigned char numlayer;     /* number of layers */
+    sfnlayer_t *layers;         /* the layers */
+    int numkern, kgrp;          /* private, number of kerning relations and groups */
+    sfnkern_t *kern;            /* kerning relations array */
+    unsigned char rtl, hintv[33], hinth[33]; /* right-toleft flag and hinting */
+    int numfrag;                /* private, used by sfn_save() */
     int *frags;
 } sfnglyph_t;
 
+/**
+ * In-memory font structure
+ */
 typedef struct {
-    unsigned char family;
-    unsigned char style;
-    unsigned char width;
-    unsigned char height;
-    unsigned char baseline;
-    unsigned char underline;
-    char *filename;
-    char *name;
-    char *familyname;
-    char *subname;
-    char *revision;
-    char *manufacturer;
-    char *license;
-    sfnglyph_t glyphs[0x110000];
-    int numcpal;
-    unsigned char cpal[1024];
-    char *ligatures[SSFN_LIG_LAST-SSFN_LIG_FIRST+1];
-    int numfrags;
+    unsigned char family;       /* font family type, see sfn_setfamilytype() */
+    unsigned char style;        /* ORd SSFN_STYLE_x defines */
+    unsigned char width;        /* overall font width */
+    unsigned char height;       /* overall font height */
+    unsigned char baseline;     /* baseline (ascent) */
+    unsigned char underline;    /* underline position */
+    char *filename;             /* filename */
+    char *name;                 /* unique name of the font */
+    char *familyname;           /* font family name */
+    char *subname;              /* font family sub-name */
+    char *revision;             /* font revision / version string */
+    char *manufacturer;         /* font designer / creator / foundry */
+    char *license;              /* font license */
+    sfnglyph_t glyphs[0x110000];/* glyphs array */
+    int numcpal;                /* number of color palette entries */
+    unsigned char cpal[1024];   /* color palette */
+    char *ligatures[SSFN_LIG_LAST-SSFN_LIG_FIRST+1]; /* ligatures, UTF-8 strings for U+F000 .. U+F8FF */
+    int numskip;                /* code points to skip on load, see sfn_skipadd() */
+    int *skip;
+    int numfrags;               /* private, used by sfn_save() and sfn_glyph() */
     sfnfrag_t *frags;
     int numkpos;
     sfnkpos_t *kpos;
-    int numskip;
-    int *skip;
     long int total;
     uint16_t *p;
     int np, ap, mx, my, lx, ly;
 } sfnctx_t;
+/**
+ * The global font context
+ */
 extern sfnctx_t ctx;
+/**
+ * Progress bar callback
+ */
 extern sfnprogressbar_t pbar;
 
 /*** arguments ***/
-extern int rs, re, replace, hinting, adv, relul, rasterize, dump, origwh, unicode, lastuni, quiet, dorounderr;
+extern int rs, re, replace, skipundef, skipcode, hinting, adv, relul, rasterize, dump, origwh;
+extern int unicode, lastuni, quiet, dorounderr;
 
 /*** unicode.c ***/
 #include "unicode.h"
@@ -159,17 +195,17 @@ void sfn_setstr(char **s, char *n, int len);
 void sfn_chardel(int unicode);
 int sfn_charadd(int unicode, int w, int h, int ax, int ay, int ox);
 sfnlayer_t *sfn_layeradd(int unicode, int t, int x, int y, int w, int h, int c, unsigned char *data);
+void sfn_layerdel(int unicode, int idx);
 int sfn_contadd(sfnlayer_t *lyr, int t, int px, int py, int c1x, int c1y, int c2x, int c2y);
 int sfn_kernadd(int unicode, int next, int x, int y);
-void sfn_hintadd(int unicode);
+void sfn_hintgen(int unicode);
 unsigned char sfn_cpaladd(int r, int g, int b, int a);
 void sfn_skipadd(int unicode);
 int sfn_load(char *filename, int dump);
 int sfn_save(char *filename, int ascii, int compress);
 void sfn_sanitize();
+int sfn_glyph(int size, int unicode, int layer, ssfn_glyph_t *g);
 void sfn_rasterize(int size);
+void sfn_vectorize();
 void sfn_coverage();
 void sfn_free();
-
-/*** potrace.c ***/
-void sfn_vectorize();

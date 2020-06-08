@@ -31,12 +31,15 @@ enum {
     /* error messages */
     ERR_MEM = 0,
     ERR_DISPLAY,
+    ERR_LOAD,
+    ERR_SAVE,
     ERR_SIZE,
     /* status bar */
     STAT_MEASURE,
     STAT_OUTLINE,
     STAT_GETKERN,
     STAT_QUANT,
+    STAT_RDFILE,
     STAT_BITMAP,
     STAT_TALLPIX,
     STAT_WIDEPIX,

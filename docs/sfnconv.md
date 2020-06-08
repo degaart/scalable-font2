@@ -21,8 +21,9 @@ file size.
 Reading bitmap font has no library dependencies, and the tool can read the most common bitmap
 formats: [PC Screen Font](https://www.win.tue.nl/~aeb/linux/kbd/font-formats-1.html) (.psfu,
 Linux Console's format), [X11 Bitmap Distribution Format](https://www.x.org/docs/BDF/bdf.pdf) (.bdf) and
-[GNU unifont](http://unifoundry.com/unifont/index.html) (.hex). Other bitmap formats, like X11
-Portable Compiled Font (.pcf), Windows FNT/FON (.fnt) are supported through freetype2.
+[X11 Portable Compiled Font](http://ftp.x.org/pub/R6.4/xc/lib/font/bitmap/) (.pcf),
+[GNU unifont](http://unifoundry.com/unifont/index.html) (.hex). Other bitmap formats, like Windows FNT/FON (.fnt)
+are supported through freetype2.
 
 Bitmap fonts are also compressed, but with a loss-less deduplication algorithm.
 
@@ -126,20 +127,20 @@ Sometimes fonts contain bad glyphs or invalid metrics. The converter warns you a
 $ ./sfnconv UbuntuBold.ttf UbuntuBold.sfn
 Loaded 'UbuntuBold.ttf' (FreeType2, 0 - 10FFFF)
   Name 'Ubuntu' num_glyphs: 1264, units_per_EM: 1000, ascender: 932, underline: -183, vector
-Inconsistent font: U+00048A, xMax 786 != xMin+w 788
-Inconsistent font: U+00048B, xMax 619 != xMin+w 620
-Inconsistent font: U+0004C5, xMax 809 != xMin+w 811
-Inconsistent font: U+0004C6, xMax 654 != xMin+w 655
-Inconsistent font: U+0004C9, xMax 765 != xMin+w 767
-Inconsistent font: U+0004CA, xMax 606 != xMin+w 607
-Inconsistent font: U+0004CD, xMax 941 != xMin+w 943
-Inconsistent font: U+0004CE, xMax 783 != xMin+w 784
-Inconsistent font: ascender 932 != max(yMax) 962
+libsfn: inconsistent font: U+00048A, xMax 786 != xMin+w 788
+libsfn: inconsistent font: U+00048B, xMax 619 != xMin+w 620
+libsfn: inconsistent font: U+0004C5, xMax 809 != xMin+w 811
+libsfn: inconsistent font: U+0004C6, xMax 654 != xMin+w 655
+libsfn: inconsistent font: U+0004C9, xMax 765 != xMin+w 767
+libsfn: inconsistent font: U+0004CA, xMax 606 != xMin+w 607
+libsfn: inconsistent font: U+0004CD, xMax 941 != xMin+w 943
+libsfn: inconsistent font: U+0004CE, xMax 783 != xMin+w 784
+libsfn: inconsistent font: ascender 932 != max(yMax) 962
   Numchars: 1194, Bounding box: (-170, -221), (3475, 962) dx 3645 dy 1183, w: 3455, h: 1142, baseline: 962
   Scaling to 3455 x 3455, average: 570 x 741
-Irregular dimensions in font U+001FAA:  width: 1444
-Irregular dimensions in font U+00EFFD:  width: 1668
-Irregular dimensions in font U+00F200:  width: 3455 (6 times the average, can't be right!!!)
+libsfn: irregular dimensions in font U+001FAA:  width: 1444
+libsfn: irregular dimensions in font U+00EFFD:  width: 1668
+libsfn: irregular dimensions in font U+00F200:  width: 3455 (6 times the average, can't be right!!!)
   Kerning 1086 pairs
 Saving 'UbuntuBold.sfn' (bin, compress)
  Numchars: 1189, Numlayers: 2641
@@ -153,6 +154,13 @@ $ ./sfnconv -S U+EFFD -S U+F200 UbuntuBold.ttf UbuntuBold.sfn
   Numchars: 1192, Bounding box: (-170, -221), (1452, 962) dx 1622 dy 1183, w: 1444, h: 1142, baseline: 962
   Scaling to 1444 x 1444, average: 565 x 740
       ...
+```
+
+There's a special case for skip, `-S undef` which will skip all characters that are not defined by
+UNICODE.
+
+```sh
+$ ./sfnconv -S undef unifont.bdf.gz unifont.sfn.gz
 ```
 
 ### Specifying or Altering Font Metrics

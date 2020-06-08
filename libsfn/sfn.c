@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include "potracelib/potracelib.h"
 #if HAS_ZLIB
 #include <zlib.h>
 #endif
@@ -38,13 +39,21 @@
 #define SSFN_IMPLEMENTATION
 #include <ssfn.h>
 #include "libsfn.h"
-#ifdef HAS_FT
 #include "vector.h"
-#endif
 #include "bitmap.h"
 
-int rs = 0, re = 0x10FFFF, replace = 0, hinting = 0, adv = 0, relul = 0, rasterize = 0, origwh = 0, lastuni = -1;
-int *fidx, dorounderr = 0;
+/* potrace bitmap stuff */
+#define BM_WORDSIZE ((int)sizeof(potrace_word))
+#define BM_WORDBITS (8*BM_WORDSIZE)
+#define BM_HIBIT (((potrace_word)1)<<(BM_WORDBITS-1))
+#define BM_ALLBITS (~(potrace_word)0)
+#define bm_scanline(bm, y) ((bm).map + (ptrdiff_t)(y)*(ptrdiff_t)(bm).dy)
+#define bm_index(bm, x, y) (&bm_scanline(bm, y)[(x)/BM_WORDBITS])
+#define bm_mask(x) (BM_HIBIT >> ((x) & (BM_WORDBITS-1)))
+#define BM_USET(bm, x, y) (*bm_index(bm, x, y) |= bm_mask(x))
+
+int rs = 0, re = 0x10FFFF, replace = 0, skipundef = 0, skipcode = 0, hinting = 0, adv = 0, relul = 0;
+int rasterize = 0, origwh = 0, lastuni = -1, *fidx, dorounderr = 0;
 sfnctx_t ctx;
 sfnprogressbar_t pbar = NULL;
 
@@ -130,18 +139,18 @@ void sfn(unsigned char *ptr, int size)
 
     /* sanity checks */
     if((unsigned int)size != font->size || memcmp((unsigned char*)font + font->size - 4, SSFN_ENDMAGIC, 4))
-        { if(!quiet) { fprintf(stderr, "missing end magic or incorrect font size\n"); } return; }
-    if(!font->fragments_offs) { if(!quiet) { fprintf(stderr, "missing fragments table\n"); } return; }
-    if(!font->characters_offs) { if(!quiet) { fprintf(stderr, "missing characters table\n"); } return; }
+        { if(!quiet) { fprintf(stderr, "libsfn: missing end magic or incorrect font size\n"); } return; }
+    if(!font->fragments_offs) { if(!quiet) { fprintf(stderr, "libsfn: missing fragments table\n"); } return; }
+    if(!font->characters_offs) { if(!quiet) { fprintf(stderr, "libsfn: missing characters table\n"); } return; }
     if(font->characters_offs <= font->fragments_offs) {
-        if(!quiet) { fprintf(stderr, "incorrect characters table offset\n"); } return; }
+        if(!quiet) { fprintf(stderr, "libsfn: incorrect characters table offset\n"); } return; }
     if(font->kerning_offs && (font->kerning_offs <= font->characters_offs || (font->ligature_offs &&
         font->kerning_offs <= font->ligature_offs)))
-        { if(!quiet) { fprintf(stderr, "incorrect kerning table offset\n"); } return; }
+        { if(!quiet) { fprintf(stderr, "libsfn: incorrect kerning table offset\n"); } return; }
     if(font->ligature_offs && font->ligature_offs <= font->characters_offs)
-        { if(!quiet) { fprintf(stderr, "incorrect ligature table offset\n"); } return; }
+        { if(!quiet) { fprintf(stderr, "libsfn: incorrect ligature table offset\n"); } return; }
     if(font->cmap_offs && ((font->size - font->cmap_offs) & 3))
-        { if(!quiet) { fprintf(stderr, "incorrect cmap table offset\n"); } return; }
+        { if(!quiet) { fprintf(stderr, "libsfn: incorrect cmap table offset\n"); } return; }
 
     /* header */
     ctx.family = SSFN_TYPE_FAMILY(font->type);
@@ -175,7 +184,7 @@ void sfn(unsigned char *ptr, int size)
         else if((ptr[0] & 0xC0) == 0xC0) { k = (((ptr[0] & 0x3F) << 8) | ptr[1]) + 1; unicode += k; ptr += 2; }
         else if((ptr[0] & 0xC0) == 0x80) { k = (ptr[0] & 0x3F) + 1; unicode += k; ptr++; }
         else {
-            if(pbar) (*pbar)(0, 0, unicode, 0x10FFFF, PBAR_OUTLINE);
+            if(pbar) (*pbar)(0, 0, unicode, 0x10FFFF, PBAR_RDFILE);
             n = ptr[1]; k = ptr[0];
             u = unicode >= rs && unicode <= re ? sfn_charadd(unicode, ptr[2], ptr[3], ptr[4], ptr[5], ptr[0] & 0x3F) : 0;
             ptr += 6; color = 0xFE;
@@ -188,7 +197,7 @@ void sfn(unsigned char *ptr, int size)
                     else { m = (ptr[4] << 16) | (ptr[3] << 8) | ptr[2]; ptr += 5; }
                     if(u) {
                         if(m < font->fragments_offs || (unsigned int)m >= font->characters_offs) {
-                            if(!quiet) fprintf(stderr,"Incorrect fragment offset %x\n",m);
+                            if(!quiet) fprintf(stderr,"libsfn: incorrect fragment offset %x\n",m);
                             return;
                         }
                         frg = (unsigned char*)font + m;
@@ -225,7 +234,7 @@ void sfn(unsigned char *ptr, int size)
                             /* bitmap */
                             m = ((frg[0] & 0x1F) + 1) << 3;
                             bitmap = (unsigned char*)malloc(m * (frg[1] + 1));
-                            if(!bitmap) { fprintf(stderr,"memory allocation error\n"); return; }
+                            if(!bitmap) { fprintf(stderr,"libsfn: memory allocation error\n"); return; }
                             memset(bitmap, 0xFF, m * (frg[1] + 1));
                             cmd = frg + 2;
                             for(i=l=0;i<(int)((frg[0] & 0x3F) + 1) * (frg[1] + 1);i++) {
@@ -237,7 +246,7 @@ void sfn(unsigned char *ptr, int size)
                             /* pixel map */
                             j = (frg[2] + 1) * (frg[3] + 1);
                             bitmap = rle_dec(frg + 4, (((frg[0] & 0x1F) << 8) | frg[1]) + 1, &j);
-                            if(!bitmap) { fprintf(stderr,"memory allocation error\n"); return; }
+                            if(!bitmap) { fprintf(stderr,"libsfn: memory allocation error\n"); return; }
                             sfn_layeradd(unicode, SSFN_FRAG_PIXMAP, x, y, frg[2] + 1, frg[3] + 1, 0xFE, bitmap);
                             free(bitmap);
                         } else if((frg[0] & 0x60) == 0x40) {
@@ -267,7 +276,21 @@ void sfn(unsigned char *ptr, int size)
                             }
                         } else {
                             /* hinting grid */
-                            /* SSFN_FRAG_HINTING */
+                            j = frg[0] & 31; frg++;
+                            memset(ctx.glyphs[unicode].hintv, 0, 33);
+                            memset(ctx.glyphs[unicode].hinth, 0, 33);
+                            if(x > 0) {
+                                ctx.glyphs[unicode].hintv[0] = j + 1;
+                                ctx.glyphs[unicode].hintv[1] = x - 1;
+                                for(l = 2; j && l < 33; l++, frg++, j--)
+                                    ctx.glyphs[unicode].hintv[l] = ctx.glyphs[unicode].hintv[l - 1] + frg[0];
+                            } else
+                            if(y > 0) {
+                                ctx.glyphs[unicode].hinth[0] = j + 1;
+                                ctx.glyphs[unicode].hinth[1] = y - 1;
+                                for(l = 2; j && l < 33; l++, frg++, j--)
+                                    ctx.glyphs[unicode].hinth[l] = ctx.glyphs[unicode].hinth[l - 1] + frg[0];
+                            }
                         }
                         color = 0xFE;
                     }
@@ -278,8 +301,10 @@ void sfn(unsigned char *ptr, int size)
     }
 
     /* color map */
-    if(font->cmap_offs)
+    if(font->cmap_offs) {
         memcpy(ctx.cpal, (uint8_t*)font + font->cmap_offs, font->size - font->cmap_offs - 4);
+        ctx.numcpal = (font->size - font->cmap_offs - 4) / 4;
+    }
 }
 
 /**
@@ -290,7 +315,7 @@ void sfn(unsigned char *ptr, int size)
  */
 void asc(char *ptr, int size)
 {
-    int x, y, w, h, o, i, par[6], unicode = -1, nc = 0, numchars, len = 0, line = 1;
+    int x, y, w = 0, h = 0, o, i, par[6], unicode = -1, nc = 0, numchars, len = 0, line = 1;
     char *end = ptr + size-4, *e;
     unsigned char *bitmap = NULL, color = 0xFE;
     sfnlayer_t *currlayer = NULL;
@@ -326,7 +351,7 @@ void asc(char *ptr, int size)
                 case 'r': if(*e == '\"') { e++; sfn_setstr(&ctx.revision, e, 0); } break;
                 case 'm': if(*e == '\"') { e++; sfn_setstr(&ctx.manufacturer, e, 0); } break;
                 case 'l': if(*e == '\"') { e++; sfn_setstr(&ctx.license, e, 0); } break;
-                default: fprintf(stderr,"Line %d: unknown property\n",line); break;
+                default: fprintf(stderr,"libsfn: line %d: unknown property\n",line); break;
             }
         }
         if(unicode != -1) {
@@ -339,7 +364,7 @@ void asc(char *ptr, int size)
             /* bitmap layer */
             if(*ptr == '.' || *ptr == 'X' || *ptr == 'x') {
                 bitmap = realloc(bitmap, len);
-                if(!bitmap) { fprintf(stderr,"Line %d: memory allocation error\n",line); return; }
+                if(!bitmap) { fprintf(stderr,"libsfn: line %d: memory allocation error\n",line); return; }
                 for(i = 0; i < len && ptr < end && *ptr && (*ptr == '.' || *ptr == 'X' || *ptr == 'x' ||
                     *ptr == '\r' || *ptr == '\n'); ptr++) {
                     switch(*ptr) {
@@ -357,7 +382,7 @@ void asc(char *ptr, int size)
             if((*ptr == '-' || (*ptr >= '0' && *ptr <= '9') || (*ptr >= 'A' && *ptr <= 'F') || (*ptr >= 'a' && *ptr <= 'f')) &&
                 ptr[1] != ' ') {
                 bitmap = realloc(bitmap, len);
-                if(!bitmap) { fprintf(stderr,"Line %d: memory allocation error\n",line); return; }
+                if(!bitmap) { fprintf(stderr,"libsfn: line %d: memory allocation error\n",line); return; }
                 for(i = 0; i < len && ptr < end && *ptr && (*ptr == ' ' || *ptr == '-' || (*ptr >= '0' && *ptr <= '9') ||
                     (*ptr >= 'A' && *ptr <= 'F') || (*ptr >= 'a' && *ptr <= 'f') || *ptr == '\r' || *ptr == '\n'); ptr++) {
                         if(*ptr == '\n') line++; else
@@ -375,25 +400,27 @@ void asc(char *ptr, int size)
             if(*ptr == 'H') {
                 for(i = 0, ptr += 2; i < 32 && ptr < end && *ptr && *ptr != '\r' && *ptr != '\n';) {
                     while(*ptr && (*ptr < '0' || *ptr > '9')) ptr++;
-                    ctx.glyphs[unicode].hinth[i++] = atoi(ptr);
+                    ctx.glyphs[unicode].hinth[1+i++] = atoi(ptr);
                     while(*ptr >= '0' && *ptr <= '9') ptr++;
                 }
+                ctx.glyphs[unicode].hinth[0] = i;
                 currlayer = NULL;
             } else
             /* vertical hinting grid */
             if(*ptr == 'V') {
                 for(i = 0, ptr += 2; i < 32 && ptr < end && *ptr && *ptr != '\r' && *ptr != '\n';) {
                     while(*ptr && (*ptr < '0' || *ptr > '9')) ptr++;
-                    ctx.glyphs[unicode].hintv[i++] = atoi(ptr);
+                    ctx.glyphs[unicode].hintv[1+i++] = atoi(ptr);
                     while(*ptr >= '0' && *ptr <= '9') ptr++;
                 }
+                ctx.glyphs[unicode].hintv[0] = i;
                 currlayer = NULL;
             } else
             /* kerning info */
             if(*ptr == 'k') {
                 for(ptr+=2, i=0; ptr < end && *ptr && ptr[1] != '\r' && ptr[1] != '\n'; i++) {
                     par[1] = par[2] = 0;
-                    if(ptr[0] == 'U' && ptr[1] == '+') {
+                    if((ptr[0] == 'U' || ptr[0] == 'u') && ptr[1] == '+') {
                         ptr += 2;
                         par[0] = gethex(ptr, 6);
                         while((*ptr >= '0' && *ptr <= '9') || (*ptr >= 'A' && *ptr <= 'F') || (*ptr >= 'a' && *ptr <= 'f'))
@@ -414,7 +441,7 @@ void asc(char *ptr, int size)
                         ctx.glyphs[unicode].numkern += 512;
                         ctx.glyphs[unicode].kern = (sfnkern_t*)realloc(ctx.glyphs[unicode].kern,
                             ctx.glyphs[unicode].numkern * sizeof(sfnkern_t));
-                        if(!ctx.glyphs[unicode].kern) { fprintf(stderr,"Line %d: memory allocation error\n",line); return; }
+                        if(!ctx.glyphs[unicode].kern) { fprintf(stderr,"libsfn: line %d: memory allocation error\n",line); return; }
                     }
                     ctx.glyphs[unicode].kern[i].n = par[0];
                     ctx.glyphs[unicode].kern[i].x = par[1];
@@ -436,35 +463,36 @@ void asc(char *ptr, int size)
                 }
                 ptr--;
                 if(*e == 'm') {
-                    if(i<2) {fprintf(stderr,"Line %d: too few move arguments in U+%06X\n",line,unicode);exit(0);}
+                    if(i<2) {fprintf(stderr,"libsfn: line %d: too few move arguments in U+%06X\n",line,unicode);exit(0);}
                     currlayer = sfn_layeradd(unicode, SSFN_FRAG_CONTOUR, 0, 0, 0, 0, color, NULL);
                     sfn_contadd(currlayer, SSFN_CONTOUR_MOVE, par[0], par[1], 0,0, 0,0);
                 } else if(currlayer) {
                     switch(*e) {
                         case 'l':
-                            if(i<2) fprintf(stderr,"Line %d: too few line arguments in U+%06X\n",line,unicode);
+                            if(i<2) fprintf(stderr,"libsfn: line %d: too few line arguments in U+%06X\n",line,unicode);
                             else sfn_contadd(currlayer, SSFN_CONTOUR_LINE, par[0], par[1], 0,0, 0,0);
                         break;
 
                         case 'q':
-                            if(i<4) fprintf(stderr,"Line %d: too few quadratic curve arguments in U+%06X\n",line,unicode);
+                            if(i<4) fprintf(stderr,"libsfn: line %d: too few quadratic curve arguments in U+%06X\n",line,unicode);
                             else sfn_contadd(currlayer, SSFN_CONTOUR_QUAD, par[0], par[1], par[2], par[3], 0,0);
                         break;
 
                         case 'c':
-                            if(i<6) fprintf(stderr,"Line %d: too few bezier curve arguments in U+%06X\n",line,unicode);
+                            if(i<6) fprintf(stderr,"libsfn: line %d: too few bezier curve arguments in U+%06X\n",line,unicode);
                             else sfn_contadd(currlayer, SSFN_CONTOUR_CUBIC, par[0], par[1], par[2], par[3], par[4], par[5]);
                         break;
                     }
                 } else {
-                    fprintf(stderr,"Line %d: contour path does not start with a 'move to' command in U+%06X\n",line,unicode);
+                    fprintf(stderr,"libsfn: line %d: contour path does not start with a 'move to' command in U+%06X\n",line,
+                        unicode);
                     break;
                 }
             }
         }
         /* characters */
         if(ptr[-1] == '\n' && ptr[0] == '=' && ptr[1] == '=' && ptr[2] == '=') {
-            if(pbar) (*pbar)(0, 0, ++nc, numchars, PBAR_OUTLINE);
+            if(pbar) (*pbar)(0, 0, ++nc, numchars, PBAR_RDFILE);
             ptr +=  5; unicode = gethex(ptr, 6);
             ptr += 10; w = atoi(ptr); while(*ptr && *ptr != '\r' && *ptr != '\n' && *ptr != '=') ptr++;
             ptr +=  2; h = atoi(ptr); while(*ptr && *ptr != '\r' && *ptr != '\n' && *ptr != '=') ptr++;
@@ -557,7 +585,9 @@ void sfn_chardel(int unicode)
 int sfn_charadd(int unicode, int w, int h, int ax, int ay, int ox)
 {
     int i;
-    if(unicode < rs || unicode > re || unicode < 0 || unicode > 0x10FFFF || (ctx.glyphs[unicode].layers && !replace)) return 0;
+
+    if(unicode < rs || unicode > re || unicode < 0 || unicode > 0x10FFFF || (ctx.glyphs[unicode].layers && !replace) ||
+        (skipundef && uniname(unicode) == UNICODE_NUMNAMES)) return 0;
     for(i = 0; i < ctx.numskip; i++)
         if(ctx.skip[i] == unicode) return 0;
     if(ctx.glyphs[unicode].layers && replace) sfn_chardel(unicode);
@@ -594,7 +624,7 @@ sfnlayer_t *sfn_layeradd(int unicode, int t, int x, int y, int w, int h, int c, 
     if(unicode < rs || unicode > re || unicode < 0 || unicode > 0x10FFFF) return NULL;
     if(t != SSFN_FRAG_CONTOUR && !iswhitespace(unicode) && (!data || isempty(w * h, data))) return NULL;
     if(ctx.glyphs[unicode].numlayer >= 255) {
-        if(!quiet) fprintf(stderr, "Too many layers in U+%06x character's glyph.\n", unicode);
+        if(!quiet) fprintf(stderr, "libsfn: too many layers in U+%06x character's glyph.\n", unicode);
         return NULL;
     }
     if(t != SSFN_FRAG_CONTOUR)
@@ -605,7 +635,7 @@ sfnlayer_t *sfn_layeradd(int unicode, int t, int x, int y, int w, int h, int c, 
         if(t == SSFN_FRAG_PIXMAP && lyr && lyr->data) {
             l = (x + w) * ctx.glyphs[unicode].height;
             data2 = (unsigned char*)malloc(l);
-            if(!data2) { fprintf(stderr,"memory allocation error\n"); return NULL; }
+            if(!data2) { fprintf(stderr,"libsfn: memory allocation error\n"); return NULL; }
             memset(data2, 0xFF, l);
             for(j = 0; j < ctx.glyphs[unicode].height; j++)
                 for(i = 0; i < ctx.glyphs[unicode].width; i++)
@@ -619,7 +649,7 @@ sfnlayer_t *sfn_layeradd(int unicode, int t, int x, int y, int w, int h, int c, 
         if(t == SSFN_FRAG_PIXMAP && lyr && lyr->data) {
             l = ctx.glyphs[unicode].width * (y + h);
             lyr->data = (unsigned char*)realloc(lyr->data, l);
-            if(!lyr->data) { fprintf(stderr,"memory allocation error\n"); return NULL; }
+            if(!lyr->data) { fprintf(stderr,"libsfn: memory allocation error\n"); return NULL; }
             memset(lyr->data + ctx.glyphs[unicode].width * ctx.glyphs[unicode].height, 0,
                 ctx.glyphs[unicode].width * (y + h - ctx.glyphs[unicode].height));
         }
@@ -628,7 +658,7 @@ sfnlayer_t *sfn_layeradd(int unicode, int t, int x, int y, int w, int h, int c, 
     if(!lyr) {
         ctx.glyphs[unicode].layers = (sfnlayer_t*)realloc(ctx.glyphs[unicode].layers,
             (ctx.glyphs[unicode].numlayer + 1) * sizeof(sfnlayer_t));
-        if(!ctx.glyphs[unicode].layers) { fprintf(stderr,"memory allocation error\n"); return NULL; }
+        if(!ctx.glyphs[unicode].layers) { fprintf(stderr,"libsfn: memory allocation error\n"); return NULL; }
         lyr = &ctx.glyphs[unicode].layers[ctx.glyphs[unicode].numlayer++];
         memset(lyr, 0, sizeof(sfnlayer_t));
         lyr->type = t;
@@ -636,7 +666,7 @@ sfnlayer_t *sfn_layeradd(int unicode, int t, int x, int y, int w, int h, int c, 
         if(t != SSFN_FRAG_CONTOUR) {
             l = ctx.glyphs[unicode].width * ctx.glyphs[unicode].height;
             lyr->data = (unsigned char*)malloc(l);
-            if(!lyr->data) { fprintf(stderr,"memory allocation error\n"); return NULL; }
+            if(!lyr->data) { fprintf(stderr,"libsfn: memory allocation error\n"); return NULL; }
             memset(lyr->data, 0xFF, l);
         }
     }
@@ -655,7 +685,23 @@ sfnlayer_t *sfn_layeradd(int unicode, int t, int x, int y, int w, int h, int c, 
             }
         }
     }
+    ctx.lx = ctx.ly = -1;
     return lyr;
+}
+
+/**
+ * Delete a layer from character
+ *
+ * @param unicode character to remove layer from
+ * @param idx layer
+ */
+void sfn_layerdel(int unicode, int idx)
+{
+    if(unicode < 0 || unicode > 0x10FFFF || ctx.glyphs[unicode].numlayer < 1 || idx >= ctx.glyphs[unicode].numlayer) return;
+    if(ctx.glyphs[unicode].layers[idx].data) free(ctx.glyphs[unicode].layers[idx].data);
+    ctx.glyphs[unicode].numlayer--;
+    memcpy(&ctx.glyphs[unicode].layers[idx], &ctx.glyphs[unicode].layers[idx+1],
+        (ctx.glyphs[unicode].numlayer - idx) * sizeof(sfnlayer_t*));
 }
 
 /**
@@ -674,9 +720,11 @@ sfnlayer_t *sfn_layeradd(int unicode, int t, int x, int y, int w, int h, int c, 
 int sfn_contadd(sfnlayer_t *lyr, int t, int px, int py, int c1x, int c1y, int c2x, int c2y)
 {
     sfncont_t *cont;
-    if(!lyr) return 0;
+    int cx, cy;
+
+    if(!lyr || lyr->type != SSFN_FRAG_CONTOUR) return 0;
     if(lyr->len >= 32767) {
-        if(!quiet) fprintf(stderr, "Too many points in contour in U+%06x character's glyph.\n", unicode);
+        if(!quiet) fprintf(stderr, "libsfn: too many points in contour in U+%06x character's glyph.\n", unicode);
         return 0;
     }
     lyr->data = (unsigned char*)realloc(lyr->data, (lyr->len + 1) * sizeof(sfncont_t));
@@ -685,7 +733,7 @@ int sfn_contadd(sfnlayer_t *lyr, int t, int px, int py, int c1x, int c1y, int c2
     if(px<0 || px>254 || py<0 || py>254 || c1x<0 || c1x>254 || c1y<0 || c1y>254 || c2x<0 || c2x>254 || c2y<0 || c2y>254) {
         /* should never happen */
         if(!quiet && lastuni != unicode)
-            fprintf(stderr,"\rScaling error U+%06x px %d py %d c1x %d c1y %d c2x %d c2y %d\n", unicode, px, py, c1x, c1y,
+            fprintf(stderr,"\rlibsfn: scaling error U+%06x px %d py %d c1x %d c1y %d c2x %d c2y %d\n", unicode, px, py, c1x, c1y,
                 c2x, c2y);
         lastuni = unicode;
         if(px<0) { px = 0; } if(px>254) px = 254;
@@ -695,6 +743,15 @@ int sfn_contadd(sfnlayer_t *lyr, int t, int px, int py, int c1x, int c1y, int c2
         if(c2x<0) { c2x = 0; } if(c2x>254) c2x = 254;
         if(c2y<0) { c2y = 0; } if(c2y>254) c2y = 254;
     }
+    /* convert trivial cubic curves to quadratic curves, requires less storage space */
+    if(t == SSFN_CONTOUR_CUBIC && ctx.lx > 0 && ctx.ly > 0) {
+        cx = ((c1x - ctx.lx) << 1) + ctx.lx;
+        cy = ((c1y - ctx.ly) << 1) + ctx.ly;
+        if(((((c2x - cx) << 1) + cx) >> 1) == (px >> 1) && ((((c2y - cy) << 1) + cy) >> 1) == (py >> 1)) {
+            t = SSFN_CONTOUR_QUAD;
+            c1x = cx; c1y = cy; c2x = c2y = 0;
+        }
+    }
     cont = &((sfncont_t *)(lyr->data))[lyr->len++];
     cont->type = t;
     cont->px = px; if(px + 1 > ctx.glyphs[unicode].width) ctx.glyphs[unicode].width = px + 1;
@@ -703,6 +760,7 @@ int sfn_contadd(sfnlayer_t *lyr, int t, int px, int py, int c1x, int c1y, int c2
     cont->c1y = c1y; if(c1y + 1 > ctx.glyphs[unicode].height) ctx.glyphs[unicode].height = c1y + 1;
     cont->c2x = c2x; if(c2x + 1 > ctx.glyphs[unicode].width) ctx.glyphs[unicode].width = c2x + 1;
     cont->c2y = c2y; if(c2y + 1 > ctx.glyphs[unicode].height) ctx.glyphs[unicode].height = c2y + 1;
+    ctx.lx = px; ctx.ly = py;
     return 1;
 }
 
@@ -732,7 +790,7 @@ int sfn_kernadd(int unicode, int next, int x, int y)
             return 1;
         }
     if(ctx.glyphs[unicode].numkern >= 32767) {
-        if(!quiet) fprintf(stderr,"Too many kerning pairs for U+%06x, truncated to 32767\n", unicode);
+        if(!quiet) fprintf(stderr,"libsfn: too many kerning pairs for U+%06x, truncated to 32767\n", unicode);
         return 1;
     }
     i = ctx.glyphs[unicode].numkern++;
@@ -749,12 +807,39 @@ int sfn_kernadd(int unicode, int next, int x, int y)
  *
  * @param unicode character to calculate hints to
  */
-void sfn_hintadd(int unicode)
+void sfn_hintgen(int unicode)
 {
+    int i, j, x, y, h[256], v[256], mx = 0, my = 0, limit = 3;
+    sfncont_t *cont;
+
     if(unicode < 0 || unicode > 0x10FFFF) return;
-    memset(ctx.glyphs[unicode].hintv, 0, 32);
-    memset(ctx.glyphs[unicode].hinth, 0, 32);
+    memset(ctx.glyphs[unicode].hintv, 0, 33);
+    memset(ctx.glyphs[unicode].hinth, 0, 33);
     if(!ctx.glyphs[unicode].layers) return;
+    /* look for vertical or horizontal lines in contour paths */
+    memset(h, 0, sizeof(h)); memset(v, 0, sizeof(v));
+    for(i = 0; i < ctx.glyphs[unicode].numlayer; i++)
+        if(ctx.glyphs[unicode].layers[i].type == SSFN_FRAG_CONTOUR) {
+            cont = (sfncont_t*)ctx.glyphs[unicode].layers[i].data;
+            x = cont->px; y = cont->py;
+            for(j = 0; j < ctx.glyphs[unicode].layers[i].len; j++, cont++) {
+                if(cont->type == SSFN_CONTOUR_LINE) {
+                    if(x != cont->px && y == cont->py) v[y] += x > cont->px ? x - cont->px : cont->px - x;
+                    if(x == cont->px && y != cont->py) h[x] += y > cont->py ? y - cont->py : cont->py - y;
+                }
+                x = cont->px; y = cont->py;
+                if(x > mx) mx = x;
+                if(y > my) my = y;
+            }
+        }
+    /* now lets see which coordinates have more points than the limit, those will be the grid lines */
+    mx /= limit; my /= limit;
+    for(i = 0; i < 256; i++) {
+        if(h[i] > my && ctx.glyphs[unicode].hintv[0] < 32)
+            ctx.glyphs[unicode].hintv[1 + ctx.glyphs[unicode].hintv[0]++] = i;
+        if(v[i] > mx && ctx.glyphs[unicode].hinth[0] < 32)
+            ctx.glyphs[unicode].hinth[1 + ctx.glyphs[unicode].hinth[0]++] = i;
+    }
 }
 
 /**
@@ -801,7 +886,8 @@ int sfn_fragadd(int type, int w, int h, void *data)
     if(w < 1 || h < 0 || !data)
         return -1;
     if(type == SSFN_FRAG_CONTOUR) { l = w * sizeof(sfncont_t); h = 0; } else
-    if(type == SSFN_FRAG_KERNING) { l = w * sizeof(sfnkgrp_t); h = 0; }
+    if(type == SSFN_FRAG_KERNING) { l = w * sizeof(sfnkgrp_t); h = 0; } else
+    if(type == SSFN_FRAG_HINTING) { l = w; h = 0; }
     for(i = 0; i < ctx.numfrags; i++)
         if(ctx.frags[i].type == type && ctx.frags[i].w == w && ctx.frags[i].h == h && ctx.frags[i].len == l &&
             (type == SSFN_FRAG_CONTOUR && dorounderr ? !frgcmp((sfncont_t*)ctx.frags[i].data, (sfncont_t*)data, w) :
@@ -809,12 +895,15 @@ int sfn_fragadd(int type, int w, int h, void *data)
             ctx.frags[i].cnt++;
             return i;
         }
-    data2 = (unsigned char*)malloc(l);
-    if(!data2) { fprintf(stderr,"memory allocation error\n"); return -1; }
-    memcpy(data2, data, l);
+    if(type != SSFN_FRAG_HINTING || l > 0) {
+        data2 = (unsigned char*)malloc(l);
+        if(!data2) { fprintf(stderr,"libsfn: memory allocation error\n"); return -1; }
+        memcpy(data2, data, l);
+    } else
+        data2 = NULL;
     i = ctx.numfrags++;
     ctx.frags = (sfnfrag_t*)realloc(ctx.frags, ctx.numfrags * sizeof(sfnfrag_t));
-    if(!ctx.frags) { fprintf(stderr,"memory allocation error\n"); return -1; }
+    if(!ctx.frags) { fprintf(stderr,"libsfn: memory allocation error\n"); return -1; }
     ctx.frags[i].idx = i;
     ctx.frags[i].pos = 0;
     ctx.frags[i].cnt = 1;
@@ -843,18 +932,18 @@ int sfn_fragchr(int unicode, int type, int w, int h, int x, int y, void *data)
     int i;
 
     if(type == SSFN_FRAG_KERNING && w > 1024) {
-        if(!quiet) fprintf(stderr, "Too many kerning groups for U+%06X, truncated to 1024.\n", unicode);
+        if(!quiet) fprintf(stderr, "libsfn: too many kerning groups for U+%06X, truncated to 1024.\n", unicode);
         w = 1024;
     }
     if(ctx.glyphs[unicode].numfrag >= 255) {
-        if(!quiet) fprintf(stderr, "Too many fragments for U+%06X, truncated to 255.\n", unicode);
+        if(!quiet) fprintf(stderr, "libsfn: too many fragments for U+%06X, truncated to 255.\n", unicode);
         return 1;
     }
     i = sfn_fragadd(type, w, h, data);
     if(i != -1) {
         ctx.glyphs[unicode].frags = (int*)realloc(ctx.glyphs[unicode].frags,
             (ctx.glyphs[unicode].numfrag + 1) * 3 * sizeof(int));
-        if(!ctx.glyphs[unicode].frags) { fprintf(stderr,"memory allocation error\n"); return 0; }
+        if(!ctx.glyphs[unicode].frags) { fprintf(stderr,"libsfn: memory allocation error\n"); return 0; }
         ctx.glyphs[unicode].frags[ctx.glyphs[unicode].numfrag*3+0] = i;
         ctx.glyphs[unicode].frags[ctx.glyphs[unicode].numfrag*3+1] = x;
         ctx.glyphs[unicode].frags[ctx.glyphs[unicode].numfrag*3+2] = y;
@@ -909,7 +998,7 @@ unsigned char sfn_cpaladd(int r, int g, int b, int a)
             return m;
         }
     }
-    if(!quiet) fprintf(stderr,"unable to add color to color map, should never happen\n");
+    if(!quiet) fprintf(stderr,"libsfn: unable to add color to color map, should never happen\n");
     return 0xFE;                                                        /* fallback to foreground */
 }
 
@@ -997,19 +1086,19 @@ int sfn_dump(ssfn_font_t *font, int size, int dump)
             printf("name:            \"%s\"%s\n", (unsigned char *)font + sizeof(ssfn_font_t),
                 dump < 2 ? " (use -dd to see all strings)" : "");
         if((unsigned int)size != font->size || memcmp((unsigned char*)font + font->size - 4, SSFN_ENDMAGIC, 4))
-            { fprintf(stderr, "missing end magic or incorrect font size\n"); return 0; }
+            { fprintf(stderr, "libsfn: missing end magic or incorrect font size\n"); return 0; }
         if(dump != 99) {
-            if(!font->fragments_offs) { fprintf(stderr, "missing fragments table\n"); return 0; }
-            if(!font->characters_offs) { fprintf(stderr, "missing characters table\n"); return 0; }
+            if(!font->fragments_offs) { fprintf(stderr, "libsfn: missing fragments table\n"); return 0; }
+            if(!font->characters_offs) { fprintf(stderr, "libsfn: missing characters table\n"); return 0; }
             if(font->characters_offs <= font->fragments_offs)
-                { fprintf(stderr, "incorrect characters table offset\n"); return 0; }
+                { fprintf(stderr, "libsfn: incorrect characters table offset\n"); return 0; }
             if(font->kerning_offs && (font->kerning_offs <= font->characters_offs || (font->ligature_offs &&
                 font->kerning_offs <= font->ligature_offs)))
-                { fprintf(stderr, "incorrect kerning table offset\n"); return 0; }
+                { fprintf(stderr, "libsfn: incorrect kerning table offset\n"); return 0; }
             if(font->ligature_offs && font->ligature_offs <= font->characters_offs)
-                { fprintf(stderr, "incorrect ligature table offset\n"); return 0; }
+                { fprintf(stderr, "libsfn: incorrect ligature table offset\n"); return 0; }
             if(font->cmap_offs && ((font->size - font->cmap_offs) & 3))
-                { fprintf(stderr, "incorrect cmap table offset\n"); return 0; }
+                { fprintf(stderr, "libsfn: incorrect cmap table offset\n"); return 0; }
         }
         if(dump == 2 || dump == 99) {
             printf("\n---String Table---\n");
@@ -1017,7 +1106,7 @@ int sfn_dump(ssfn_font_t *font, int size, int dump)
             for(i=0;i<6;i++) { printf("%d. %-12s \"%s\"\n", i, dump_str[i], ptr); ptr += strlen((char*)ptr)+1; }
             ptr2 = (unsigned char *)font + font->fragments_offs;
             for(i=0;ptr<ptr2;i++) { printf("%d. LIGATURE \"%s\"\n", i, ptr); ptr += strlen((char*)ptr)+1; }
-            if(ptr != ptr2) { fprintf(stderr, "incorrect string table size\n"); return 0; }
+            if(ptr != ptr2) { fprintf(stderr, "libsfn: incorrect string table size\n"); return 0; }
         }
         if(dump == 3 || dump == 4 || dump == 99) {
             if(dump != 4) printf("\n---Fragments Table---");
@@ -1084,7 +1173,7 @@ int sfn_dump(ssfn_font_t *font, int size, int dump)
                         ptr += j;
                     } else
                     if((ptr[0] & 0x60) == 0x40) {
-                        if(!font->kerning_offs) { fprintf(stderr, "kerning fragment without kerning table\n"); return 0; }
+                        if(!font->kerning_offs) { fprintf(stderr, "libsfn: kerning fragment without kerning table\n"); return 0; }
                         j = (((ptr[0] & 0x3) << 8) | ptr[1]) + 1;
                         if(dump != 4) printf("%02x %02x SSFN_FRAG_KERNING n=%d c=%d\n", ptr[1], ptr[2], j, (ptr[2] >> 2) & 7);
                         for(ptr += 2, i = 0; i < j; i++, ptr += 8) {
@@ -1105,7 +1194,7 @@ int sfn_dump(ssfn_font_t *font, int size, int dump)
                         if(dump != 4) printf("\n");
                     }
                 }
-                if(ptr != ptr2) { fprintf(stderr, "incorrect fragments table size\n"); return 0; }
+                if(ptr != ptr2) { fprintf(stderr, "libsfn: incorrect fragments table size\n"); return 0; }
             }
         }
         if(dump == 4 || dump == 99) {
@@ -1138,7 +1227,8 @@ int sfn_dump(ssfn_font_t *font, int size, int dump)
                             if(ptr[0] == 255 && ptr[1] == 255) {
                                 printf("           ff ff %02x 00 00 %scolor %d\n",ptr[2],k & 0x40 ? "00 " : "",ptr[2]);
                                 if(!font->cmap_offs || font->cmap_offs + ptr[2] * 4 >= font->size - 4)
-                                    { printf("\n"); fprintf(stderr, "incorrect color index %d for U+%06X\n",ptr[2],j); return 0; }
+                                    { printf("\n"); fprintf(stderr, "libsfn: incorrect color index %d for U+%06X\n",
+                                            ptr[2], j); return 0; }
                                 ptr += k & 0x40 ? 6 : 5;
                             } else {
                                 if(k & 0x40) {
@@ -1154,7 +1244,8 @@ int sfn_dump(ssfn_font_t *font, int size, int dump)
                                 }
                                 for(o = 0; o < fn && m != fo[o]; o++);
                                 if(o >= fn)
-                                    { printf("\n"); fprintf(stderr, "incorrect fragment offset %x for U+%06X\n",m,j); return 0; }
+                                    { printf("\n"); fprintf(stderr, "libsfn: incorrect fragment offset %x for U+%06X\n", m, j);
+                                      return 0; }
                                 printf(" SSFN_FRAG_");
                                 cmd = (unsigned char*)font + m;
                                 if(!(cmd[0] & 0x80)) printf("CONTOUR");
@@ -1169,14 +1260,14 @@ int sfn_dump(ssfn_font_t *font, int size, int dump)
                     }
                 }
                 if(ptr != ptr2)
-                    { fprintf(stderr, "incorrect characters table size\n"); return 0; }
+                    { fprintf(stderr, "libsfn: incorrect characters table size\n"); return 0; }
             }
             printf("\n---Ligatures Table---\n");
             if(!font->ligature_offs) printf("not present\n");
             else {
                 lig = (unsigned short*)((unsigned char *)font + font->ligature_offs);
                 for(i = 0; i < SSFN_LIG_LAST - SSFN_LIG_FIRST + 1 && lig[i]; i++) {
-                    if(lig[i] >= font->fragments_offs) { fprintf(stderr, "incorrect ligature offset\n"); return 0; }
+                    if(lig[i] >= font->fragments_offs) { fprintf(stderr, "libsfn: incorrect ligature offset\n"); return 0; }
                     printf(" U+%04X: \"%s\"\n", SSFN_LIG_FIRST + lig[i], (char*)font + lig[i]);
                 }
             }
@@ -1197,7 +1288,7 @@ int sfn_dump(ssfn_font_t *font, int size, int dump)
                         while(i--) printf(" %02x", *ptr++);
                     printf("\n");
                 }
-                if(ptr != ptr2) { fprintf(stderr, "incorrect kerning table size\n"); return 0; }
+                if(ptr != ptr2) { fprintf(stderr, "libsfn: incorrect kerning table size\n"); return 0; }
             }
         }
         if(dump == 6 || dump == 99) {
@@ -1272,21 +1363,32 @@ int sfn_load(char *filename, int dump)
     }
 
     r = 1;
-    if(data[0]=='S' && data[1]=='F' && data[2]=='N' && data[3]=='2') {
+    if(data[0]=='S' && data[1]=='F' && data[2]=='N' && data[3]=='C') {
+        fprintf(stderr, "libsfn: file '%s' is a collection with multiple fonts. Extract fonts first.\n", filename);
+        r = 0;
+    } else if(data[0]=='S' && data[1]=='F' && data[2]=='N' && data[3]=='2') {
         printf("Loaded '%s' (SSFN BIN, %X - %X)\n", filename, rs, re);
         sfn(data, size);
     } else if(data[0]=='#' && data[1]==' ' && data[2]=='S' && data[3]=='c') {
         printf("Loaded '%s' (SSFN ASCII, %X - %X)\n", filename, rs, re);
         asc((char*)data, size);
+#ifndef USE_NOFOREIGN
     } else if(data[0]==0x72 && data[1]==0xB5 && data[2]==0x4A && data[3]==0x86) {
         printf("Loaded '%s' (PSF2, %X - %X)\n", filename, rs, re);
         psf(data, size);
-    } else if((data[0]>='0' && data[0]<='9') || (data[0]>='A' && data[0]<='F')) {
-        printf("Loaded '%s' (GNU unifont hex, %X - %X)\n", filename, rs, re);
-        hex((char*)data, size);
+    } else if((data[0]=='M' && data[1]=='Z') || (!data[0] && (data[1] == 2 || data[1] == 3) && !data[5] && (data[6] > ' ' &&
+        data[6] < 127))) {
+        printf("Loaded '%s' (WinFNT, %X - %X)\n", filename, rs, re);
+        fnt(data, size);
     } else if(data[0]=='S' && data[1]=='T' && data[2]=='A' && data[3]=='R') {
         printf("Loaded '%s' (X11 BDF, %X - %X)\n", filename, rs, re);
         bdf((char*)data, size);
+    } else if(data[0]==1 && data[1]=='f' && data[2]=='c' && data[3]=='p') {
+        printf("Loaded '%s' (X11 PCF, %X - %X)\n", filename, rs, re);
+        pcf(data, size);
+    } else if(data[0]=='S' && data[1]=='p' && data[2]=='l' && data[3]=='i' && data[4]=='n') {
+        printf("Loaded '%s' (SplineFontDB, %X - %X)\n", filename, rs, re);
+        sfd((char*)data, size);
     } else if(data[0]==0x89 && data[1]=='P' && data[2]=='N' && data[3]=='G') {
         printf("Loaded '%s' (PNG, %X - %X)\n", filename, rs, re);
         png(data, size);
@@ -1295,15 +1397,17 @@ int sfn_load(char *filename, int dump)
         (data[16]==8 || data[16]==24 || data[16]==32)) {
             printf("Loaded '%s' (TARGA, %X - %X)\n", filename, rs, re);
             tga(data, size);
-    } else
+    } else if((data[0]>='0' && data[0]<='9') || (data[0]>='A' && data[0]<='F')) {
+        printf("Loaded '%s' (GNU unifont hex, %X - %X)\n", filename, rs, re);
+        hex((char*)data, size);
 #ifdef HAS_FT
-    if(ft2_read(filename)) {
+    } else if(ft2_read(data, size)) {
         printf("Loaded '%s' (FreeType2, %X - %X)\n", filename, rs, re);
         ft2_parse();
-    } else
 #endif
-    {
-        fprintf(stderr, "Unknown format '%s'\n", filename);
+#endif
+    } else {
+        fprintf(stderr, "libsfn: unknown format '%s'\n", filename);
         r = 0;
     }
 
@@ -1324,7 +1428,7 @@ int sfn_save(char *filename, int ascii, int compress)
 {
     char *fam[] = { "Serif", "Sans", "Decorative", "Monospace", "Handwriting", "?" }, *c;
     int unicode, i, j, k, l, o, x, y, h, nc = 0, mc = 0, ml = 0, fs = 0, cs = 0, ks = 0, ls = 0;
-    unsigned char *frg = NULL, *chr = NULL, *krn = NULL, *tmp;
+    unsigned char *frg = NULL, *chr = NULL, *krn = NULL, *tmp, hint[32];
     unsigned short int lig[SSFN_LIG_LAST-SSFN_LIG_FIRST+1];
     char *strs = NULL, *crd = NULL;
     sfnkgrp_t kgrp, *kgrpf = NULL;
@@ -1340,7 +1444,7 @@ int sfn_save(char *filename, int ascii, int compress)
         if((iswhitespace(i) && (ctx.glyphs[i].adv_x || ctx.glyphs[i].adv_y)) || ctx.glyphs[i].layers) mc++;
     }
     if(!mc || !ml) {
-        fprintf(stderr, "No layers in font???\n");
+        fprintf(stderr, "libsfn: no layers in font???\n");
         return 0;
     }
     printf(" Numchars: %d, Numlayers: %d\n", mc, ml);
@@ -1379,17 +1483,17 @@ int sfn_save(char *filename, int ascii, int compress)
                     if(!iswhitespace(unicode) && ctx.glyphs[unicode].layers && ctx.glyphs[unicode].numlayer) {
                         /* hinting grid */
                         if(hinting) {
-                            sfn_hintadd(unicode);
+                            if(!ctx.glyphs[unicode].hintv[0] && !ctx.glyphs[unicode].hinth[0]) sfn_hintgen(unicode);
                             if(ctx.glyphs[unicode].hintv[0]) {
                                 fprintf(f,"V");
-                                for(i = 0; i < 32 && ctx.glyphs[unicode].hintv[i]; i++)
-                                    fprintf(f," %d", ctx.glyphs[unicode].hintv[i]);
+                                for(i = 0; i < ctx.glyphs[unicode].hintv[0] && ctx.glyphs[unicode].hintv[i+1]; i++)
+                                    fprintf(f," %d", ctx.glyphs[unicode].hintv[i+1]);
                                 fprintf(f,"\r\n");
                             }
                             if(ctx.glyphs[unicode].hinth[0]) {
                                 fprintf(f,"H");
-                                for(i = 0; i < 32 && ctx.glyphs[unicode].hinth[i]; i++)
-                                    fprintf(f," %d", ctx.glyphs[unicode].hinth[i]);
+                                for(i = 0; i < ctx.glyphs[unicode].hinth[0] && ctx.glyphs[unicode].hinth[i+1]; i++)
+                                    fprintf(f," %d", ctx.glyphs[unicode].hinth[i+1]);
                                 fprintf(f,"\r\n");
                             }
                             if(ctx.glyphs[unicode].hintv[0] || ctx.glyphs[unicode].hinth[0])
@@ -1473,7 +1577,22 @@ int sfn_save(char *filename, int ascii, int compress)
         for(unicode = 0; unicode <= 0x10FFFF; unicode++) {
             if(ctx.glyphs[unicode].layers) {
                 /* hints first (if exists) */
-                if(ctx.glyphs[unicode].hintv[0] || ctx.glyphs[unicode].hinth[0]) {
+                if(hinting) {
+                    if(!ctx.glyphs[unicode].hintv[0] && !ctx.glyphs[unicode].hinth[0]) sfn_hintgen(unicode);
+                    if(ctx.glyphs[unicode].hintv[0]) {
+                        memset(hint, 0, 32);
+                        x = ctx.glyphs[unicode].hintv[1];
+                        for(i = 1; i < ctx.glyphs[unicode].hintv[0] && ctx.glyphs[unicode].hintv[1+i]; i++)
+                            hint[i-1] = ctx.glyphs[unicode].hintv[1+i] - ctx.glyphs[unicode].hintv[i];
+                        sfn_fragchr(unicode, SSFN_FRAG_HINTING, ctx.glyphs[unicode].hintv[0] - 1, 0, x + 1, 0, hint);
+                    }
+                    if(ctx.glyphs[unicode].hinth[0]) {
+                        memset(hint, 0, 32);
+                        y = ctx.glyphs[unicode].hinth[1];
+                        for(i = 1; i < ctx.glyphs[unicode].hinth[0] && ctx.glyphs[unicode].hinth[1+i]; i++)
+                            hint[i-1] = ctx.glyphs[unicode].hinth[1+i] - ctx.glyphs[unicode].hinth[i];
+                        sfn_fragchr(unicode, SSFN_FRAG_HINTING, ctx.glyphs[unicode].hinth[0] - 1, 0, 0, y + 1, hint);
+                    }
                 }
                 /* then kerning (if exists) */
                 if(ctx.glyphs[unicode].kern) {
@@ -1486,22 +1605,22 @@ int sfn_save(char *filename, int ascii, int compress)
                                 kgrp.first = kgrp.last = ctx.glyphs[unicode].kern[i].n;
                                 l = 1;
                                 crd = realloc(crd, l);
-                                if(!crd) { fprintf(stderr,"memory allocation error\n"); return 0; }
+                                if(!crd) { fprintf(stderr,"libsfn: memory allocation error\n"); return 0; }
                                 crd[0] = ctx.glyphs[unicode].kern[i].x;
                             } else {
                                 if(kgrp.last + 127 < ctx.glyphs[unicode].kern[i].n) {
                                     kgrp.idx = sfn_kposadd(crd, l);
                                     kgrpf = (sfnkgrp_t*)realloc(kgrpf, (o+1)*sizeof(sfnkgrp_t));
-                                    if(!kgrpf) { fprintf(stderr,"memory allocation error\n"); return 0; }
+                                    if(!kgrpf) { fprintf(stderr,"libsfn: memory allocation error\n"); return 0; }
                                     memcpy(&kgrpf[o++], &kgrp, sizeof(sfnkgrp_t));
                                     kgrp.first = kgrp.last = ctx.glyphs[unicode].kern[i].n;
                                     l = 1;
                                     crd = realloc(crd, l);
-                                    if(!crd) { fprintf(stderr,"memory allocation error\n"); return 0; }
+                                    if(!crd) { fprintf(stderr,"libsfn: memory allocation error\n"); return 0; }
                                     crd[0] = ctx.glyphs[unicode].kern[i].x;
                                 } else {
                                     crd = realloc(crd, l + ctx.glyphs[unicode].kern[i].n - kgrp.last);
-                                    if(!crd) { fprintf(stderr,"memory allocation error\n"); return 0; }
+                                    if(!crd) { fprintf(stderr,"libsfn: memory allocation error\n"); return 0; }
                                     for(k = 0; k < ctx.glyphs[unicode].kern[i].n - kgrp.last - 1; k++, l++)
                                         crd[l] = 0;
                                     crd[l++] = ctx.glyphs[unicode].kern[i].x;
@@ -1513,7 +1632,7 @@ int sfn_save(char *filename, int ascii, int compress)
                     if(kgrp.first) {
                         kgrp.idx = sfn_kposadd(crd, l);
                         kgrpf = (sfnkgrp_t*)realloc(kgrpf, (o+1)*sizeof(sfnkgrp_t));
-                        if(!kgrpf) { fprintf(stderr,"memory allocation error\n"); return 0; }
+                        if(!kgrpf) { fprintf(stderr,"libsfn: memory allocation error\n"); return 0; }
                         memcpy(&kgrpf[o++], &kgrp, sizeof(sfnkgrp_t));
                     }
                     if(crd) { free(crd); crd = NULL; }
@@ -1530,22 +1649,22 @@ int sfn_save(char *filename, int ascii, int compress)
                                 kgrp.first = kgrp.last = ctx.glyphs[unicode].kern[i].n;
                                 l = 1;
                                 crd = realloc(crd, l);
-                                if(!crd) { fprintf(stderr,"memory allocation error\n"); return 0; }
+                                if(!crd) { fprintf(stderr,"libsfn: memory allocation error\n"); return 0; }
                                 crd[0] = ctx.glyphs[unicode].kern[i].y;
                             } else {
                                 if(kgrp.last + 127 < ctx.glyphs[unicode].kern[i].n) {
                                     kgrp.idx = sfn_kposadd(crd, l);
                                     kgrpf = (sfnkgrp_t*)realloc(kgrpf, (o+1)*sizeof(sfnkgrp_t));
-                                    if(!kgrpf) { fprintf(stderr,"memory allocation error\n"); return 0; }
+                                    if(!kgrpf) { fprintf(stderr,"libsfn: memory allocation error\n"); return 0; }
                                     memcpy(&kgrpf[o++], &kgrp, sizeof(sfnkgrp_t));
                                     kgrp.first = kgrp.last = ctx.glyphs[unicode].kern[i].n;
                                     l = 1;
                                     crd = realloc(crd, l);
-                                    if(!crd) { fprintf(stderr,"memory allocation error\n"); return 0; }
+                                    if(!crd) { fprintf(stderr,"libsfn: memory allocation error\n"); return 0; }
                                     crd[0] = ctx.glyphs[unicode].kern[i].y;
                                 } else {
                                     crd = realloc(crd, l + ctx.glyphs[unicode].kern[i].n - kgrp.last);
-                                    if(!crd) { fprintf(stderr,"memory allocation error\n"); return 0; }
+                                    if(!crd) { fprintf(stderr,"libsfn: memory allocation error\n"); return 0; }
                                     for(k = 0; k < ctx.glyphs[unicode].kern[i].n - kgrp.last - 1; k++, l++)
                                         crd[l] = 0;
                                     crd[l++] = ctx.glyphs[unicode].kern[i].y;
@@ -1557,7 +1676,7 @@ int sfn_save(char *filename, int ascii, int compress)
                     if(kgrp.first) {
                         kgrp.idx = sfn_kposadd(crd, l);
                         kgrpf = (sfnkgrp_t*)realloc(kgrpf, (o+1)*sizeof(sfnkgrp_t));
-                        if(!kgrpf) { fprintf(stderr,"memory allocation error\n"); return 0; }
+                        if(!kgrpf) { fprintf(stderr,"libsfn: memory allocation error\n"); return 0; }
                         memcpy(&kgrpf[o++], &kgrp, sizeof(sfnkgrp_t));
                     }
                     if(crd) { free(crd); crd = NULL; }
@@ -1571,11 +1690,11 @@ int sfn_save(char *filename, int ascii, int compress)
                     if(pbar) (*pbar)(1, 5, ++nc, ml, PBAR_GENFRAG);
                     if(ctx.glyphs[unicode].layers[j].color < 0xFE) {
                             if(ctx.glyphs[unicode].numfrag == 255) {
-                                if(!quiet) fprintf(stderr, "Too many fragments for U+%06X, truncated to 255.\n", unicode);
+                                if(!quiet) fprintf(stderr, "libsfn: too many fragments for U+%06X, truncated to 255.\n", unicode);
                             } else {
                                 ctx.glyphs[unicode].frags = (int*)realloc(ctx.glyphs[unicode].frags,
                                     (ctx.glyphs[unicode].numfrag + 1) * 3 * sizeof(int));
-                                if(!ctx.glyphs[unicode].frags) { fprintf(stderr,"memory allocation error\n"); return 0; }
+                                if(!ctx.glyphs[unicode].frags) { fprintf(stderr,"libsfn: memory allocation error\n"); return 0; }
                                 ctx.glyphs[unicode].frags[ctx.glyphs[unicode].numfrag*3+0] =
                                     ctx.glyphs[unicode].layers[j].color;
                                 ctx.glyphs[unicode].frags[ctx.glyphs[unicode].numfrag*3+1] = 255;
@@ -1601,7 +1720,7 @@ int sfn_save(char *filename, int ascii, int compress)
                             }
                             if(x > 254) x = 254;
                             norm = (sfncont_t*)malloc(ctx.glyphs[unicode].layers[j].len * sizeof(sfncont_t));
-                            if(!norm) { fprintf(stderr,"memory allocation error\n"); return 0; }
+                            if(!norm) { fprintf(stderr,"libsfn: memory allocation error\n"); return 0; }
                             memset(norm, 0, ctx.glyphs[unicode].layers[j].len * sizeof(sfncont_t));
                             /* add to fragments list */
                             cont = (sfncont_t*)ctx.glyphs[unicode].layers[j].data;
@@ -1641,7 +1760,7 @@ int sfn_save(char *filename, int ascii, int compress)
                 }
                 /* should never reached, just to be on the safe side */
                 if(ctx.glyphs[unicode].numfrag > 255) {
-                    if(!quiet) fprintf(stderr, "Too many fragments for U+%06X, truncated to 255.\n", unicode);
+                    if(!quiet) fprintf(stderr, "libsfn: too many fragments for U+%06X, truncated to 255.\n", unicode);
                     ctx.glyphs[unicode].numfrag = 255;
                 }
             }
@@ -1656,7 +1775,7 @@ int sfn_save(char *filename, int ascii, int compress)
             if(ctx.kpos[i].pos == -1) {
                 ctx.kpos[i].pos = ks;
                 krn = (unsigned char *)realloc(krn, ks + ctx.kpos[i].len);
-                if(!krn) { fprintf(stderr,"memory allocation error\n"); return 0; }
+                if(!krn) { fprintf(stderr,"libsfn: memory allocation error\n"); return 0; }
                 memcpy(krn + ks, ctx.kpos[i].data, ctx.kpos[i].len);
                 ks += ctx.kpos[i].len;
             }
@@ -1672,7 +1791,7 @@ int sfn_save(char *filename, int ascii, int compress)
             o += strlen(ctx.ligatures[ls]) + 1;
         }
         hdr = (ssfn_font_t*)malloc(o);
-        if(!hdr) { fprintf(stderr,"memory allocation error\n"); return 0; }
+        if(!hdr) { fprintf(stderr,"libsfn: memory allocation error\n"); return 0; }
         memset(hdr, 0, o);
         memcpy(hdr->magic, SSFN_MAGIC, 4);
         hdr->size = o + 4;
@@ -1710,7 +1829,7 @@ int sfn_save(char *filename, int ascii, int compress)
             if(pbar) (*pbar)(3, 5, i, ctx.numfrags, PBAR_SERFRAG);
             ctx.frags[i].pos = o + fs;
             frg = (unsigned char*)realloc(frg, fs + 5 + ctx.frags[i].len);
-            if(!frg) { fprintf(stderr,"memory allocation error\n"); return 0; }
+            if(!frg) { fprintf(stderr,"libsfn: memory allocation error\n"); return 0; }
             switch(ctx.frags[i].type) {
                 case SSFN_FRAG_CONTOUR:
                     if(ctx.frags[i].w>64)
@@ -1749,7 +1868,7 @@ int sfn_save(char *filename, int ascii, int compress)
                     tmp = rle_enc(ctx.frags[i].data, ctx.frags[i].w * ctx.frags[i].h, &k);
                     if(!tmp || k < 2) return 0;
                     frg = (unsigned char*)realloc(frg, fs + 5 + k);
-                    if(!frg) { fprintf(stderr,"memory allocation error\n"); return 0; }
+                    if(!frg) { fprintf(stderr,"libsfn: memory allocation error\n"); return 0; }
                     frg[fs++] = 0xA0 | (((k - 1) >> 8) & 0x1F);
                     frg[fs++] = (k - 1) & 0xFF;
                     frg[fs++] = ctx.frags[i].w - 1;
@@ -1776,6 +1895,12 @@ int sfn_save(char *filename, int ascii, int compress)
                     }
                 break;
                 case SSFN_FRAG_HINTING:
+                    if(ctx.frags[i].w && ctx.frags[i].data) {
+                        frg[fs++] = ((ctx.frags[i].w & 31) | 0xE0);
+                        memcpy(frg + fs, ctx.frags[i].data, ctx.frags[i].w);
+                        fs += ctx.frags[i].w;
+                    } else
+                        frg[fs++] = 0xE0;
                 break;
             }
         }
@@ -1791,7 +1916,7 @@ int sfn_save(char *filename, int ascii, int compress)
                 if(pbar) (*pbar)(4, 5, ++nc, mc, PBAR_WRTCHARS);
                 j = i - unicode - 1;
                 chr = (unsigned char*)realloc(chr, cs+256+ctx.glyphs[i].numfrag*6);
-                if(!chr) { fprintf(stderr,"memory allocation error\n"); return 0; }
+                if(!chr) { fprintf(stderr,"libsfn: memory allocation error\n"); return 0; }
                 while(j > 0) {
                     if(j <= 64) { chr[cs++] = ((j-1) & 0x3F) | 0x80; break; }
                     else {
@@ -1833,7 +1958,7 @@ int sfn_save(char *filename, int ascii, int compress)
         free(fidx);
         j = 0x110000 - unicode;
         chr = (unsigned char*)realloc(chr, cs+256);
-        if(!chr) { fprintf(stderr,"memory allocation error\n"); return 0; }
+        if(!chr) { fprintf(stderr,"libsfn: memory allocation error\n"); return 0; }
         while(j > 0) {
             if(j <= 64) { chr[cs++] = ((j-1) & 0x3F) | 0x80; break; }
             else {
@@ -1893,7 +2018,7 @@ int sfn_save(char *filename, int ascii, int compress)
                     fclose(f);
                 }
             } else {
-                fprintf(stderr, "unable to write '%s'\n", filename);
+                fprintf(stderr, "libsfn: unable to write '%s'\n", filename);
             }
         } else
 #endif
@@ -1917,13 +2042,16 @@ int sfn_save(char *filename, int ascii, int compress)
                 fclose(f);
                 x = hdr->size;
             } else {
-                fprintf(stderr, "unable to write '%s'\n", filename);
+                fprintf(stderr, "libsfn: unable to write '%s'\n", filename);
             }
         }
 
         /* free resources */
         for(unicode = 0; unicode <= 0x10FFFF; unicode++) {
-            if(ctx.glyphs[unicode].frags) free(ctx.glyphs[unicode].frags);
+            if(ctx.glyphs[unicode].frags) {
+                free(ctx.glyphs[unicode].frags);
+                ctx.glyphs[unicode].frags = NULL;
+            }
             ctx.glyphs[unicode].numfrag = 0;
         }
         if(ctx.frags) {
@@ -2052,6 +2180,172 @@ void sfn_sanitize()
     if(ctx.family > SSFN_FAMILY_HAND) ctx.family = SSFN_FAMILY_HAND;
 }
 
+/* add a line to contour */
+static void _sfn_l(int p, int h, int x, int y)
+{
+    if(x < 0 || y < 0 || x >= p || y >= h || (
+        ((ctx.lx + (1 << (SSFN_PREC-1))) >> SSFN_PREC) == ((x + (1 << (SSFN_PREC-1))) >> SSFN_PREC) &&
+        ((ctx.ly + (1 << (SSFN_PREC-1))) >> SSFN_PREC) == ((y + (1 << (SSFN_PREC-1))) >> SSFN_PREC))) return;
+    if(ctx.ap <= ctx.np) {
+        ctx.ap = ctx.np + 512;
+        ctx.p = (uint16_t*)realloc(ctx.p, ctx.ap * sizeof(uint16_t));
+        if(!ctx.p) { ctx.ap = ctx.np = 0; return; }
+    }
+    if(!ctx.np) {
+        ctx.p[0] = ctx.mx;
+        ctx.p[1] = ctx.my;
+        ctx.np += 2;
+    }
+    ctx.p[ctx.np+0] = x;
+    ctx.p[ctx.np+1] = y;
+    ctx.np += 2;
+    ctx.lx = x; ctx.ly = y;
+}
+
+/* add a Bezier curve to contour */
+static void _sfn_b(int p,int h, int x0,int y0, int x1,int y1, int x2,int y2, int x3,int y3, int l)
+{
+    int m0x, m0y, m1x, m1y, m2x, m2y, m3x, m3y, m4x, m4y,m5x, m5y;
+    if(l<4 && (x0!=x3 || y0!=y3)) {
+        m0x = ((x1-x0)/2) + x0;     m0y = ((y1-y0)/2) + y0;
+        m1x = ((x2-x1)/2) + x1;     m1y = ((y2-y1)/2) + y1;
+        m2x = ((x3-x2)/2) + x2;     m2y = ((y3-y2)/2) + y2;
+        m3x = ((m1x-m0x)/2) + m0x;  m3y = ((m1y-m0y)/2) + m0y;
+        m4x = ((m2x-m1x)/2) + m1x;  m4y = ((m2y-m1y)/2) + m1y;
+        m5x = ((m4x-m3x)/2) + m3x;  m5y = ((m4y-m3y)/2) + m3y;
+        _sfn_b(p,h, x0,y0, m0x,m0y, m3x,m3y, m5x,m5y, l+1);
+        _sfn_b(p,h, m5x,m5y, m4x,m4y, m2x,m2y, x3,y3, l+1);
+    }
+    if(l) _sfn_l(p,h, x3, y3);
+}
+
+/**
+ * Rasterize a layer or glyph
+ *
+ * @param size size
+ * @param unicode code point
+ * @param layer layer index or -1 for all
+ * @param g glyph data to return
+ */
+int sfn_glyph(int size, int unicode, int layer, ssfn_glyph_t *g)
+{
+    uint8_t ci = 0, cb = 0, cs;
+    uint16_t r[640];
+    int i, j, k, l, p, m, n, o, w, h, a, A, b, B, nr, x;
+    sfncont_t *cont;
+
+    if(unicode < 0 || unicode > 0x10FFFF || !ctx.glyphs[unicode].numlayer || layer >= ctx.glyphs[unicode].numlayer ||
+        ctx.height < 8) return 0;
+    h = (size > ctx.height ? (size + 4) & ~3 : ctx.height);
+    w = ctx.glyphs[unicode].width * h / ctx.height;
+    p = w + (ci ? h / SSFN_ITALIC_DIV : 0) + cb;
+    g->p = p;
+    g->h = h;
+    if(p * h >= SSFN_DATA_MAX) return 0;
+    g->x = ctx.glyphs[unicode].adv_x * h / ctx.height;
+    g->y = ctx.glyphs[unicode].adv_y * h / ctx.height;
+    g->o = ctx.glyphs[unicode].ovl_x * h / ctx.height;
+    memset(&g->data, 0xFF, p * h);
+    for(n = (layer == -1 ? 0 : layer); n < (layer == -1 ? ctx.glyphs[unicode].numlayer : layer + 1); n++) {
+        switch(ctx.glyphs[unicode].layers[n].type) {
+            case SSFN_FRAG_CONTOUR:
+                for(i = 0, ctx.np = 0, cont = (sfncont_t*)ctx.glyphs[unicode].layers[n].data;
+                    i < ctx.glyphs[unicode].layers[n].len; i++, cont++) {
+                        k = (cont->px << SSFN_PREC) * h / ctx.height; m = (cont->py << SSFN_PREC) * h / ctx.height;
+                        switch(cont->type) {
+                            case SSFN_CONTOUR_MOVE: ctx.mx = ctx.lx = k; ctx.my = ctx.ly = m; break;
+                            case SSFN_CONTOUR_LINE: _sfn_l(p << SSFN_PREC, h << SSFN_PREC, k, m); break;
+                            case SSFN_CONTOUR_QUAD:
+                                a = (cont->c1x << SSFN_PREC) * h / ctx.height;
+                                A = (cont->c1y << SSFN_PREC) * h / ctx.height;
+                                _sfn_b(p << SSFN_PREC,h << SSFN_PREC, ctx.lx,ctx.ly, ((a-ctx.lx)/2)+ctx.lx,
+                                    ((A-ctx.ly)/2)+ctx.ly, ((k-a)/2)+a,((A-m)/2)+m, k,m, 0);
+                            break;
+                            case SSFN_CONTOUR_CUBIC:
+                                a = (cont->c1x << SSFN_PREC) * h / ctx.height;
+                                A = (cont->c1y << SSFN_PREC) * h / ctx.height;
+                                b = (cont->c2x << SSFN_PREC) * h / ctx.height;
+                                B = (cont->c2y << SSFN_PREC) * h / ctx.height;
+                                _sfn_b(p << SSFN_PREC,h << SSFN_PREC, ctx.lx,ctx.ly, a,A, b,B, k,m, 0);
+                            break;
+                        }
+                }
+                if(ctx.mx != ctx.lx || ctx.my != ctx.ly) _sfn_l(p << SSFN_PREC, h << SSFN_PREC, ctx.mx, ctx.my);
+                if(ctx.np > 4) {
+                    for(b = A = B = o = 0; b < h; b++, B += p) {
+                        a = b << SSFN_PREC;
+                        for(nr = 0, i = 0; i < ctx.np - 3; i += 2) {
+                            if( (ctx.p[i+1] < a && ctx.p[i+3] >= a) ||
+                                (ctx.p[i+3] < a && ctx.p[i+1] >= a)) {
+                                    if((ctx.p[i+1] >> SSFN_PREC) == (ctx.p[i+3] >> SSFN_PREC))
+                                        x = (((int)ctx.p[i]+(int)ctx.p[i+2])>>1);
+                                    else
+                                        x = ((int)ctx.p[i]) + ((a - (int)ctx.p[i+1])*
+                                            ((int)ctx.p[i+2] - (int)ctx.p[i])/
+                                            ((int)ctx.p[i+3] - (int)ctx.p[i+1]));
+                                    x >>= SSFN_PREC;
+                                    if(ci) x += (h - b) / SSFN_ITALIC_DIV;
+                                    if(cb && !o) {
+                                        if(g->data[B + x] == 0xFF) { o = -cb; A = cb; }
+                                        else { o = cb; A = -cb; }
+                                    }
+                                    for(k = 0; k < nr && x > r[k]; k++);
+                                    for(l = nr; l > k; l--) r[l] = r[l-1];
+                                    r[k] = x;
+                                    nr++;
+                            }
+                        }
+                        if(nr > 1 && nr & 1) { r[nr - 2] = r[nr - 1]; nr--; }
+                        if(nr) {
+                            for(i = 0; i < nr - 1; i += 2) {
+                                l = r[i] + o; m = r[i + 1] + A;
+                                if(l < 0) l = 0;
+                                if(m > p) m = p;
+                                if(i > 0 && l < r[i - 1] + A) l = r[i - 1] + A;
+                                for(; l < m; l++)
+                                    g->data[B + l] = g->data[B + l] == 0xFF ? ctx.glyphs[unicode].layers[n].color : 0xFF;
+                            }
+                        }
+                    }
+                }
+            break;
+            case SSFN_FRAG_BITMAP:
+            case SSFN_FRAG_PIXMAP:
+                B = ctx.glyphs[unicode].width; A = ctx.glyphs[unicode].height;
+                b = B * h / ctx.height; a = A * h / ctx.height;
+                for(j = 0; j < a; j++) {
+                    k = j * A / a * B;
+                    for(i = 0; i < b; i++) {
+                        l = ctx.glyphs[unicode].layers[n].data[k + i * B / b];
+                        if(l != 0xFF)
+                            g->data[j * p + i] =
+                                ctx.glyphs[unicode].layers[n].type == SSFN_FRAG_BITMAP ? ctx.glyphs[unicode].layers[n].color : l;
+                    }
+                }
+                if(ctx.glyphs[unicode].layers[n].type == SSFN_FRAG_BITMAP) {
+                    cs = ctx.glyphs[unicode].layers[n].color;
+                    m = cs == 0xFD ? 0xFC : 0xFD;
+                    for(k = h; k > ctx.height + 4; k -= 2*ctx.height) {
+                        for(j = 1; j < a - 1; j++)
+                            for(i = 1; i < b - 1; i++) {
+                                l = j * p + i;
+                                if(g->data[l] == 0xFF && (g->data[l - p] == cs ||
+                                    g->data[l + p] == cs) && (g->data[l - 1] == cs ||
+                                    g->data[l + 1] == cs)) g->data[l] = m;
+                            }
+                        for(j = 1; j < a - 1; j++)
+                            for(i = 1; i < b - 1; i++) {
+                                l = j * p + i;
+                                if(g->data[l] == m) g->data[l] = cs;
+                            }
+                    }
+                }
+            break;
+        }
+    }
+    return 1;
+}
+
 /**
  * Convert vector layers into bitmaps of size SIZE
  *
@@ -2059,9 +2353,154 @@ void sfn_sanitize()
  */
 void sfn_rasterize(int size)
 {
+    uint32_t P;
+    unsigned long int sA;
+    int i, j, k, m, n, w, x, y, y0, y1, Y0, Y1, x0, x1, X0, X1, X2, xs, ys, yp, pc;
+    ssfn_glyph_t g;
+
     if(size < 8) size = 8;
-    if(size > 255) size = 255;
-    fprintf(stderr, "TODO: implement rasterization %d\n", size);
+    if(size > 192) size = 192;
+
+    for(i = 0; i < 0x110000; i++) {
+        if(pbar) (*pbar)(0, 0, i, 0x10FFFF, PBAR_RASTERIZE);
+        n = sfn_glyph(size, i, -1, &g);
+        for(j = 0; j < ctx.glyphs[i].numlayer; j++)
+            if(ctx.glyphs[i].layers[j].data)
+                free(ctx.glyphs[i].layers[j].data);
+        for(j = 0; j < ctx.glyphs[i].numkern; j++) {
+            ctx.glyphs[i].kern[j].x = ctx.glyphs[i].kern[j].x * size / ctx.height;
+            ctx.glyphs[i].kern[j].y = ctx.glyphs[i].kern[j].y * size / ctx.height;
+        }
+        ctx.glyphs[i].adv_x = ctx.glyphs[i].adv_x * size / ctx.height;
+        ctx.glyphs[i].adv_y = ctx.glyphs[i].adv_y * size / ctx.height;
+        ctx.glyphs[i].ovl_x = ctx.glyphs[i].ovl_x * size / ctx.height;
+        ctx.glyphs[i].numlayer = ctx.glyphs[i].width = ctx.glyphs[i].height = 0;
+        if(n) {
+            w = g.p * size / g.h;
+            n = size > 16 ? 2 : 1;
+            if(w < n) w = n;
+            ctx.glyphs[i].layers = realloc(ctx.glyphs[i].layers, sizeof(sfnlayer_t));
+            if(!ctx.glyphs[i].layers) continue;
+            memset(ctx.glyphs[i].layers, 0, sizeof(sfnlayer_t));
+            ctx.glyphs[i].layers[0].data = malloc(w * size);
+            if(!ctx.glyphs[i].layers[0].data) { sfn_chardel(i); continue; }
+            ctx.glyphs[i].numlayer = 1;
+            ctx.glyphs[i].width = w;
+            ctx.glyphs[i].height = size;
+            ctx.glyphs[i].layers[0].type = SSFN_FRAG_BITMAP;
+            ctx.glyphs[i].layers[0].len = w * size;
+            ctx.glyphs[i].layers[0].color = 0xFE;
+            for (y = j = 0; y < size; y++) {
+                y0 = (y << 8) * g.h / size; Y0 = y0 >> 8; y1 = ((y + 1) << 8) * g.h / size; Y1 = y1 >> 8;
+                for (x = 0; x < w; x++, j++) {
+                    m = 0; sA = 0;
+                    x0 = (x << 8) * g.p / w; X0 = x0 >> 8; x1 = ((x + 1) << 8) * g.p / w; X1 = x1 >> 8;
+                    for(ys = y0; ys < y1; ys += 256) {
+                        if(ys >> 8 == Y0) { yp = 256 - (ys & 0xFF); ys &= ~0xFF; if(yp > y1 - y0) yp = y1 - y0; }
+                        else if(ys >> 8 == Y1) yp = y1 & 0xFF;
+                        else yp = 256;
+                        X2 = (ys >> 8) * g.p;
+                        for(xs = x0; xs < x1; xs += 256) {
+                            if (xs >> 8 == X0) {
+                                k = 256 - (xs & 0xFF); xs &= ~0xFF; if(k > x1 - x0) k = x1 - x0;
+                                pc = k == 256 ? yp : (k * yp) >> 8;
+                            } else
+                            if (xs >> 8 == X1) { k = x1 & 0xFF; pc = k == 256 ? yp : (k * yp) >> 8; }
+                            else pc = yp;
+                            m += pc;
+                            k = g.data[X2 + (xs >> 8)];
+                            if(k == 0xFF) continue;
+                            P = *((uint32_t*)(ctx.cpal + (k << 2)));
+                            sA += (k == 0xFE || !P ? 255 : ((P >> 24) & 0xFF)) * pc;
+                        }
+                    }
+                    if(m) sA /= m; else sA >>= 8;
+                    ctx.glyphs[i].layers[0].data[j] = sA > 64 ? 0xFE : 0xFF;
+                }
+            }
+        }
+    }
+    ctx.width = ctx.height = ctx.baseline = ctx.underline = 0;
+    sfn_sanitize();
+}
+
+/**
+ * Convert bitmap layers into vector contours
+ */
+void sfn_vectorize()
+{
+    int i, j, k, s, n, old = ctx.height;
+    potrace_bitmap_t bm;
+    potrace_param_t *param;
+    potrace_path_t *p;
+    potrace_state_t *st;
+    potrace_dpoint_t (*c)[3];
+    ssfn_glyph_t g;
+    sfnlayer_t *lyr;
+
+    param = potrace_param_default();
+    if(!param) { fprintf(stderr,"libsfn: memory allocation error\n"); return; }
+    param->turdsize = 0;
+
+    memset(&bm, 0, sizeof(potrace_bitmap_t));
+    for(i = 0; i < 0x110000; i++) {
+        if(pbar) (*pbar)(0, 0, i, 0x10FFFF, PBAR_VECTORIZE);
+        n = sfn_glyph(SSFN_SIZE_MAX, i, -1, &g);
+        for(j = 0; j < ctx.glyphs[i].numlayer; j++)
+            if(ctx.glyphs[i].layers[j].data)
+                free(ctx.glyphs[i].layers[j].data);
+        ctx.glyphs[i].numlayer = ctx.glyphs[i].width = ctx.glyphs[i].height = 0;
+        if(n) {
+            s = g.p > g.h ? g.p : g.h;
+            bm.w = g.p;
+            bm.h = g.h;
+            bm.dy = (g.p + BM_WORDBITS - 1) / BM_WORDBITS;
+            n = bm.h * bm.dy * BM_WORDSIZE;
+            bm.map = (potrace_word *)realloc(bm.map, n);
+            if(!bm.map) { fprintf(stderr,"libsfn: memory allocation error\n"); continue; }
+            memset(bm.map, 0, n);
+            for(n = k = 0; n < g.h; n++)
+                for(j = 0; j < g.p; j++, k++)
+                    if(g.data[k] != 0xFF) BM_USET(bm, j, n);
+            st = potrace_trace(param, &bm);
+            if (!st || st->status != POTRACE_STATUS_OK) { fprintf(stderr,"libsfn: error tracing bitmap U+%06X\n", i); continue; }
+            p = st->plist;
+            while (p != NULL) {
+                n = p->curve.n;
+                c = p->curve.c;
+                unicode = i;
+                lyr = sfn_layeradd(i, SSFN_FRAG_CONTOUR, 0, 0, 0, 0, 0xFE, NULL);
+                if(!lyr) { fprintf(stderr,"libsfn: memory allocation error\n"); break; }
+                sfn_contadd(lyr, SSFN_CONTOUR_MOVE, c[n-1][2].x * 254 / s, c[n-1][2].y * 254 / s, 0,0, 0,0);
+                for(j = 0; j < n; j++)
+                    switch(p->curve.tag[j]) {
+                        case POTRACE_CORNER:
+                            sfn_contadd(lyr, SSFN_CONTOUR_LINE, c[j][1].x * 254 / s, c[j][1].y * 254 / s, 0,0, 0,0);
+                            sfn_contadd(lyr, SSFN_CONTOUR_LINE, c[j][2].x * 254 / s, c[j][2].y * 254 / s, 0,0, 0,0);
+                        break;
+                        case POTRACE_CURVETO:
+                            sfn_contadd(lyr, SSFN_CONTOUR_CUBIC, c[j][2].x * 254 / s, c[j][2].y * 254 / s,
+                                c[j][0].x * 254 / s, c[j][0].y * 254 / s, c[j][1].x * 254 / s, c[j][1].y * 254 / s);
+                        break;
+                    }
+                p = p->next;
+            }
+            potrace_state_free(st);
+        }
+    }
+    if(bm.map) free(bm.map);
+    potrace_param_free(param);
+    ctx.width = ctx.height = ctx.baseline = ctx.underline = 0;
+    sfn_sanitize();
+    for(i = 0; i < 0x110000; i++) {
+        ctx.glyphs[i].adv_x = ctx.glyphs[i].adv_x * ctx.height / old;
+        ctx.glyphs[i].adv_y = ctx.glyphs[i].adv_y * ctx.height / old;
+        ctx.glyphs[i].ovl_x = ctx.glyphs[i].ovl_x * ctx.height / old;
+        for(j = 0; j < ctx.glyphs[i].numkern; j++) {
+            ctx.glyphs[i].kern[j].x = ctx.glyphs[i].kern[j].x * ctx.height / old;
+            ctx.glyphs[i].kern[j].y = ctx.glyphs[i].kern[j].y * ctx.height / old;
+        }
+    }
 }
 
 /**

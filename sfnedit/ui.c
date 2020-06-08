@@ -43,17 +43,17 @@
 
 char verstr[8];
 
-uint8_t *icon32, *tools, *bga;
+uint8_t *icon32, *icon64, *tools, *bga;
 
 uint32_t theme[] = { 0xFF454545, 0xFFBEBEBE, 0xFF545454, 0xFF3C3C3C, 0xFF5C5C5C, 0xFF343434, 0xFF3C3C3C,
     0xFF101010, 0xFF686868, 0xFF515151, 0xFF484848, 0xFF404040, 0xFF744C4C, 0xFF5D3535, 0xFF542C2C, 0xFF4C2424,
-    0xFF5C5C5C, 0xFF909090 };
+    0xFF5C5C5C, 0xFFF0F0F0, 0xFF909090, 0xFF4E4E4E };
 /*
     0xFFF0F0F0, 0xFFF4F4F4, 0xFFBEBEBE, 0xFF808080, 0xFF5C5C5C, 0xFF4C4C4C, 0xFF454545, 0xFF383838, 0xFF303030,
     0xFFFF0000, 0xFF800000, 0xFF004040, 0xFF0000FF, 0xFF00FF00, 0xFFFF0000, 0xFF00FFFF };
 */
 int gw = 36+16+512, gh = 24+8+512, gotevt = 0, quiet = 0, lastpercent = 100, mainloop = 1, modified = 0;
-char ws[0x110000], *status;
+char ws[0x110000], *status, *errstatus = NULL;
 
 int numwin = 0;
 ui_win_t *wins = NULL;
@@ -66,7 +66,7 @@ ssfn_t logofnt;
 int cursor = CURSOR_PTR, lastcursor = -1, seltool = -1;
 int zip = 1, ascii = 0, selfield = -1;
 
-extern int lastsave, input_maxlen, input_callback;
+extern int lastsave, input_maxlen, input_callback, selstart, selend, selfiles, clkfiles, selranges, clkranges;
 extern char *input_str, *input_cur, *input_scr, *input_end, gstat[];
 
 /**
@@ -159,7 +159,7 @@ int ui_textwidth(char *str)
  */
 void ui_openwin(uint32_t unicode)
 {
-    int w, h, i, j=0;
+    int w = gw, h = gh, i, j=0;
 
     for(i=0; i < numwin; i++) {
         if(wins[i].winid) {
@@ -269,6 +269,11 @@ static void ui_loadrc()
     ri.bits_per_channel = 8;
     icon32 = (uint8_t*)stbi__png_load(&s, (int*)&w, (int*)&h, (int*)&f, 0, &ri);
 
+    s.img_buffer = s.img_buffer_original = icon64_png;
+    s.img_buffer_end = s.img_buffer_original_end = icon64_png + sizeof(icon64_png);
+    ri.bits_per_channel = 8;
+    icon64 = (uint8_t*)stbi__png_load(&s, (int*)&w, (int*)&h, (int*)&f, 0, &ri);
+
     s.img_buffer = s.img_buffer_original = icons_png;
     s.img_buffer_end = s.img_buffer_original_end = icons_png + sizeof(icons_png);
     ri.bits_per_channel = 8;
@@ -314,6 +319,7 @@ void ui_quit(int sig __attribute__((unused)))
     ssfn_free(&logofnt);
     sfn_free();
     uniname_free();
+    free(icon64);
     free(icon32);
     free(tools);
     free(bga);
@@ -327,7 +333,7 @@ void ui_quit(int sig __attribute__((unused)))
 void ui_pb(int step, int numstep, int curr, int total, int msg)
 {
     int i, n;
-    char s[16];
+    char s[64];
 
     n = (long int)(curr + 1) * 100L / (long int)(total + 1);
     if(n == lastpercent) return;
@@ -335,14 +341,14 @@ void ui_pb(int step, int numstep, int curr, int total, int msg)
     ui_box(&wins[0], 0, wins[0].h - 18, wins[0].w, 18, theme[THEME_DARK], theme[THEME_DARK], theme[THEME_DARK]);
     i = 18;
     if(numstep > 0) {
-        ui_box(&wins[0], 0, wins[0].h - 18, wins[0].w * step / numstep, 4, theme[THEME_LIGHT], theme[THEME_LIGHT],
-            theme[THEME_LIGHT]);
-        i = 14;
+        ui_box(&wins[0], 0, wins[0].h - 18, wins[0].w * step / numstep, 6, theme[THEME_LIGHTER], theme[THEME_LIGHT],
+            theme[THEME_DARKER]);
+        i = 12;
         sprintf(s, "[ %d / %d ] %3d%%", step, numstep, n);
     } else
         sprintf(s, "%3d%%", n);
     ui_box(&wins[0], 0, wins[0].h - i, (int)(long)wins[0].w * (long)(curr + 1) / (long)(total + 1), i,
-        theme[THEME_LIGHT], theme[THEME_LIGHT], theme[THEME_LIGHT]);
+        theme[THEME_LIGHTER], theme[THEME_LIGHT], theme[THEME_LIGHTER]);
     ssfn_dst.fg = theme[THEME_FG];
     ui_text(&wins[0], 0, wins[0].h - 18, s);
     ui_text(&wins[0], ssfn_dst.x + 8, wins[0].h - 18, !msg ? "" : lang[msg - 1 + STAT_MEASURE]);
@@ -358,7 +364,7 @@ void ui_refreshwin(int idx, int wx, int wy, int ww, int wh)
     int i, j, k, m, p, q;
     uint8_t *b = (uint8_t*)&theme[THEME_BG], *c = (uint8_t*)&theme[THEME_LIGHT];
 
-    if(idx < 0 || idx >= numwin || win->w < 8 || win->h < 8) return;
+    if(idx < 0 || idx >= numwin || win->w < 8 || win->h < 8 || wx+ww < 32 || wy+wh < 32) return;
     ssfn_dst.fg = theme[THEME_FG];
     ssfn_dst.bg = 0;
     input_maxlen = 0;
@@ -394,7 +400,16 @@ void ui_refreshwin(int idx, int wx, int wy, int ww, int wh)
             case GLYPH_TOOL_COLOR: view_color(idx); break;
         }
     }
-    ui_box(win, 0, win->h - 18, win->w, 18, theme[THEME_DARK], theme[THEME_DARK], theme[THEME_DARK]);
+    if(errstatus) {
+        ui_box(&wins[event.win], 0, wins[event.win].h - 18, wins[event.win].w, 18,
+        theme[THEME_BTN1D], theme[THEME_BTN1D], theme[THEME_BTN1D]);
+        ssfn_dst.bg = theme[THEME_BTN1D];
+        ssfn_dst.w = wins[event.win].w;
+        ssfn_dst.h = wins[event.win].h;
+        ssfn_dst.fg = theme[THEME_FG];
+        ui_text(&wins[event.win], 0, wins[event.win].h - 18, errstatus);
+    } else
+        ui_box(win, 0, win->h - 18, win->w, 18, theme[THEME_DARK], theme[THEME_DARK], theme[THEME_DARK]);
     ui_flushwin(win, wx, wy, ww, wh);
 }
 
@@ -473,6 +488,7 @@ void ui_main(char *fn)
     ui_refreshwin(0, 0, 0, wins[0].w, wins[0].h);
     wins[0].tool = -1;
     if(fn && sfn_load(fn, 0)) {
+        sfn_sanitize();
         wins[0].tool = MAIN_TOOL_GLYPHS;
         ui_updatetitle(0);
         ui_resizewin(&wins[0], wins[0].w, wins[0].h);
@@ -485,6 +501,7 @@ void ui_main(char *fn)
     while(mainloop) {
         ui_getevent();
         if(event.win < 0) continue;
+        if(event.type != E_REFRESH && event.type != E_MOUSEMOVE && event.type != E_BTNRELEASE) errstatus = NULL;
         switch(event.type) {
             case E_CLOSE: ui_closewin(event.win); break;
             case E_RESIZE:
@@ -503,8 +520,8 @@ void ui_main(char *fn)
                     if(event.win && event.x >= 6 + 3 * 24 && event.x < 32 + 6 + 3 * 24) {
                         s = utf8(wins[event.win].unicode);
                         if(!s[1]) s[2] = s[3] = 0; else if(!s[2]) s[3] = 0;
-                        sprintf(gstat, "U+%06X utf8 %02x %02x %02x %02x", wins[event.win].unicode, (unsigned char)s[0],
-                            (unsigned char)s[1], (unsigned char)s[2], (unsigned char)s[3]);
+                        sprintf(gstat, "U+%06X  %02x %02x %02x %02x  %d", wins[event.win].unicode, (unsigned char)s[0],
+                            (unsigned char)s[1], (unsigned char)s[2], (unsigned char)s[3], wins[event.win].unicode);
                         status = gstat;
                     }
                 } else {
@@ -515,14 +532,20 @@ void ui_main(char *fn)
                         }
                     }
                 }
-                ui_box(&wins[event.win], 0, wins[event.win].h - 18, wins[event.win].w, 18,
-                    theme[THEME_DARK], theme[THEME_DARK], theme[THEME_DARK]);
-                ssfn_dst.bg = theme[THEME_DARK];
-                if(status) {
-                    ssfn_dst.w = wins[event.win].w;
-                    ssfn_dst.h = wins[event.win].h;
-                    ssfn_dst.fg = theme[THEME_FG];
-                    ui_text(&wins[event.win], 0, wins[event.win].h - 18, status);
+                ssfn_dst.w = wins[event.win].w;
+                ssfn_dst.h = wins[event.win].h;
+                ssfn_dst.fg = theme[THEME_FG];
+                if(errstatus) {
+                    ui_box(&wins[event.win], 0, wins[event.win].h - 18, wins[event.win].w, 18,
+                    theme[THEME_BTN1D], theme[THEME_BTN1D], theme[THEME_BTN1D]);
+                    ssfn_dst.bg = theme[THEME_BTN1D];
+                    ui_text(&wins[event.win], 0, wins[event.win].h - 18, errstatus);
+                } else {
+                    ui_box(&wins[event.win], 0, wins[event.win].h - 18, wins[event.win].w, 18,
+                        theme[THEME_DARK], theme[THEME_DARK], theme[THEME_DARK]);
+                    ssfn_dst.bg = theme[THEME_DARK];
+                    if(status)
+                        ui_text(&wins[event.win], 0, wins[event.win].h - 18, status);
                 }
                 if(cursor != lastcursor) {
                     ui_cursorwin(&wins[event.win], cursor);
@@ -653,6 +676,7 @@ void ui_main(char *fn)
             case E_BTNPRESS:
                 ui_inputfinish();
                 if(event.y < 23) {
+                    selstart = selend = selfiles = clkfiles = selranges = clkranges = -1;
                     i = (event.x - 1) / 24;
                     if(i < (!event.win ? 6 : 3)) {
                         seltool = i;
@@ -661,9 +685,9 @@ void ui_main(char *fn)
                     if(event.win && event.x >= 6 + 3 * 24 && event.x < 32 + 6 + 3 * 24) {
                         s = utf8(wins[event.win].unicode);
                         if(!s[1]) s[2] = s[3] = 0; else if(!s[2]) s[3] = 0;
-                        printf("U+%06X utf8 %02x %02x %02x %02x %s\n", wins[event.win].unicode, (unsigned char)s[0],
-                            (unsigned char)s[1], (unsigned char)s[2], (unsigned char)s[3], wins[event.win].unicode >= ' ' ? s :
-                            "");
+                        printf("U+%06X  %02x %02x %02x %02x  %d  %s\n", wins[event.win].unicode, (unsigned char)s[0],
+                            (unsigned char)s[1], (unsigned char)s[2], (unsigned char)s[3], wins[event.win].unicode,
+                            wins[event.win].unicode >= ' ' ? s : "");
                     }
                 } else {
                     if(!event.win) {
@@ -682,7 +706,7 @@ void ui_main(char *fn)
                 if(event.y < 23) {
                     i = (event.x - 1) / 24;
                     if(i < (!event.win ? 6 : 3) && i == seltool) {
-                        wins[event.win].tool = !event.win && i > 1 && i < 6 && !ctx.filename ? 1 : i;
+                        wins[event.win].tool = i;
                         wins[event.win].field = selfield = -1;
                         ui_resizewin(&wins[event.win], wins[event.win].w, wins[event.win].h);
                     }

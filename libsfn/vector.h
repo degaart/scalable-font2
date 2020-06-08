@@ -23,9 +23,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * @brief File functions for vector fonts using FreeType2
+ * @brief File functions for vector fonts
  *
  */
 
-int ft2_read(char *filename);       /* Read in and check if FreeType2 supports */
-void ft2_parse();                   /* Parse a font with FreeType2 */
+void sfd(char *data, int size);                 /* FontForge's SplineFontDB with SplineSets */
+int  ft2_read(unsigned char *data, int size);   /* Read in and check if FreeType2 supports this font */
+void ft2_parse();                               /* Parse a font with FreeType2 */

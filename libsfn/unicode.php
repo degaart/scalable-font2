@@ -93,7 +93,7 @@ extern unicode_block_t ublocks[];
 unicode_block_t ublocks[] = {
 ";
 foreach($blocks as $k=>$b) {
-    $s.=sprintf("    { 0,%2d, 0x%06x, 0x%06x, \"%s\" }",$b[0]<0||$b[0]>=$b[2]-$b[1]?0:$b[0],$b[1],$b[2],
+    $s.=sprintf("    { 0,%3d, 0x%06x, 0x%06x, \"%s\" }",$b[0]<0||$b[0]>=$b[2]-$b[1]?0:$b[0],$b[1],$b[2],
         str_replace("\"","",$b[3])).(isset($blocks[$k+1])?",":"")."\n";
 }
 $s.="};\n#endif\n\n";
@@ -136,7 +136,7 @@ $N = gzcompress($N, 9);
 $s.="#define UNICODE_DAT_SIZE ".strlen($N)."
 unsigned char unicode_dat[UNICODE_DAT_SIZE] = {";
 for($i = 0; $i < strlen($N); $i++)
-    $s.=($i?",":"").sprintf("0x%02x",ord($N[$i]));
+    $s.=($i?",":"").sprintf("%d",ord($N[$i]));
 $s.="};\n#endif\n\n";
 echo("OK\n");
 file_put_contents("unicode.h", $s);

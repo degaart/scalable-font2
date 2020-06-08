@@ -70,32 +70,6 @@ scripting systems. You have to tell explicitly to render right-to-left by implem
 and passing a flag to the SSFN renderer. The BiDi state machine is not part of SSFN, because
 this is a low level font rasterizer, not a text shaper library.
 
-Usage
------
-
-Because the renderer is a single ANSI C/C++ header file, no shared library needed. It depends
-only on libc memory allocation, nothing else. You can configure the renderers by defining
-special defines.
-
-```c
-/* configure the renderer here with defines */
-#include <ssfn.h>
-```
-
-Once you have the include, you can start using the library, no need for initialization, but you must
-make sure that the initial context is zerod out (by putting it in the bss segment it will be, or call
-memset zero manually).
-
-As my favourite principle is K.I.S.S., there's only a few, clearly named functions in the API:
- - load one or more fonts into the context using `ssfn_load()` on program start.
- - set up rendering configuration by specifing font family, style and size with `ssfn_select()`.
- - if you want to change the size for example, you can call `ssfn_select()` again, no need to load the fonts again.
- - fill up an `ssfn_buf_t` struct that describes your pixel buffer to render to.
- - if you need it, you can get the rendered text's dimensions in advance with `ssfn_bbox()`.
- - call `ssfn_render()` to rasterize a glyph in the given style and size for a UNICODE code point in UTF-8.
- - repeat the last step until you reach the end of the UTF-8 string.
- - when done with rendering, call `ssfn_free()`.
-
 Quick Examples and Tutorials
 ----------------------------
 
@@ -172,14 +146,54 @@ while((ret = font.Render(&buf, str)) > 0) {
 }
 ```
 
+Usage
+-----
+
+Because the renderer is a single ANSI C/C++ header file, no shared library needed. It depends
+only on libc memory allocation, nothing else. You can configure the renderers by defining
+special defines.
+
+```c
+/* configure the renderer here with defines */
+#include <ssfn.h>
+```
+
+Once you have the include, you can start using the library, no need for initialization, but you must
+make sure that the initial context is zerod out (by putting it in the bss segment it will be, or call
+memset zero manually).
+
+As my favourite principle is K.I.S.S., there's only a few, clearly named functions in the API:
+ - load one or more fonts into the context using `ssfn_load()` on program start.
+ - set up rendering configuration by specifing font family, style and size with `ssfn_select()`.
+ - if you want to change the size for example, you can call `ssfn_select()` again, no need to load the fonts again.
+ - fill up an `ssfn_buf_t` struct that describes your pixel buffer to render to.
+ - if you need it, you can get the rendered text's dimensions in advance with `ssfn_bbox()`.
+ - call `ssfn_render()` to rasterize a glyph in the given style and size for a UNICODE code point in UTF-8.
+ - repeat the last step until you reach the end of the UTF-8 string.
+ - when done with rendering, call `ssfn_free()`.
+
 Configuration
 -------------
+
+### Configuring which Renderer to Use
 
 ```c
 #define SSFN_IMPLEMENTATION
 ```
 
 Include the normal renderer implementation as well, not just the file format defines and function prototypes.
+
+```c
+#define SSFN_CONSOLEBITMAP_PALETTE
+#define SSFN_CONSOLEBITMAP_HICOLOR
+#define SSFN_CONSOLEBITMAP_TRUECOLOR
+```
+
+Only one of these can be specified at once. These include the simple renderer which is totally independent
+from the rest of the API. It is a very specialized renderer, limited and optimized for OS kernel consoles.
+It renderers directly to the framebuffer, and you specify the framebuffer's pixel format with one of these.
+
+### Configuring Memory Management
 
 The normal renderer has memory-related dependencies. If you really want to use this renderer from a kernel,
 you can replace all dependent functions with your own implemenations using the following defines:
@@ -194,15 +208,21 @@ you can replace all dependent functions with your own implemenations using the f
 If you don't specify these, then the SSFN header will try to figure it out if they are supported as built-ins
 or provided by libc. That's all, no more dependencies. :-)
 
+If you even can't afford these deps, because you're in an embedded system or running on bare metal, then you
+can compile SSFN with static memory management using the following define:
+
 ```c
-#define SSFN_CONSOLEBITMAP_PALETTE
-#define SSFN_CONSOLEBITMAP_HICOLOR
-#define SSFN_CONSOLEBITMAP_TRUECOLOR
+#define SSFN_MAXLINES 4096
 ```
 
-Only one of these can be specified at once. These include the simple renderer which is totally independent
-from the rest of the API. It is a very specialized renderer, limited and optimized for OS kernel consoles.
-It renderers directly to the framebuffer, and you specify the framebuffer's pixel format with one of these.
+In this mode there is no libc dependency, and absolutely no memory allocation. When the maximum lines in a
+contour path is 4096 (per layer), then the context will consume no more than `64k` of memory, but has some
+serious limitations:
+
+- only 16 fonts can be loaded per family into one context,
+- transparent gzip uncompression not supported (you must pass inflated fonts to `ssfn_load`),
+- the `ssfn_text` function is useless, always returns NULL,
+- there will be no internal glyph cache, meaning considerably slower rendering.
 
 Variable Types
 --------------
@@ -318,7 +338,9 @@ Normal Renderer Functions
 
 The following functions are only available if the header is included with `SSFN_IMPLEMENTATION` define.
 They allocate memory and therefore depend on libc (or crafted compilers like gcc have all four functions
-as built-ins), hence are expected to be used by normal user space applications.
+as built-ins), hence are expected to be used by normal user space applications. You can make the normal
+renderer dependency-free by including with `SSFN_STATIC`, however with limited funtionality, see section
+Configuring Memory Management above.
 
 ## Initilization
 
@@ -359,7 +381,8 @@ into an object and link that with your code. In this case you'll have a `_binary
 You can also pass an SSFN font collection to this function, in which case all fonts within the collection
 will be loaded into the context at once.
 
-The font can be gzip compressed, `ssfn_load()` will transparently uncompress it (thanks to stb!).
+Without the `SSFN_STATIC` define, the font can be gzip compressed, and `ssfn_load()` will transparently
+inflate it (thanks to stb!).
 
 ### Return value
 
@@ -383,7 +406,7 @@ glyph size in pixels. In other words, if you set `size` to 32, then you'll get a
 height to `size`. This is also the default for Monospace fonts.
 
 By passing `SSFN_STYLE_NOCACHE` the rasterized glyphs won't be cached which reduces the memory footprint
-significantly (from a few megabytes to about ~80k), but slows down rendering on the long run.
+significantly (from a few megabytes to about ~64k), but slows down rendering on the long run.
 
 ### Parameters
 
@@ -553,6 +576,9 @@ int SSFN::Font.Mem();
 
 Returns how much memory a particular renderer context consumes. It is typically less than 64k, but strongly depends
 how big and much glyphs are stored in the internal cache. Internal buffers can be freed with `ssfn_free()`.
+
+When included with `SSFN_STATIC` define, each context will require no more than 64k, and no dynamic allocation will
+take place.
 
 ### Parameters
 

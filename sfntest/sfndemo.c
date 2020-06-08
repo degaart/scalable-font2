@@ -32,6 +32,7 @@
 #define SSFN_IMPLEMENTATION
 #define SSFN_PROFILING
 #define SSFN_CONSOLEBITMAP_TRUECOLOR
+/*#define SSFN_MAXLINES 4096*/
 #include "../ssfn.h"
 #if HAS_ZLIB
 #include <zlib.h>
@@ -472,7 +473,13 @@ void do_test(SDL_Surface *screen, char *fontfn)
     if(ret != SSFN_OK) { fprintf(stderr, "ssfn render error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
 
     /* free resources */
-    sprintf(strM, "Memory allocated: @%d bytes. All of this from a 28k of code in a single ANSI C header, that's something, right?",
+    sprintf(strM, "Memory "
+#ifdef SSFN_MAXLINES
+    "required"
+#else
+    "allocated"
+#endif
+    ": @%d bytes. All of this from a 28k of code in a single ANSI C header, that's something, right?",
         ssfn_mem(&ctx));
 
     ret = ssfn_select(&ctx, SSFN_FAMILY_SERIF, NULL, SSFN_STYLE_REGULAR | SSFN_STYLE_NOCACHE, 16);

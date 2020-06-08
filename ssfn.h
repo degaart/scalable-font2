@@ -147,7 +147,7 @@ typedef struct {
 } ssfn_buf_t;
 
 /* cached bitmap struct */
-#define SSFN_DATA_MAX       ((SSFN_SIZE_MAX + 4 + (SSFN_SIZE_MAX + 4) / SSFN_ITALIC_DIV) * (SSFN_SIZE_MAX + 4))
+#define SSFN_DATA_MAX       ((SSFN_SIZE_MAX + 4 + (SSFN_SIZE_MAX + 4) / SSFN_ITALIC_DIV) << 8)
 typedef struct {
     uint16_t p;                         /* data buffer pitch, bytes per line */
     uint8_t h;                          /* data buffer height */
@@ -176,15 +176,23 @@ typedef struct {
 
 /* renderer context */
 typedef struct {
-    const ssfn_font_t **fnt[5];         /* font registry */
+#ifdef SSFN_MAXLINES
+    const ssfn_font_t *fnt[5][16];      /* static font registry */
+#else
+    const ssfn_font_t **fnt[5];         /* dynamic font registry */
+#endif
     const ssfn_font_t *s;               /* explicitly selected font */
     const ssfn_font_t *f;               /* font selected by best match */
     ssfn_glyph_t ga;                    /* glyph sketch area */
     ssfn_glyph_t *g;                    /* current glyph pointer */
+#ifdef SSFN_MAXLINES
+    uint16_t p[SSFN_MAXLINES*2];
+#else
     ssfn_glyph_t ***c[17];              /* glyph cache */
-    ssfn_chr_t *rc;                     /* pointer to current character */
     uint16_t *p;
     char **bufs;                        /* allocated extra buffers */
+#endif
+    ssfn_chr_t *rc;                     /* pointer to current character */
     int numbuf, lenbuf, np, ap;
     int mx, my, lx, ly;                 /* move to coordinates, last coordinates */
     int len[5];                         /* number of fonts in registry */
@@ -276,8 +284,14 @@ uint32_t ssfn_utf8(char **s)
 #  ifdef __builtin_memcmp
 #   define SSFN_memcmp __builtin_memcmp
 #  else
-#   define SSFN_memcmp memcmp
-    extern int memcmp (const void *__s1, const void *__s2, size_t __n) __THROW;
+#   ifndef SSFN_MAXLINES
+#    define SSFN_memcmp memcmp
+     extern int memcmp (const void *__s1, const void *__s2, size_t __n) __THROW;
+#   else
+static int SSFN_memcmp(const void *__s1, const void *__s2, size_t __n)
+{   unsigned char *a = (unsigned char *)__s1, *b = (unsigned char *)__s2;
+    if(__n > 0) { while(__n-- > 0) { if(*a != *b) { return *a - *b; } a++; b++; } } return 0; }
+#   endif
 #  endif
 # endif
 
@@ -285,28 +299,37 @@ uint32_t ssfn_utf8(char **s)
 #  ifdef __builtin_memset
 #   define SSFN_memset __builtin_memset
 #  else
-#   define SSFN_memset memset
-    extern void *memset (void *__s, int __c, size_t __n) __THROW;
+#   ifndef SSFN_MAXLINES
+#    define SSFN_memset memset
+     extern void *memset (void *__s, int __c, size_t __n) __THROW;
+#   else
+static void *SSFN_memset(void *__s, int __c, size_t __n)
+{ unsigned char *a = __s; if(__n > 0) { while(__n-- > 0) *a++ = __c; } return __s; }
+#   endif
 #  endif
 # endif
 
-# ifndef SSFN_realloc
-#  ifdef __builtin_realloc
-#   define SSFN_realloc __builtin_realloc
-#  else
-#   define SSFN_realloc realloc
-    extern void *realloc (void *__ptr, size_t __size) __THROW;
-#  endif
-# endif
+# ifndef SSFN_MAXLINES
 
-# ifndef SSFN_free
-#  ifdef __builtin_free
-#   define SSFN_free __builtin_free
-#  else
-#   define SSFN_free free
-    extern void free (void *p) __THROW;
+#  ifndef SSFN_realloc
+#   ifdef __builtin_realloc
+#    define SSFN_realloc __builtin_realloc
+#   else
+#    define SSFN_realloc realloc
+     extern void *realloc (void *__ptr, size_t __size) __THROW;
+#   endif
 #  endif
-# endif
+
+#  ifndef SSFN_free
+#   ifdef __builtin_free
+#    define SSFN_free __builtin_free
+#   else
+#    define SSFN_free free
+     extern void free (void *p) __THROW;
+#   endif
+#  endif
+
+# endif /* if !SSFN_MAXLINES */
 
 /*** Private functions ***/
 
@@ -327,13 +350,9 @@ static uint8_t *_ssfn_c(const ssfn_font_t *font, const char *str, int *len, uint
         }
     }
     if(u == -1U) {
-        if((str[0] & 128) != 0) {
-            if(!(str[0] & 32)) { u = ((str[0] & 0x1F)<<6)|(str[1] & 0x3F); *len += 1; } else
-            if(!(str[0] & 16)) { u = ((str[0] & 0xF)<<12)|((str[1] & 0x3F)<<6)|(str[2] & 0x3F); *len += 2; } else
-            if(!(str[0] & 8)) { u = ((str[0] & 0x7)<<18)|((str[1] & 0x3F)<<12)|((str[2] & 0x3F)<<6)|(str[3] & 0x3F); *len += 3; }
-            else u = 0;
-        } else u = str[0];
-        *len += 1;
+        s = (uint8_t*)str;
+        u = ssfn_utf8((char**)&s);
+        *len = (int)(s - (uint8_t*)str);
     }
     *unicode = u;
     for(ptr = (uint8_t*)font + font->characters_offs, i = 0; i < 0x110000; i++) {
@@ -348,35 +367,21 @@ static uint8_t *_ssfn_c(const ssfn_font_t *font, const char *str, int *len, uint
     return NULL;
 }
 
-/* free internal glyph cache */
-static void _ssfn_fc(ssfn_t *ctx)
-{
-    int i, j, k;
-    if(!ctx) return;
-    for(k = 0; k <= 16; k++)
-        if(ctx->c[k]) {
-            for(j = 0; j < 256; j++)
-                if(ctx->c[k][j]) {
-                    for(i = 0; i < 256; i++)
-                        if(ctx->c[k][j][i]) SSFN_free(ctx->c[k][j][i]);
-                    SSFN_free(ctx->c[k][j]);
-                }
-            SSFN_free(ctx->c[k]);
-            ctx->c[k] = NULL;
-        }
-}
-
 /* add a line to contour */
 static void _ssfn_l(ssfn_t *ctx, int p, int h, int x, int y)
 {
     if(x < 0 || y < 0 || x >= p || y >= h || (
         ((ctx->lx + (1 << (SSFN_PREC-1))) >> SSFN_PREC) == ((x + (1 << (SSFN_PREC-1))) >> SSFN_PREC) &&
         ((ctx->ly + (1 << (SSFN_PREC-1))) >> SSFN_PREC) == ((y + (1 << (SSFN_PREC-1))) >> SSFN_PREC))) return;
+#ifdef SSFN_MAXLINES
+    if(ctx->np >= SSFN_MAXLINES*2-2) return;
+#else
     if(ctx->ap <= ctx->np) {
         ctx->ap = ctx->np + 512;
         ctx->p = (uint16_t*)SSFN_realloc(ctx->p, ctx->ap * sizeof(uint16_t));
         if(!ctx->p) { ctx->ap = ctx->np = 0; return; }
     }
+#endif
     if(!ctx->np) {
         ctx->p[0] = ctx->mx;
         ctx->p[1] = ctx->my;
@@ -403,6 +408,25 @@ static void _ssfn_b(ssfn_t *ctx, int p,int h, int x0,int y0, int x1,int y1, int 
         _ssfn_b(ctx, p,h, m5x,m5y, m4x,m4y, m2x,m2y, x3,y3, l+1);
     }
     if(l) _ssfn_l(ctx, p,h, x3, y3);
+}
+
+#ifndef SSFN_MAXLINES
+/* free internal glyph cache */
+static void _ssfn_fc(ssfn_t *ctx)
+{
+    int i, j, k;
+    if(!ctx) return;
+    for(k = 0; k <= 16; k++)
+        if(ctx->c[k]) {
+            for(j = 0; j < 256; j++)
+                if(ctx->c[k][j]) {
+                    for(i = 0; i < 256; i++)
+                        if(ctx->c[k][j][i]) SSFN_free(ctx->c[k][j][i]);
+                    SSFN_free(ctx->c[k][j]);
+                }
+            SSFN_free(ctx->c[k]);
+            ctx->c[k] = NULL;
+        }
 }
 
 /*
@@ -749,6 +773,7 @@ static char *_ssfn_zlib_decode(const char *buffer)
       return NULL;
    }
 }
+#endif /* if !SSFN_MAXLINES */
 
 /*** Public API implementation ***/
 
@@ -764,12 +789,16 @@ int ssfn_load(ssfn_t *ctx, const void *data)
     const ssfn_font_t *font = (const ssfn_font_t *)data;
     ssfn_font_t *fnt, *end;
     int family;
+#ifndef SSFN_MAXLINES
     uint8_t c, *ptr = (uint8_t *)font;
     int r;
-
+#endif
     if(!ctx || !font)
         return SSFN_ERR_INVINP;
     if(((uint8_t *)font)[0] == 0x1f && ((uint8_t *)font)[1] == 0x8b) {
+#ifdef SSFN_MAXLINES
+        return SSFN_ERR_BADFILE;
+#else
         ptr += 2;
         if(*ptr++ != 8) return SSFN_ERR_BADFILE;
         c = *ptr++; ptr += 6;
@@ -782,6 +811,7 @@ int ssfn_load(ssfn_t *ctx, const void *data)
         if(!ctx->bufs) { ctx->numbuf = 0; return SSFN_ERR_ALLOC; }
         ctx->bufs[ctx->numbuf++] = (char*)font;
         ctx->lenbuf += font->size;
+#endif
     }
     if(!SSFN_memcmp(font->magic, SSFN_COLLECTION, 4)) {
         end = (ssfn_font_t*)((uint8_t*)font + font->size);
@@ -796,14 +826,20 @@ int ssfn_load(ssfn_t *ctx, const void *data)
                 return SSFN_ERR_BADFILE;
         } else {
             ctx->len[family]++;
+#ifdef SSFN_MAXLINES
+            if(ctx->len[family] > 15) return SSFN_ERR_ALLOC;
+#else
             ctx->fnt[family] = (const ssfn_font_t**)SSFN_realloc(ctx->fnt[family], ctx->len[family]*sizeof(void*));
             if(!ctx->fnt[family]) {
                 ctx->len[family] = 0;
                 return SSFN_ERR_ALLOC;
             } else
+#endif
                 ctx->fnt[family][ctx->len[family]-1] = font;
         }
+#ifndef SSFN_MAXLINES
         _ssfn_fc(ctx);
+#endif
     }
     return SSFN_OK;
 }
@@ -815,9 +851,11 @@ int ssfn_load(ssfn_t *ctx, const void *data)
  */
 void ssfn_free(ssfn_t *ctx)
 {
+#ifndef SSFN_MAXLINES
     int i;
-
+#endif
     if(!ctx) return;
+#ifndef SSFN_MAXLINES
     _ssfn_fc(ctx);
     if(ctx->bufs) {
         for(i = 0; i < ctx->numbuf; i++)
@@ -827,6 +865,7 @@ void ssfn_free(ssfn_t *ctx)
     for(i = 0; i < 5; i++)
         if(ctx->fnt[i]) SSFN_free(ctx->fnt[i]);
     if(ctx->p) SSFN_free(ctx->p);
+#endif
     SSFN_memset(ctx, 0, sizeof(ssfn_t));
 }
 
@@ -838,10 +877,12 @@ void ssfn_free(ssfn_t *ctx)
  */
 int ssfn_mem(ssfn_t *ctx)
 {
+#ifdef SSFN_MAXLINES
+    return ctx ? sizeof(ssfn_t) : 0;
+#else
     int i, j, k, ret = sizeof(ssfn_t);
 
     if(!ctx) return 0;
-
     for(i = 0; i < 5; i++) ret += ctx->len[i] * sizeof(ssfn_font_t*);
     ret += ctx->lenbuf;
     for(k = 0; k <= 16; k++) {
@@ -857,6 +898,7 @@ int ssfn_mem(ssfn_t *ctx)
     }
     if(ctx->p) ret += ctx->ap * sizeof(uint16_t);
     return ret;
+#endif
 }
 
 /**
@@ -874,7 +916,9 @@ int ssfn_select(ssfn_t *ctx, int family, const char *name, int style, int size)
     int i, j, l;
 
     if(!ctx) return SSFN_ERR_INVINP;
+#ifndef SSFN_MAXLINES
     _ssfn_fc(ctx);
+#endif
     if((style & ~0x1FFF)) return SSFN_ERR_BADSTYLE;
     if(size < 8 || size > SSFN_SIZE_MAX) return SSFN_ERR_BADSIZE;
 
@@ -915,8 +959,8 @@ familyfound:
 int ssfn_render(ssfn_t *ctx, ssfn_buf_t *dst, const char *str)
 {
     ssfn_font_t **fl;
-    uint8_t *ptr = NULL, *frg, *end, *tmp, color, ci = 0, cb = 0, cs;
-    uint16_t *r;
+    uint8_t *ptr = NULL, *frg, *end, *tmp, color, ci = 0, cb = 0, cs, dec[65536];
+    uint16_t r[640];
     uint32_t unicode, P, O, *Op, *Ol;
     unsigned long int sR, sG, sB, sA;
     int ret = 0, i, j, k, l, p, m, n, o, s, x, y, w, h, a, A, b, B, nr, uix, uax;
@@ -980,6 +1024,7 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
         }
         if(!ptr) return SSFN_ERR_NOGLYPH;
     }
+    if(!ctx->f || !ctx->f->height || !ctx->size) return SSFN_ERR_NOFACE;
     if((unicode >> 16) > 0x10) return SSFN_ERR_INVINP;
     ctx->rc = (ssfn_chr_t*)ptr; ptr += sizeof(ssfn_chr_t);
 
@@ -992,10 +1037,13 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
     memcpy(&tv0, &tv1, sizeof(struct timeval));
 #endif
     /* render glyph into cache */
+#ifndef SSFN_MAXLINES
     if(!(ctx->style & SSFN_STYLE_NOCACHE) && ctx->c[unicode >> 16] && ctx->c[unicode >> 16][(unicode >> 8) & 0xFF] &&
         ctx->c[unicode >> 16][(unicode >> 8) & 0xFF][unicode & 0xFF]) {
             ctx->g = ctx->c[unicode >> 16][(unicode >> 8) & 0xFF][unicode & 0xFF];
-    } else {
+    } else
+#endif
+    {
         h = ctx->style & SSFN_STYLE_NOAA ? ctx->size : (ctx->size > ctx->f->height ? (ctx->size + 4) & ~3 : ctx->f->height);
         ci = (ctx->style & SSFN_STYLE_ITALIC) && !(SSFN_TYPE_STYLE(ctx->f->type) & SSFN_STYLE_ITALIC);
         cb = (ctx->style & SSFN_STYLE_BOLD) && !(SSFN_TYPE_STYLE(ctx->f->type) & SSFN_STYLE_BOLD) ? (ctx->f->height+64)>>6 : 0;
@@ -1003,6 +1051,7 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
         p = w + (ci ? h / SSFN_ITALIC_DIV : 0) + cb;
         /* failsafe, should never happen */
         if(p * h >= SSFN_DATA_MAX) return SSFN_ERR_BADSIZE;
+#ifndef SSFN_MAXLINES
         if(!(ctx->style & SSFN_STYLE_NOCACHE)) {
             if(!ctx->c[unicode >> 16]) {
                 ctx->c[unicode >> 16] = (ssfn_glyph_t***)SSFN_realloc(NULL, 256 * sizeof(void*));
@@ -1016,9 +1065,9 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
             }
             ctx->g = ctx->c[unicode >> 16][(unicode >> 8) & 0xFF][unicode & 0xFF] = (ssfn_glyph_t*)SSFN_realloc(NULL, p * h + 8);
             if(!ctx->c[unicode >> 16][(unicode >> 8) & 0xFF][unicode & 0xFF]) return SSFN_ERR_ALLOC;
-        } else {
+        } else
+#endif
             ctx->g = &ctx->ga;
-        }
         x = (ctx->rc->x > 0 && ci ? (ctx->f->height - ctx->f->baseline) * h / SSFN_ITALIC_DIV / ctx->f->height : 0);
         ctx->g->p = p;
         ctx->g->h = h;
@@ -1026,7 +1075,6 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
         ctx->g->y = ctx->rc->y;
         ctx->g->o = (ctx->rc->t & 0x3F) + x;
         SSFN_memset(&ctx->g->data, 0xFF, p * h);
-        r = (uint16_t*)SSFN_realloc(NULL, p * 2 * sizeof(uint16_t));
         color = 0xFE; ctx->g->a = ctx->g->d = 0;
         for(n = 0; n < ctx->rc->n; n++) {
             if(ptr[0] == 255 && ptr[1] == 255) { color = ptr[2]; ptr += ctx->rc->t & 0x40 ? 6 : 5; continue; }
@@ -1065,7 +1113,11 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
                     }
                 }
                 /* close path */
-                if(ctx->mx != ctx->lx || ctx->my != ctx->ly) _ssfn_l(ctx, p << SSFN_PREC, h << SSFN_PREC, ctx->mx, ctx->my);
+                if(ctx->mx != ctx->lx || ctx->my != ctx->ly) {
+                    ctx->p[ctx->np+0] = ctx->mx;
+                    ctx->p[ctx->np+1] = ctx->my;
+                    ctx->np += 2;
+                }
                 /* add rasterized vector layers to cached glyph */
                 if(ctx->np > 4) {
                     for(b = A = B = o = 0; b < h; b++, B += p) {
@@ -1113,56 +1165,54 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
                 frg += 2;
                 for(j = 0; j < a; j++) {
                     k = j * A / a;
+                    l = (y + j) * p + x + (ci ? (h - y - j) / SSFN_ITALIC_DIV : 0);
                     for(i = 0; i < b; i++) {
                         m = i * B / b;
                         if(frg[(k * B + m) >> 3] & (1 << (m & 7))) {
-                            for(o = 0, l = (y + j) * p + x + i + (ci ? (h - y - j) / SSFN_ITALIC_DIV : 0); o <= cb; o++)
-                                ctx->g->data[l + o] = color;
+                            for(o = 0; o <= cb; o++)
+                                ctx->g->data[l + i + o] = color;
                         }
                     }
                 }
-                if(!(ctx->style & SSFN_STYLE_NOAA) && h > ctx->f->height + 4) {
-                    m = color == 0xFD ? 0xFC : 0xFD;
-                    for(j = 1; j < a - 1; j++)
-                        for(i = 1; i < b - 1; i++) {
-                            l = (y + j) * p + x + i;
-                            if(ctx->g->data[l] == 0xFF && (ctx->g->data[l - p] == color ||
-                                ctx->g->data[l + p] == color) && (ctx->g->data[l - 1] == color ||
-                                ctx->g->data[l + 1] == color)) ctx->g->data[l] = m;
-                        }
-                    for(j = 1; j < a - 1; j++)
-                        for(i = 1; i < b - 1; i++) {
-                            l = (y + j) * p + x + i;
-                            if(ctx->g->data[l] == m) ctx->g->data[l] = color;
-                        }
+                if(!(ctx->style & SSFN_STYLE_NOAA)) {
+                    m = color == 0xFD ? 0xFC : 0xFD; o = y * p + p + x;
+                    for(k = h; k > ctx->f->height + 4; k -= 2*ctx->f->height) {
+                        for(j = 1, l = o; j < a - 1; j++, l += p)
+                            for(i = 1; i < b - 1; i++) {
+                                if(ctx->g->data[l + i] == 0xFF && (ctx->g->data[l + i - p] == color ||
+                                    ctx->g->data[l + i + p] == color) && (ctx->g->data[l + i - 1] == color ||
+                                    ctx->g->data[l + i + 1] == color)) ctx->g->data[l + i] = m;
+                            }
+                        for(j = 1, l = o; j < a - 1; j++, l += p)
+                            for(i = 1; i < b - 1; i++) {
+                                if(ctx->g->data[l + i] == m) ctx->g->data[l + i] = color;
+                            }
+                    }
                 }
             } else if((frg[0] & 0x60) == 0x20) {
                 /* pixmap */
                 k = (((frg[0] & 0x1F) << 8) | frg[1]) + 1; B = frg[2] + 1; A = frg[3] + 1; x >>= SSFN_PREC; y >>= SSFN_PREC;
                 b = B * h / ctx->f->height; a = A * h / ctx->f->height;
                 if(ctx->g->d < y + a) ctx->g->d = y + a;
-                tmp = (uint8_t*)SSFN_realloc(NULL, A * B);
-                if(!tmp) return SSFN_ERR_ALLOC;
                 frg += 4; end = frg + k; i = 0;
                 while(frg < end) {
                     l = ((*frg++) & 0x7F) + 1;
                     if(frg[-1] & 0x80) {
-                        while(l--) tmp[i++] = *frg;
+                        while(l--) dec[i++] = *frg;
                         frg++;
-                    } else while(l--) tmp[i++] = *frg++;
+                    } else while(l--) dec[i++] = *frg++;
                 }
                 for(j = 0; j < a; j++) {
                     k = j * A / a * B;
+                    l = (y + j) * p + x + (ci ? (h - y - j) / SSFN_ITALIC_DIV : 0);
                     for(i = 0; i < b; i++) {
-                        l = tmp[k + i * B / b];
-                        if(l != 0xFF) ctx->g->data[(y + j) * p + x + i + (ci ? (h - y - j) / SSFN_ITALIC_DIV : 0)] = l;
+                        m = dec[k + i * B / b];
+                        if(m != 0xFF) ctx->g->data[l + i] = m;
                     }
                 }
-                SSFN_free(tmp);
             }
             color = 0xFE;
         }
-        SSFN_free(r);
         ctx->g->a = ctx->f->baseline;
         if(ctx->g->d > ctx->g->a + 1) ctx->g->d -= ctx->g->a + 1; else ctx->g->d = 0;
 #ifdef SSFN_DEBUGGLYPH
@@ -1392,7 +1442,7 @@ int ssfn_bbox(ssfn_t *ctx, const char *str, int *w, int *h, int *left, int *top)
         if(f) { f = 0; buf.w = buf.x = ctx->style & SSFN_STYLE_RTL ? ctx->g->p : ctx->g->o; }
         if(ctx->g->x) {
             if(ctx->g->a > buf.y) buf.y = ctx->g->a;
-            if(buf.h < ctx->g->h) buf.h = ctx->g->h;
+            if(ctx->g->h > buf.h) buf.h = ctx->g->h;
             buf.w += ctx->g->x;
         } else {
             if(buf.w < ctx->g->p) buf.w = ctx->g->p;
@@ -1418,9 +1468,11 @@ int ssfn_bbox(ssfn_t *ctx, const char *str, int *w, int *h, int *left, int *top)
  * @param str string to measure
  * @return a newly allocated pixel buffer or NULL
  */
-ssfn_buf_t *ssfn_text(ssfn_t *ctx, const char *str, unsigned int fg) {
-   ssfn_buf_t *buf;
-   int ret;
+ssfn_buf_t *ssfn_text(ssfn_t *ctx, const char *str, unsigned int fg)
+{
+#ifndef SSFN_MAXLINES
+    ssfn_buf_t *buf;
+    int ret;
 
     if(!ctx || !str) return NULL;
     buf = (ssfn_buf_t*)SSFN_realloc(NULL, sizeof(ssfn_buf_t));
@@ -1435,6 +1487,12 @@ ssfn_buf_t *ssfn_text(ssfn_t *ctx, const char *str, unsigned int fg) {
         str += ret;
     if(ret != SSFN_OK) { SSFN_free(buf->ptr); SSFN_free(buf); return NULL; }
     return buf;
+#else
+    (void)ctx;
+    (void)str;
+    (void)fg;
+    return NULL;
+#endif
 }
 
 #endif /* SSFN_IMPLEMENTATION */
@@ -1476,13 +1534,10 @@ int ssfn_putc(uint32_t unicode)
         if(ptr[0] == 0xFF) { i += 65535; ptr++; }
         else if((ptr[0] & 0xC0) == 0xC0) { j = (((ptr[0] & 0x3F) << 8) | ptr[1]); i += j; ptr += 2; }
         else if((ptr[0] & 0xC0) == 0x80) { j = (ptr[0] & 0x3F); i += j; ptr++; }
-        else {
-            if((uint32_t)i == unicode) { chr = ptr; break; }
-            ptr += 6 + ptr[1] * (ptr[0] & 0x40 ? 6 : 5);
-        }
+        else { if((uint32_t)i == unicode) { chr = ptr; break; } ptr += 6 + ptr[1] * (ptr[0] & 0x40 ? 6 : 5); }
     }
     if(!chr) return SSFN_ERR_NOGLYPH;
-    ptr = chr + 6; o = (uint64_t)ssfn_dst.ptr + (ssfn_dst.y + y) * ssfn_dst.p + ssfn_dst.x * SSFN_PIXEL;
+    ptr = chr + 6; o = (uint64_t)ssfn_dst.ptr + ssfn_dst.y * ssfn_dst.p + ssfn_dst.x * SSFN_PIXEL;
     for(i = 0; i < chr[1]; i++, ptr += chr[0] & 0x40 ? 6 : 5) {
         if(ptr[0] == 255 && ptr[1] == 255) continue;
         frg = (uint8_t*)ssfn_src + (chr[0] & 0x40 ? ((ptr[5] << 24) | (ptr[4] << 16) | (ptr[3] << 8) | ptr[2]) :

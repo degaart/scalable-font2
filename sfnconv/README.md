@@ -38,7 +38,7 @@ Scalable Screen Font 2.0 by bzt Copyright (C) 2020 MIT license
  -m:  set manufacturer (creator, designer, foundry)
  -l:  set license (like MIT, GPL or URL to the license)
  -r:  code point range, this flag can be repeated before each input
- in:  input font(s) SSFN,ASC,PST1,TTF,OTF,WinFNT,PCF,PSF2,BDF,hex,TGA,PNG*
+ in:  input font(s) SSFN,ASC,TTF,OTF,WOFF,PST1,PST42,PSF2,PCF,BDF,hex,TGA,PNG*
  out: output SSFN/ASC filename**
 
 *  - input files can be gzip compressed, like .psfu.gz, .bdf.gz or .hex.gz

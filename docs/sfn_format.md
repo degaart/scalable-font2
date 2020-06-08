@@ -213,11 +213,19 @@ The bits "c" in the header indicates kerning context, for future developments, i
 
 | 1st byte | More bytes | Description                                           |
 | -------- | ---------- | ----------------------------------------------------- |
-| 111nnnnn | -          | number of autohint grid relative distances (up to 32) |
+| 111nnnnn | -          | number of autohint grid relative distances (up to 31) |
 
-After that cames N+1 relative coordinates, one byte each. The format for horizontal and vertical hinting info
+After that cames N relative coordinates, one byte each. The format for horizontal and vertical hinting info
 are stored alike. If a fragment descriptor with non-zero x points to this fragment, then it is a vertical grid
 information.
+
+So, for example if the fragment descriptor points to a hinting fragment with x = 9 and n = 3, then the first
+vertical hinting grid coordinate will be 8 (x-1), the second 4 + first relative distance, the third 8 +
+first relative distance + second relative distance and finally the last fourth would be 8 + all relative
+distances. This seems complicated, but guarantees that for example a 2,4,8,10 grid and 5,7,11,13 grid (like
+for "h", "n", "u") will be stored only once in the file.
+
+Also note that although the format supports hinting grids, the renderer does not need nor use them at the moment.
 
 Character Mappings
 ------------------
@@ -274,7 +282,8 @@ Depending on the bits in glyph header, for f = 0 the offset is 3 bytes (up to 16
 The fragment offset is relative to the font magic, and coordinate offsets are relative to character's grid.
 For hinting grid, the coordinate is one bigger, so x=1 and y=0 encodes vertical grid, and x=0 and y=1
 horizontal grid hints (however they both mean 0 offsets to the fragment). For example x=4 and y=0 means
-vertical grid shifted by 3 to the right.
+vertical grid shifted by 3 to the right. Note that although the format supports hinting grid, the renderer
+does not need nor use them at the moment.
 
 Similarily, for kerning fragment descriptors x=1 and y=0 encodes vertical kerning groups, while x=0 and y=1
 means horizontal groups. Here the actual values of x and y don't matter, they just select the direction.

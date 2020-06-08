@@ -43,9 +43,9 @@
 Display *display;
 Visual *visual;
 Atom wmDel;
-Cursor cursors[3];
-extern uint8_t *tools, *icon32;
-#define ICON_LENGTH (2 + 16 * 16 + 2 + 32 * 32)
+Cursor cursors[5];
+extern uint8_t *tools, *icon32, *icon64;
+#define ICON_LENGTH (2 + 16 * 16 + 2 + 32 * 32 + 2 + 64 * 64)
 long icons[ICON_LENGTH];
 int screen_num = 0, red_shift,green_shift,blue_shift, btnflags = 0, keyflags = 0, keypressed = 0;
 
@@ -179,6 +179,10 @@ void ui_init()
     *ptr++ = 32;
     for(i=0; i < 32 * 32 * 4; i += 4)
         *ptr++ = icon32[i+2] | (icon32[i+1] << 8) | (icon32[i] << 16) | (icon32[i+3] << 24);
+    *ptr++ = 64;
+    *ptr++ = 64;
+    for(i=0; i < 64 * 64 * 4; i += 4)
+        *ptr++ = icon64[i+2] | (icon64[i+1] << 8) | (icon64[i] << 16) | (icon64[i+3] << 24);
 
     cursors[CURSOR_LOADING] = XCreateFontCursor(display, XC_watch);
     cursors[CURSOR_PTR] = XCreateFontCursor(display, XC_left_ptr);

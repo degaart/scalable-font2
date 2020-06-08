@@ -100,11 +100,11 @@ to 254 individual colors, hence the great advantage over truecolor PNG.
 Code Size and Performance
 -------------------------
 
-I've compiled and run the [sfndemo](https://gitlab.com/bztsrc/scalable-font2/blob/master/sfntest/sfndemo.c)
-app in the tests directory on an Intel(R) Core(TM) i5-3317U CPU @ 1.70GHz (running at 800 Mhz, 3394 bogomips).
-I encourage you to repeat these tests on your own computer. A few notes: file load time includes the time took
-to load from disk and also to uncompress gzipped fonts. This sfndemo does not use the internal glyph cache, so
-it rasterized each glyph every time they occured.
+I've compiled the [sfndemo](https://gitlab.com/bztsrc/scalable-font2/blob/master/sfntest/sfndemo.c) app in
+the tests directory using gcc 9.3.0 and run it on an Intel(R) Core(TM) i5-3317U CPU @ 1.70GHz (running at
+800 Mhz, 3394 bogomips). I encourage you to repeat these tests on your own computer. A few notes: file load
+time includes the time took to load from disk and also to uncompress gzipped fonts. This sfndemo does not
+use the internal glyph cache, so it rasterized each glyph every time they occured.
 
 Here are the results:
 
@@ -112,22 +112,24 @@ Here are the results:
 
 ```
 Simple renderer: 1613 bytes
-Normal renderer: 28848 bytes
-File load time:      0.039027 sec
-Character lookup:    0.001327 sec
-Rasterization:       0.129250 sec
-Blitting:            0.127505 sec
-Kerning:             0.000532 sec
+Normal renderer: 29040 bytes
+File load time:      0.047582 sec
+Character lookup:    0.001413 sec
+Rasterization:       0.129243 sec
+Blitting:            0.127284 sec
+Kerning:             0.000505 sec
 ```
+Finished in **0.3 sec**.
 
 ### With Optimization (-O3)
 
 ```
 Simple renderer: 1240 bytes
-Normal renderer: 28992 bytes
-File load time:      0.038136 sec
-Character lookup:    0.000991 sec
-Rasterization:       0.041149 sec
-Blitting:            0.070309 sec
-Kerning:             0.000389 sec
+Normal renderer: 27112 bytes
+File load time:      0.043970 sec
+Character lookup:    0.001048 sec
+Rasterization:       0.042001 sec
+Blitting:            0.072184 sec
+Kerning:             0.000381 sec
 ```
+Finished in **0.16 sec**.

@@ -56,7 +56,9 @@ enum {
     THEME_BTN1BD,
     THEME_BTN1D,
     THEME_SELBG,
-    THEME_CURSOR
+    THEME_SELFG,
+    THEME_CURSOR,
+    THEME_UNDEF
 };
 
 #define MAIN_W          800
@@ -161,12 +163,12 @@ typedef struct {
     int h;
 } ui_event_t;
 
-extern char verstr[], ws[], *status;
+extern char verstr[], ws[], *status, *errstatus;
 extern uint32_t theme[];
 extern int numwin, cursor, zip, ascii, selfield, rs, re;
 extern ui_win_t *wins;
 extern ui_event_t event;
-extern uint8_t *icon16, *icon32, *tools, *numbers, *bga;
+extern uint8_t *icon16, *icon64, *tools, *bga;
 extern int input_maxlen, input_refresh;
 extern char *input_str;
 
@@ -195,6 +197,7 @@ void ui_bool(ui_win_t *win, int x, int y, char *s, int state, int active);
 void ui_tri(ui_win_t *win, int x, int y, int up);
 void ui_num(ui_win_t *win, int x, int y, int num, int active, int sel);
 void ui_number(ui_win_t *win, int x, int y, int n, uint32_t c);
+void ui_hex(ui_win_t *win, char c);
 void ui_glyph(ui_win_t *win, int x, int y, int size, int unicode, int layer);
 
 /* common */

@@ -70,16 +70,15 @@ ifeq ("$(DRIVER)","")
 	@false
 endif
 
-libsfn:
-	@make -C ../libsfn all
-
 %: %.c icon.h lang.h
 	$(CC) $(CFLAGS) $< -c $@
 
 # include libsfn .o files directly so that we don't rely on ar under windows
-$(TARGET): libsfn $(OBJS)
-	$(CC) ../libsfn/*.o $(OBJS) -o $(TARGET) $(LIBDIRS) $(LIBS)
+$(TARGET): $(OBJS)
+ifeq ($(wildcard ../libsfn/*.o),)
+	@make -C ../libsfn all
+endif
+	$(CC) ../libsfn/*.o ../libsfn/potracelib/*.o $(EXTRA) $(OBJS) -o $(TARGET) $(LIBDIRS) $(LIBS)
 
 clean:
-	@make -C ../libsfn clean || true
 	@rm $(TARGET) *.o 2>/dev/null || true

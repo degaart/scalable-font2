@@ -8,23 +8,40 @@ and contributions would be much appreciated if it turns out to be useful to you.
 
 <img alt="Scalable Screen Font Features" src="https://gitlab.com/bztsrc/scalable-font2/raw/master/features.png">
 
-SSFN renderer does not use existing font formats directly (because most formats are inefficient or just insane),
-so you first have to compress those into [SSFN](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/sfnconv.md).
-There's a small ANSI C utility and also a GUI editor to do that (they support importing PS Type1, OpenType, TrueType,
-X11 Bitmap Distribution Format, Linux Console fonts, GNU unifont and many others). This means your fonts will
-require less space, and also the renderer can work a lot faster than other renderer libraries. Check out
-[comparition](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/compare.md) with other font formats.
-
  - [ssfn.h](https://gitlab.com/bztsrc/scalable-font2/blob/master/ssfn.h) the SSFN renderer itself
  - [sfnconv](https://gitlab.com/bztsrc/scalable-font2/tree/master/sfnconv) a command line SSFN converter tool
- - [sfnedit](https://gitlab.com/bztsrc/scalable-font2/tree/master/sfnedit) SSFN font converter and editor with a GUI (WiP)
+ - [sfnedit](https://gitlab.com/bztsrc/scalable-font2/tree/master/sfnedit) multiplatform SSFN font converter and editor with a GUI (WiP)
  - [sfntest](https://gitlab.com/bztsrc/scalable-font2/tree/master/sfntest) test applications and [API](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/API.md) usage examples
+
+SSFN renderer does not use existing font formats directly (because most formats are inefficient or just insane),
+so you first have to compress those into [SSFN](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/sfnconv.md).
+There's a small ANSI C utility and also a GUI editor to do that. They support importing
+
+ - OpenType (.otf, .ttf, .sfnt, .cff),
+ - TrueType (.ttf),
+ - PS Type1 (.pfa, .pfb),
+ - PS Type42 (.pfa, .pfb),
+ - Webfonts (.woff, .woff2),
+ - FontForge's SplineFontDB (.sfd, both vector and bitmap fonts),
+ - X11 Bitmap Distribution Format (.bdf),
+ - X11 Portable Compiled Font (.pcf),
+ - Linux Console fonts (.psf, .psfu),
+ - Windows Console Fonts (.fon, .fnt),
+ - GNU unifont (.hex),
+ - Portable Network Graphics and TARGA (.png, .tga),
+ - ...and others! Vectorizing bitmap fonts and rasterizing vector fonts also possible.
+
+Using SSFN means your fonts will require less space, and also the renderer can work a lot faster than other renderer
+libraries. Check out [comparition](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/compare.md) with other font
+formats (measurements for the feature demo above can be found at the bottom of that page).
 
 Example Code
 ------------
 
 The SSFN renderer comes in two flavours: there's the normal renderer with a few functions and libc dependency, and a
-specialized renderer for OS kernel consoles with just one function and no dependencies at all.
+specialized renderer for OS kernel consoles with just one function and no dependencies at all. (Just for the records,
+with a single define you can configure the normal render for dependency-free static memory management too, although
+that mode has certain limitiations.)
 
 ### Simple Renderer
 
@@ -118,14 +135,15 @@ Dependencies
 The simple renderer calls no functions at all and therefore has no dependencies whatsoever (not even libc
 nor compiler built-ins). Absolutely nothing save for it's two global variables.
 
-As for the normal renderer all dependencies are provided as built-ins by gcc or by libc:
+As for the normal renderer, with a define you can also compile it dependency-free (with some limitations)
+but all dependencies are provided as built-ins by gcc or by libc:
  - `realloc()` and `free()` from libc (stdlib.h)
  - `memcmp()` and `memset()` from libc (string.h)
 
-The scalable font converter is built on the **freetype2** library to read vector font files. The bitmap font
-converter has no dependencies. Libsfn can be built optionally with **zlib** to write gzip deflate compressed
-files on-the-fly (read is supported without zlib). Pixel map fonts might take advantage of **libimagequant**
-if installed (converter works without, but poorer quality). For vectorization, **potrace** library is needed.
+The scalable font converter is built on the **freetype2** library to read vector font files (compiled
+statically into libsfn by default). The bitmap font converter has no dependencies. Libsfn can be built
+optionally with **zlib** to write gzip deflate compressed files on-the-fly (read is supported without
+zlib). Font vectorization needs **libm** (for sqrt() and pow() calls in potrace).
 
 The editor uses SDL2 with an X11 fallback, and naturally depends on libsfn.
 
@@ -141,7 +159,7 @@ but takes care of the alpha-blending.
 
 ### Disadvantages
 
-- the renderer uses considerably more memory than SSFN 1.0 (~80k vs. ~24k, and with glyph cache enabled probably megabytes).
+- the renderer uses considerably more memory than SSFN 1.0 (~64k vs. ~24k, and with glyph cache enabled probably megabytes).
 - it does not return the outline nor the rasterized glyph any more.
 
 ### Advantages
@@ -162,13 +180,13 @@ Nothing that I know of in the renderer. But no programmer can test their own cod
 through valgrind with many different font files with all the tests without problems. If you find a bug, please
 use the [Issue Tracker](https://gitlab.com/bztsrc/scalable-font2/issues) on gitlab and let me know.
 
-With the converter, there's an issue that freetype2 does not return the strings from PCF and WinFNT fonts, just the
-unique font name. I guess it should use FT_Get_BDF_Property maybe, but that's very poorly documented. There's also
-the neverending issue with querying the advance offsets correctly from FreeType2. You might need to adjust some
-manually.
+With the converter, there's the neverending issue with querying the advance offsets correctly from FreeType2. You might
+need to adjust some manually.
 
-Hinting is supported by the format, but not implementeted by the renderer. With the new bilinear interpolation
-scaler I'm not sure it's needed, we'll see how testing goes.
+Loading kerning information from SplineFontDB .sfd files is not implemented as of yet.
+
+Hinting is supported by the format, but not implementeted by the renderer (libsfn supports loading and saving the hinting
+grids). With the new bilinear interpolation scaler I'm not sure it's needed, we'll see how testing goes.
 
 Contributors
 ------------
@@ -180,4 +198,7 @@ Authors
 -------
 
 - SSFN format, converter, editor and renderers: bzt
-- STBI (original zlib decode): Sean Barrett
+- STBI (PD, original zlib decoder): Sean Barrett
+- potrace (GPL): Peter Selinger
+- libimagequant (GPL): Jef Poskanzer, Greg Roelofs, Kornel Lesiński
+- freetype2 (GPL): David Turner, Robert Wilhelm, Werner Lemberg

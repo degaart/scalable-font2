@@ -94,13 +94,15 @@ void view_ranges()
         if(i == selranges && win->field == 8)
             ui_box(win, 9, ssfn_dst.y, win->w - 18, 16, theme[THEME_SELBG], theme[THEME_SELBG], theme[THEME_SELBG]);
         m = ublocks[j].cnt * 1000 / (ublocks[j].end - ublocks[j].start + 1 - ublocks[j].undef);
-        sprintf(tmp, "%3d.%02d%%", m / 10, m % 10); m /= 10;
+        sprintf(tmp, "%3d.%02d%%", m / 10, m % 10); m /= 10; if(m > 100) m = 100;
+        ssfn_dst.fg = theme[i == selranges && win->field == 8 ? THEME_SELFG : THEME_FG];
         ui_text(win, 13, ssfn_dst.y, tmp);
-        ui_box(win, 74, ssfn_dst.y + 3, m, 11, theme[THEME_FG], theme[THEME_FG], theme[THEME_FG]);
+        ui_box(win, 74, ssfn_dst.y + 3, m, 11, theme[THEME_FG], ssfn_dst.fg, theme[THEME_FG]);
         ui_box(win, 74 + m, ssfn_dst.y + 3, 100 - m, 11, theme[THEME_DARKER], theme[THEME_DARKER], theme[THEME_DARKER]);
         ui_text(win, 185, ssfn_dst.y, ublocks[j].name);
         ssfn_dst.y += 16;
     }
+    ssfn_dst.fg = theme[THEME_FG];
     ssfn_dst.w = win->w;
     ssfn_dst.h = win->h;
 }
@@ -146,7 +148,8 @@ void ctrl_ranges_onkey()
     } else if(event.x == K_DOWN) {
         wins[0].field = 8;
         selranges = 0;
-    } else if(event.x >= ' ') {
+    }
+    if(event.x >= ' ') {
         strcpy(rsearch, (char*)&event.x);
         wins[0].field = 7;
         input_refresh = 1;

@@ -52,7 +52,7 @@ ssfn_font_t *load_file(char *infile, int *size)
 #endif
 
     f = fopen(infile,"rb");
-    if(!f) { fprintf(stderr,"unable to load '%s'\n", infile); exit(3); }
+    if(!f) { fprintf(stderr,"sfnconv: unable to load '%s'\n", infile); exit(3); }
 #if HAS_ZLIB
     fread(&hdr, 2, 1, f);
     if(hdr[0]==0x1f && hdr[1]==0x8b) {
@@ -70,7 +70,7 @@ ssfn_font_t *load_file(char *infile, int *size)
     fseek(f, 0, SEEK_SET);
 #endif
     data = (ssfn_font_t*)malloc(origsize);
-    if(!data) { fprintf(stderr,"memory allocation error\n"); exit(2); }
+    if(!data) { fprintf(stderr,"sfnconv: memory allocation error\n"); exit(2); }
 #if HAS_ZLIB
     gzread(g, data, origsize);
     gzclose(g);
@@ -95,14 +95,14 @@ void save_file(char *outfile, ssfn_font_t *font)
 #if HAS_ZLIB
     if(zip) {
         g = gzopen(outfile, "wb");
-        if(!g) { fprintf(stderr, "unable to write '%s'\n", outfile); exit(4); }
+        if(!g) { fprintf(stderr, "sfnconv: unable to write '%s'\n", outfile); exit(4); }
         gzwrite(g, font, font->size);
         gzclose(g);
     } else
 #endif
     {
         f = fopen(outfile, "wb");
-        if(!f) { fprintf(stderr, "unable to write '%s'\n", outfile); exit(4); }
+        if(!f) { fprintf(stderr, "sfnconv: unable to write '%s'\n", outfile); exit(4); }
         fwrite(font, font->size, 1, f);
         fclose(f);
     }
@@ -133,9 +133,7 @@ void usage()
            " -A:  output SSFN ASCII\n"
            " -R:  replace characters from new files\n");
     printf(" -B:  rasterize vector fonts to bitmaps\n"
-#if HAS_POTRACE
            " -V:  vectorize bitmap fonts to scalable fonts\n"
-#endif
            " -g:  save grid information for hinting\n"
            " -b:  horizontal baseline in pixels (1-255)\n"
            " -u:  underline position in pixels (relative to baseline)\n"
@@ -152,16 +150,26 @@ void usage()
            " -m:  set manufacturer (creator, designer, foundry)\n"
            " -l:  set license (like MIT, GPL or URL to the license)\n");
     printf(" -r:  code point range, this flag can be repeated before each input\n"
-           " in:  input font(s) SSFN,ASC,"
+           " in:  input font(s) SSFN"
+#ifdef USE_NOFOREIGN
+            " and ASC"
+#else
+            ",ASC"
 #if HAS_FT
-           "PST1,TTF,OTF,WinFNT,PCF,"
+           ",TTF,OTF,WOFF,PST1,PST42"
 #endif
-           "PSF2,BDF,hex,TGA,PNG*\n"
+           ",PSF2,PCF,BDF,SFD,HEX,TGA,PNG"
+#endif
+           "*\n"
            " out: output SSFN/ASC filename"
 #if HAS_ZLIB
            "**"
 #endif
-           "\n\n*  - input files can be gzip compressed, like .psfu.gz, .bdf.gz or .hex.gz\n"
+           "\n\n*  - input files can be gzip compressed"
+#ifndef USE_NOFOREIGN
+           ", like .psfu.gz, .bdf.gz or .hex.gz"
+#endif
+           "\n"
 #if HAS_ZLIB
            "** - output file will be gzip compressed by default (use -U to avoid)\n"
 #endif
@@ -177,8 +185,8 @@ void progressbar(int step, int numstep, int curr, int total, int msg)
 {
     int i, n;
     char *str[] = { "", "Measuring BBox", "Querying outlines", "Querying all kerning combinations", "Quantizing image",
-        "Reading bitmap", "Reading tall pixel map", "Reading wide pixel map", "Generating fragments", "Compressing fragments",
-        "Serializing fragments", "Writing character map", "Writing file", "Rasterizing", "Vectorizing" };
+        "Reading file", "Reading bitmap", "Reading tall pixel map", "Reading wide pixel map", "Generating fragments",
+        "Compressing fragments", "Serializing fragments", "Writing character map", "Writing file", "Rasterizing", "Vectorizing" };
 
     n = (long int)(curr + 1) * 100L / (long int)(total + 1);
     if(n == lastpercent) return;
@@ -217,7 +225,7 @@ int main(int argc, char **argv)
         for(; i + 1 < argc; i++) {
             font = load_file(argv[i], &size);
             if(memcmp(font->magic, SSFN_MAGIC, 4)) {
-                fprintf(stderr, "not an SSFN font '%s'\n", argv[i]);
+                fprintf(stderr, "sfnconv: not an SSFN font '%s'\n", argv[i]);
                 return 1;
             }
             out = (unsigned char *)realloc(out, total+size);
@@ -242,7 +250,7 @@ int main(int argc, char **argv)
 #endif
         font = load_file(argv[i], &size);
         if(memcmp(font->magic, SSFN_COLLECTION, 4)) {
-            fprintf(stderr, "not an SSFN font collection '%s'\n", argv[i]);
+            fprintf(stderr, "sfnconv: not an SSFN font collection '%s'\n", argv[i]);
             return 1;
         }
         end = (ssfn_font_t*)((uint8_t*)font + font->size);
@@ -275,7 +283,12 @@ int main(int argc, char **argv)
                 case 'a': if(++i>=argc) usage(); adv = atoi(argv[i]); continue;
                 case 'u': if(++i>=argc) usage(); relul = atoi(argv[i]); continue;
                 case 'B': if(++i>=argc) usage(); rasterize = atoi(argv[i]); continue;
-                case 'S': if(++i>=argc) usage(); sfn_skipadd(getnum(argv[i])); continue;
+                case 'S':
+                    if(++i>=argc) usage();
+                    if(!strcmp(argv[i], "undef")) skipundef = 1; else
+                    if(!strcmp(argv[i], "code")) skipcode = 1; else
+                        sfn_skipadd(getnum(argv[i]));
+                    continue;
                 case 't':
                     if(++i>=argc) usage();
                     for(j = 0, c = argv[i]; *c; c++) {
@@ -304,7 +317,7 @@ int main(int argc, char **argv)
                                 break;
                             }
                         if(!re) {
-                            fprintf(stderr, "unable to get range '%s', did you mean:\n", argv[i]);
+                            fprintf(stderr, "sfnconv: unable to get range '%s', did you mean:\n", argv[i]);
                             for(j=0;j<UNICODE_NUMBLOCKS;j++)
                                 if(tolower(argv[i][0]) == tolower(ublocks[j].name[0]) &&
                                     tolower(argv[i][1]) == tolower(ublocks[j].name[1])) {
@@ -323,7 +336,7 @@ int main(int argc, char **argv)
                         }
                     }
                     if(rs > 0x10FFFF || re > 0x10FFFF || rs > re) {
-                        fprintf(stderr, "unable to get range '%s' '%s'\n", argv[i], argv[i]+1);
+                        fprintf(stderr, "sfnconv: unable to get range '%s' '%s'\n", argv[i], argv[i]+1);
                         return 1;
                     }
                     continue;
@@ -341,7 +354,7 @@ int main(int argc, char **argv)
                             case 'd': dump++; break;
                             case 'D': dump = 99; break;
                             case 'C': dump = -1; break;
-                            default: fprintf(stderr, "unknown flag '%c'\n", argv[i][j]); return 1;
+                            default: fprintf(stderr, "sfnconv: unknown flag '%c'\n", argv[i][j]); return 1;
                         }
                     }
                 break;

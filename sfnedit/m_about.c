@@ -65,10 +65,24 @@ void about_open_repo()
 
 void view_about()
 {
-    int i, j, p;
+    int i, j, m, p;
     char *s = "Scalable Screen Font Editor", *ptr = ((char*)ssfn_src + 32);
     ui_win_t *win = &wins[0];
-    p = (win->w - 320) / 2;
+    uint8_t *a, *b, *c = (uint8_t*)&theme[THEME_BG];
+
+    if(win->w > 64 && win->h > 58) {
+        for(p = 40*win->p + (win->w - 64) / 2, m = 0, j = 0; j < 64 && 58 + j < win->h; j++, p += win->p, m += 64 * 4) {
+            for(i = 0; i < 64; i++) {
+                if(icon64[m + (i<<2)+3]) {
+                    a = (uint8_t*)&win->data[p + i];
+                    b = (uint8_t*)&icon64[m + (i<<2)];
+                    a[2] = (b[0]*b[3] + (256 - b[3])*c[2]) >> 8;
+                    a[1] = (b[1]*b[3] + (256 - b[3])*c[1]) >> 8;
+                    a[0] = (b[2]*b[3] + (256 - b[3])*c[0]) >> 8;
+                }
+            }
+        }
+    }
     ssfn_dst.ptr = (uint8_t*)win->data;
     ssfn_dst.p = win->p*4;
     ssfn_dst.w = win->w;
@@ -81,6 +95,7 @@ void view_about()
     ssfn_dst.fg = 0xFF000000;
     ssfn_dst.bg = 0;
     j = wins[0].field == 6 ? THEME_FG : THEME_BG;
+    p = (win->w - 320) / 2;
     ui_box(win, p - 2, 180, 324, 18, theme[j], theme[wins[0].field == 6 ? THEME_LIGHT: THEME_BG], theme[j]);
     ui_text(win, p + 1, 181, repo_url);
     ssfn_dst.fg = theme[THEME_FG];

@@ -69,7 +69,7 @@ filelist_t *files = NULL;
 int numfiles = 0, scrollfiles = 0, pagefiles = 0, selfiles = -1, ordering = 0, pathX[PATH_MAX/FILENAME_MAX+64] = { 0 }, pathlen;
 int lastsave = -1, clkfiles = 0;
 char fn[PATH_MAX+64] = {0}, filename[FILENAME_MAX+64] = {0}, path[PATH_MAX/FILENAME_MAX+64][FILENAME_MAX], fsearch[256] = { 0 };
-char strrs[16] = { 0 }, strre[16] = { 0 };
+char strrs[16] = { 0 }, strre[16] = { 0 }, fstatus[256];
 
 /**
  * Sort file names
@@ -126,15 +126,20 @@ void fileops_readdir(int save)
                 if(k < 3) continue;
                 if(!memcmp(de->d_name + k - 3, ".gz", 3)) k -= 3;
                 if(k < 5) continue;
-                if( memcmp(de->d_name + k - 4, ".sfn", 4) && memcmp(de->d_name + k - 4, ".asc", 4) && (save || (
-#ifdef HAS_FT
-                    memcmp(de->d_name + k - 4, ".pst", 4) && memcmp(de->d_name + k - 4, ".ttf", 4) &&
+                if( memcmp(de->d_name + k - 4, ".sfn", 4) && memcmp(de->d_name + k - 4, ".asc", 4)
+#ifndef USE_NOFOREIGN
+                    && (save || (
+                    memcmp(de->d_name + k - 4, ".pfa", 4) && memcmp(de->d_name + k - 4, ".pfb", 4) &&
+                    memcmp(de->d_name + k - 5, ".woff",5) && memcmp(de->d_name + k - 5, "woff2",5) &&
+                    memcmp(de->d_name + k - 4, ".ttf", 4) && memcmp(de->d_name + k - 4, ".ttc", 4) &&
                     memcmp(de->d_name + k - 4, ".otf", 4) && memcmp(de->d_name + k - 4, ".pcf", 4) &&
+                    memcmp(de->d_name + k - 4, ".sfd", 4) && memcmp(de->d_name + k - 4, ".svg", 4) &&
                     memcmp(de->d_name + k - 4, ".fnt", 4) && memcmp(de->d_name + k - 4, ".fon", 4) &&
-#endif
-                    memcmp(de->d_name + k - 4, ".psf", 4) && memcmp(de->d_name + k - 4, "psfu", 4) &&
+                    memcmp(de->d_name + k - 4, ".psf", 4) && memcmp(de->d_name + k - 5, ".psfu",5) &&
                     memcmp(de->d_name + k - 4, ".bdf", 4) && memcmp(de->d_name + k - 4, ".hex", 4) &&
-                    memcmp(de->d_name + k - 4, ".tga", 4) && memcmp(de->d_name + k - 4, ".png", 4)))) continue;
+                    memcmp(de->d_name + k - 4, ".tga", 4) && memcmp(de->d_name + k - 4, ".png", 4)))
+#endif
+                    ) continue;
             }
             if(l) {
                 if(k < l) continue;
@@ -263,8 +268,11 @@ void view_fileops(int save)
     if(selfiles >= 0 && selfiles < scrollfiles) scrollfiles = selfiles;
     ssfn_dst.h = win->h - 51;
     for(i = scrollfiles; i < numfiles && ssfn_dst.y < ssfn_dst.h; i++, ssfn_dst.y += 16) {
-        if(i == selfiles)
+        if(i == selfiles) {
             ui_box(win, 9, ssfn_dst.y, win->w - 18, 16, theme[THEME_SELBG], theme[THEME_SELBG], theme[THEME_SELBG]);
+            ssfn_dst.fg = theme[THEME_SELFG];
+        } else
+            ssfn_dst.fg = theme[THEME_FG];
         ui_icon(win, 9, ssfn_dst.y, files[i].type ? ICON_FILE : ICON_FOLDER, 0);
         ssfn_dst.w = win->w - 284; if(ssfn_dst.w < 1) ssfn_dst.w = 1;
         ui_text(win, 30, ssfn_dst.y, files[i].name);
@@ -284,6 +292,7 @@ void view_fileops(int save)
         }
         ui_text(win, win->w - 160, ssfn_dst.y, tmp);
     }
+    ssfn_dst.fg = theme[THEME_FG];
     ssfn_dst.w = win->w;
     ssfn_dst.h = win->h;
     j = win->w / 4;
@@ -298,6 +307,10 @@ void view_fileops(int save)
     } else {
         ui_bool(win, 8, win->h - 44, "ASC", ascii, wins[0].field == 9);
         ui_bool(win, 64, win->h - 44, "gzip", zip, wins[0].field == 10);
+        s = strrchr(filename, '.');
+        if(s && !strcmp(s, ".gz")) { *s = 0; s = strrchr(filename, '.'); }
+        if(!s) s = filename + strlen(filename);
+        memcpy(s, ascii ? ".asc" : ".sfn", 5);
         ui_input(win, 128, win->h - 44, win->w - j - 12 - 128 - 12, filename, wins[0].field == 11, 255, 0);
         ui_button(win, win->w - 12 - j, win->h - 44, j, lang[FILEOP_SAVE], selfield == 4 ? 3 : 2, wins[0].field == 12);
     }
@@ -309,6 +322,7 @@ void view_fileops(int save)
 void ctrl_fileops_onenter(int save)
 {
     int i, j = wins[0].w / 4;
+    char *s;
 
     clkfiles = -1;
     if(wins[0].field == 6) {
@@ -331,10 +345,14 @@ void ctrl_fileops_onenter(int save)
                     ui_cursorwin(&wins[0], CURSOR_LOADING);
                     ui_flushwin(&wins[0], wins[0].w - 12 - j, wins[0].h - 44, j, 32);
                     if(sfn_load(fn, 0)) {
+                        sfn_sanitize();
                         strcpy(filename, files[selfiles].name);
                         wins[0].tool = MAIN_TOOL_GLYPHS;
                         wins[0].field = selfield = -1;
                         ui_updatetitle(0);
+                    } else {
+                        sprintf(fstatus, "libsfn: %s", lang[ERR_LOAD]);
+                        errstatus = fstatus;
                     }
                     ui_cursorwin(&wins[0], CURSOR_PTR);
                 } else {
@@ -355,14 +373,25 @@ void ctrl_fileops_onenter(int save)
                     strcat(fn, path[i]);
                 if(files[selfiles].type || wins[0].field == 12) {
                     if(wins[0].field == 8) strcpy(filename, files[selfiles].name);
+                    s = strrchr(filename, '.');
+                    if(s && !strcmp(s, ".gz")) { *s = 0; s = strrchr(filename, '.'); }
+                    if(!s) s = filename + strlen(filename);
+                    memcpy(s, ascii ? ".asc" : ".sfn", 5);
                     strcat(fn, filename);
                     ui_input(&wins[0], 128, wins[0].h - 44, wins[0].w - j - 12 - 128 - 12, filename, 0, 255, 0);
                     ui_button(&wins[0], wins[0].w - 12 - j, wins[0].h - 44, j, lang[FILEOP_SAVE], 2, -1);
                     ui_cursorwin(&wins[0], CURSOR_LOADING);
                     ui_flushwin(&wins[0], 0, wins[0].h - 44, wins[0].w, 32);
-                    /* if(sfn_save(fn, ascii, zip)) ui_updatetitle(0); */
+                    sfn_sanitize();
 printf("save '%s'\n",fn);
 sleep(1);
+/*
+                    if(sfn_save(fn, ascii, zip)) ui_updatetitle(0); else
+*/
+                    {
+                        sprintf(fstatus, "libsfn: %s", lang[ERR_SAVE]);
+                        errstatus = fstatus;
+                    }
                     ui_cursorwin(&wins[0], CURSOR_PTR);
                 } else {
                     strcat(path[pathlen++], files[selfiles].name);

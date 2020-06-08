@@ -27,12 +27,14 @@
  *
  */
 
+#ifndef USE_NOFOREIGN
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #ifdef HAS_QUANT
-#include <libimagequant.h>
+#include "libimagequant.h"
 #endif
 #define STBI_IMPLEMENTATION
 #include "stb_png.h"
@@ -75,7 +77,7 @@ void psf(unsigned char *ptr, int size)
     if(s < e) {
         numchars = 0;
         utbl = (uint16_t*)malloc(0x110000*sizeof(uint16_t));
-        if(!utbl) { fprintf(stderr,"memory allocation error\n"); return; }
+        if(!utbl) { fprintf(stderr,"libsfn: memory allocation error\n"); return; }
         memset(utbl, 0, 0x110000*sizeof(uint16_t));
         while(s<e && g<psf->numglyph) {
             c = (uint16_t)((uint8_t)s[0]);
@@ -96,7 +98,7 @@ void psf(unsigned char *ptr, int size)
     }
     if((psf->flags >> 24) && !ctx.baseline) ctx.baseline = (psf->flags >> 24);
     bitmap = (unsigned char*)malloc(psf->width * psf->height);
-    if(!bitmap) { fprintf(stderr,"memory allocation error\n"); return; }
+    if(!bitmap) { fprintf(stderr,"libsfn: memory allocation error\n"); return; }
     for(unicode=rs;unicode<=(uint32_t)re;unicode++) {
         g = utbl? utbl[unicode] : unicode;
         if((!g && unicode && !iswhitespace(unicode)) || g >= psf->numglyph) continue;
@@ -112,6 +114,71 @@ void psf(unsigned char *ptr, int size)
     free(bitmap);
     free(utbl);
 }
+
+/**
+ * Parse fucked up Windows Console Font (binary)
+ */
+void fnt(unsigned char *ptr, int size)
+{
+    int i, j, k, l, m, w, h, p, mn, mx, defchar;
+    unsigned char *data = ptr, *bit, map[8192], *bitmap = NULL, ver;
+    /* skip over executable header... */
+    if(ptr[0] == 'M' && ptr[1] == 'Z') {
+        ptr += ((ptr[0x3D] << 8) | ptr[0x3C]); if(ptr[0] != 'N' || ptr[1] != 'E') return;
+        ptr += ((ptr[37] << 8) | ptr[36]); j = ((ptr[1] << 8) | ptr[0]); ptr += 2; if(j > 16) return;
+        for(i = 0; i < 16 && (ptr[0] || ptr[1]); i++) {
+            if(ptr[0] == 0x08 && ptr[1] == 0x80) {
+                if(((ptr[3] << 8) | ptr[2]) < 1) { return; } ptr += 8; ptr = data + (((ptr[1] << 8) | ptr[0]) << j); break;
+            } else ptr += ((ptr[3] << 8) | ptr[2]) * 12 + 8;
+        }
+    }
+    /* parse Windows resource file */
+    if(ptr[0] || (ptr[1] != 2 && ptr[1] != 3) || ((ptr[4] << 16) | (ptr[3] << 8) | ptr[2]) > size ||
+        (ptr[66] & 1)) return;
+    sfn_setstr(&ctx.name, (char*)(ptr + ((ptr[107] << 16) | (ptr[106] << 8) | ptr[105])), 0);
+    sfn_setstr(&ctx.license, (char*)(ptr + 6), 0);
+    h = ((ptr[89] << 8) | ptr[88]);
+    mn = ptr[95]; mx = ptr[96]; defchar = ptr[97]; ctx.baseline = ((ptr[75] << 8) | ptr[74]);
+    if(ptr[80]) ctx.style |= SSFN_STYLE_ITALIC;
+    if(((ptr[84] << 8) | ptr[83]) > 400) ctx.style |= SSFN_STYLE_BOLD;
+    switch(ptr[90] >> 4) {
+        case 2: ctx.family = SSFN_FAMILY_SANS; break;
+        case 3: ctx.family = SSFN_FAMILY_MONOSPACE; break;
+        case 4: ctx.family = SSFN_FAMILY_HAND; break;
+        case 5: ctx.family = SSFN_FAMILY_DECOR; break;
+        default: ctx.family = SSFN_FAMILY_SERIF; break;
+    }
+    printf("\r  Name '%s' num_glyphs: %d, ascender: %d, height: %d\n", ctx.name, mx - mn + 1, ctx.baseline, h);
+    if(!h || mn >= mx) return;
+    ver = ptr[1]; data = ptr; ptr += (ptr[1] == 3 ? 148 : 118);
+
+    /* get bitmaps */
+    for(unicode = mn; unicode <= mx; unicode++, ptr += ver == 3 ? 6 : 4) {
+        w = ptr[0]; bit = data + ((ver == 3 ? (ptr[4] << 16) : 0) | (ptr[3] << 8) | ptr[2]);
+        p = ((w - 1) >> 3) + 1;
+        if(p * h > (int)sizeof(map)) continue;
+        bitmap = realloc(bitmap, w * h);
+        if(!bitmap) { fprintf(stderr,"libsfn: memory allocation error\n"); return; }
+        /* I got enough. I can't properly get the bytes, so lets copy them into correct order before I get crazy */
+        for(j = 0; j < p; j++)
+            for(k = 0; k < h; k++)
+                map[k * p + j] = *bit++;
+        for(i = k = l = 0; k < h; k++)
+            for(j = 0, l = k * p, m = 0x80; j < w; j++, m >>= 1) {
+                if(!m) { m = 0x80; l++; }
+                bitmap[i++] = map[l] & m ? 0xFE : 0xFF;
+            }
+        if(sfn_charadd(unicode, w, h, 0, 0, 0))
+            sfn_layeradd(unicode, SSFN_FRAG_BITMAP, 0, 0, w, h, 0xFE, bitmap);
+        if(defchar && defchar >= mn && unicode == defchar) {
+            sfn_chardel(0);
+            if(sfn_charadd(0, w, h, 0, 0, 0))
+                sfn_layeradd(0, SSFN_FRAG_BITMAP, 0, 0, w, h, 0xFE, bitmap);
+        }
+    }
+    free(bitmap);
+}
+
 
 /**
  * Parse GNU unifont hex format (text)
@@ -148,51 +215,73 @@ void hex(char *ptr, int size)
 }
 
 /**
- * Parse X11 BDF font format (text)
+ * Parse X11 BDF font format and FontForge's SplineFontDB with bitmaps (text)
  */
 void bdf(char *ptr, int size)
 {
     uint32_t c;
-    int w, h, i, j, unicode, nc = 0, numchars = 0, defchar = 0;
+    int w = 0, h = 0, i, j, a, b = 0, unicode = 0, nc = 0, numchars = 0, defchar = 0, ps = 0, mx, xx, my, xy, k;
     char *end = ptr + size, *face, *name = NULL, *style = NULL, *manu = NULL;
-    unsigned char *bitmap = NULL;
+    unsigned char *bitmap = NULL, sfd = 0, dec[4];
 
-    for(face = ptr; face < end && *face; face++)
+    for(face = ptr; face + 12 < end && *face; face++) {
         if(!memcmp(face, "ENCODING ", 9)) numchars++;
+        if(!memcmp(face, "BDFChar:", 8)) { numchars++; sfd = 1; }
+        if(!memcmp(face, "BitmapFont: ", 12)) {
+            ptr += 12; while(*ptr == ' ') ptr++;
+            ps = atoi(ptr); while(*ptr && *ptr != ' ') { ptr++; } while(*ptr == ' ') ptr++;
+            while(*ptr && *ptr != ' ') { ptr++; } while(*ptr == ' ') ptr++;
+            b = atoi(ptr); if(!ctx.baseline) ctx.baseline = b;
+            sfd = 1;
+        }
+    }
     face = NULL;
 
     while(ptr < end && *ptr) {
-        if(!memcmp(ptr, "FACE_NAME ", 10) && !ctx.name && !name) {
-            ptr += 10; if(*ptr=='\"') ptr++; face = ptr;
+        if(!memcmp(ptr, "FACE_NAME ", 10) && !face) {
+            ptr += 10; while(*ptr && *ptr!='\"') { ptr++; } ptr++; face = ptr;
+        }
+        if(!memcmp(ptr, "FONT_NAME ", 10) && !face) {
+            ptr += 10; while(*ptr && *ptr!='\"') { ptr++; } ptr++; face = ptr;
         }
         if(!memcmp(ptr, "FONT_VERSION ", 13) && !ctx.revision) {
-            ptr += 13; if(*ptr=='\"') ptr++;
+            ptr += 13; while(*ptr && *ptr!='\"') { ptr++; } ptr++;
             sfn_setstr(&ctx.revision, ptr, 0);
         }
         if(!memcmp(ptr, "ADD_STYLE_NAME ", 15) && !ctx.name && !style) {
-            ptr += 15; if(*ptr=='\"') ptr++; style = ptr;
+            ptr += 15; while(*ptr && *ptr!='\"') { ptr++; } ptr++; style = ptr;
         }
         if(!memcmp(ptr, "FOUNDRY ", 8) && !ctx.manufacturer) {
-            ptr += 8; if(*ptr=='\"') ptr++; manu = ptr;
+            ptr += 8; while(*ptr && *ptr!='\"') { ptr++; } ptr++; manu = ptr;
         }
         if(!memcmp(ptr, "HOMEPAGE ", 9) && !ctx.manufacturer && !manu) {
-            ptr += 9; if(*ptr=='\"') ptr++; manu = ptr;
+            ptr += 9; while(*ptr && *ptr!='\"') { ptr++; } ptr++; manu = ptr;
         }
         if(!memcmp(ptr, "FAMILY_NAME ", 12) && !ctx.familyname) {
-            ptr += 12; if(*ptr=='\"') ptr++;
+            ptr += 12; while(*ptr && *ptr!='\"') { ptr++; } ptr++;
             sfn_setstr(&ctx.familyname, ptr, 0);
         }
         if(!memcmp(ptr, "WEIGHT_NAME ", 12) && !ctx.subname) {
-            ptr += 12; if(*ptr=='\"') ptr++;
+            ptr += 12; while(*ptr && *ptr!='\"') { ptr++; } ptr++;
             sfn_setstr(&ctx.subname, ptr, 0);
         }
         if(!memcmp(ptr, "COPYRIGHT ", 10) && !ctx.license) {
-            ptr += 10; if(*ptr=='\"') ptr++;
+            ptr += 10; while(*ptr && *ptr!='\"') { ptr++; } ptr++;
             sfn_setstr(&ctx.license, ptr, 0);
         }
-        if(!memcmp(ptr, "FONT_ASCENT ", 12)) { ptr += 12; if(!ctx.baseline) ctx.baseline = atoi(ptr); }
-        if(!memcmp(ptr, "UNDERLINE_POSITION ", 19)) { ptr += 19; relul = atoi(ptr); }
-        if(!memcmp(ptr, "DEFAULT_CHAR ", 13)) { ptr += 13; defchar = atoi(ptr); break; }
+        if(!memcmp(ptr, "FONT_ASCENT ", 12)) {
+            ptr += 12; if(sfd) { while(*ptr && *ptr != ' ') ptr++; } while(*ptr == ' ') ptr++;
+            b = atoi(ptr); if(!ctx.baseline) ctx.baseline = b; }
+        if(!memcmp(ptr, "UNDERLINE_POSITION ", 19)) {
+            ptr += 19; if(sfd) { while(*ptr && *ptr != ' ') ptr++; } while(*ptr == ' ') ptr++;
+            relul = atoi(ptr); if(relul < 0) relul = -relul; }
+        if(!memcmp(ptr, "DEFAULT_CHAR ", 13)) {
+            ptr += 13; if(sfd) { while(*ptr && *ptr != ' ') ptr++; } while(*ptr == ' ') ptr++;
+            defchar = atoi(ptr); }
+        if(!memcmp(ptr, "PIXEL_SIZE ", 11) && !ps) {
+            ptr += 11; if(sfd) { while(*ptr && *ptr != ' ') ptr++; } while(*ptr == ' ') ptr++;
+            ps = atoi(ptr); }
+        if(!memcmp(ptr, "ENDPROPERTIES", 13) || !memcmp(ptr, "BDFEndProperties", 16)) break;
         while(*ptr && *ptr!='\n') ptr++;
         while(*ptr=='\n') ptr++;
     }
@@ -202,7 +291,7 @@ void bdf(char *ptr, int size)
             for(i = 0; face[i] && face[i] != '\"' && face[i] != '\r' && face[i] != '\n'; i++);
             for(j = 0; style[j] && style[i] != '\"' && style[i] != '\r' && style[i] != '\n'; j++);
             name = malloc(i + j + 2);
-            if(!name) { fprintf(stderr,"memory allocation error\n"); return; }
+            if(!name) { fprintf(stderr,"libsfn: memory allocation error\n"); return; }
             memcpy(name, face, i);
             name[i] = ' ';
             memcpy(name + i + 1, style, j);
@@ -214,35 +303,211 @@ void bdf(char *ptr, int size)
     }
     if(!ctx.manufacturer && manu)
         sfn_setstr(&ctx.manufacturer, manu, 0);
+    printf("\r  Name '%s' num_glyphs: %d, ascender: %d, underline: %d, height: %d\n", face, numchars, b, b + relul, ps);
 
     while(ptr < end && *ptr) {
-        if(!memcmp(ptr, "ENCODING ", 9)) { ptr += 9; unicode = atoi(ptr); }
-        if(!memcmp(ptr, "BBX ", 4)) {
-            ptr += 4; w = atoi(ptr);
-            while(*ptr && *ptr!=' ') ptr++;
-            ptr++; h = atoi(ptr);
-        }
-        if(!memcmp(ptr, "BITMAP", 6)) {
-            ptr += 6; while(*ptr && *ptr!='\n') ptr++;
-            ptr++;
-            bitmap = realloc(bitmap, w * h);
-            if(!bitmap) { fprintf(stderr,"memory allocation error\n"); return; }
-            for(i = 0;i < w * h && *ptr; ptr += 2) {
-                while(*ptr=='\n' || *ptr=='\r') ptr++;
-                c = gethex(ptr, 2);
-                for(j=0x80;j;j>>=1) bitmap[i++] = c & j ? 0xFE : 0xFF;
+        if(!sfd) {
+            if(!memcmp(ptr, "ENCODING ", 9)) { ptr += 9; unicode = atoi(ptr); }
+            if(!memcmp(ptr, "BBX ", 4)) {
+                ptr += 4; w = atoi(ptr);
+                while(*ptr && *ptr!=' ') ptr++;
+                ptr++; h = atoi(ptr);
             }
-            while(i < w * h) bitmap[i++] = 0;
-            if(unicode == defchar) {
-                sfn_chardel(0);
-                unicode = 0;
+            if(!memcmp(ptr, "BITMAP", 6)) {
+                ptr += 6; while(*ptr && *ptr!='\n') ptr++;
+                ptr++;
+                if(skipcode && uniname(unicode) == UNICODE_NUMNAMES && !memcmp(ptr,"0000\n7FFE", 9) &&
+                    !memcmp(ptr + 35,"7FFE\n7FFE", 9)) ptr += 16*5;
+                else if(w * h <= 65536) {
+                    bitmap = realloc(bitmap, w * h);
+                    if(!bitmap) { fprintf(stderr,"libsfn: memory allocation error\n"); return; }
+                    for(i = 0;i < w * h && *ptr; ptr += 2) {
+                        while(*ptr=='\n' || *ptr=='\r') ptr++;
+                        c = gethex(ptr, 2);
+                        for(j=0x80;j;j>>=1) bitmap[i++] = c & j ? 0xFE : 0xFF;
+                    }
+                    while(i < w * h) bitmap[i++] = 0xFF;
+                    if(!skipcode && unicode == defchar) { sfn_chardel(0); unicode = 0; }
+                    if(sfn_charadd(unicode, w, h, 0, 0, 0))
+                        sfn_layeradd(unicode, SSFN_FRAG_BITMAP, 0, 0, w, h, 0xFE, bitmap);
+                }
+                if(pbar) (*pbar)(0, 0, ++nc, numchars, PBAR_BITMAP);
             }
-            if(sfn_charadd(unicode, w, h, 0, 0, 0))
-                sfn_layeradd(unicode, SSFN_FRAG_BITMAP, 0, 0, w, h, 0xFE, bitmap);
+        } else
+        if(!memcmp(ptr, "BDFChar:", 8)) {
+            ptr += 8; while(*ptr == ' ') ptr++;
+            while(*ptr && *ptr != ' ') { ptr++; } while(*ptr == ' ') ptr++;
+            unicode = atoi(ptr); while(*ptr && *ptr != ' ') { ptr++; } while(*ptr == ' ') ptr++;
+            w = atoi(ptr); while(*ptr && *ptr != ' ') { ptr++; } while(*ptr == ' ') ptr++;
+            mx = atoi(ptr); while(*ptr && *ptr != ' ') { ptr++; } while(*ptr == ' ') ptr++;
+            xx = atoi(ptr); while(*ptr && *ptr != ' ') { ptr++; } while(*ptr == ' ') ptr++;
+            my = atoi(ptr); while(*ptr && *ptr != ' ') { ptr++; } while(*ptr == ' ') ptr++;
+            xy = atoi(ptr); while(*ptr && *ptr != ' ' && *ptr != '\n') { ptr++; } while(*ptr == ' ') ptr++;
+            if(*ptr != '\n') a = atoi(ptr); else a = w;
+            while(*ptr && *ptr != '\n') { ptr++; } ptr++;
+            h = ps; xx -= mx - 1; xy -= my - 1;
+            xx = (xx + 7) & ~7;
+            if(xx * xy < 65536) {
+                bitmap = realloc(bitmap, xx * xy);
+                if(!bitmap) { fprintf(stderr,"libsfn: memory allocation error\n"); return; }
+                for(i = 0, k = 4; i < xx * xy;) {
+                    if(k > 3) {
+                        if(!*ptr || *ptr == '\r' || *ptr == '\n') break;
+                        k = 0;
+                        if(*ptr == 'z') { dec[0] = dec[1] = dec[2] = dec[3] = 0; ptr++; }
+                        else {
+                            c = ((((ptr[0]-'!')*85 + ptr[1]-'!')*85 + ptr[2]-'!')*85 + ptr[3]-'!')*85 + ptr[4]-'!';
+                            dec[0] = (c >> 24) & 0xFF; dec[1] = (c >> 16) & 0xFF; dec[2] = (c >> 8) & 0xFF; dec[3] = c & 0xFF;
+                            ptr += 5;
+                        }
+                    }
+                    c = dec[k++];
+                    for(j = 0x80; j; j >>= 1) bitmap[i++] = c & j ? 0xFE : 0xFF;
+                }
+                while(i < xx * xy) bitmap[i++] = 0xFF;
+                if(!skipcode && unicode == defchar) { sfn_chardel(0); unicode = 0; }
+                if(sfn_charadd(unicode, w, h, a, 0, mx < 0 ? -mx : 0))
+                    sfn_layeradd(unicode, SSFN_FRAG_BITMAP, 0, 0, xx, xy, 0xFE, bitmap);
+            }
             if(pbar) (*pbar)(0, 0, ++nc, numchars, PBAR_BITMAP);
         }
         while(*ptr && *ptr!='\n') ptr++;
         while(*ptr=='\n') ptr++;
+    }
+    if(bitmap) free(bitmap);
+}
+
+/**
+ * Parse X11 PCF font format (binary)
+ */
+void pcf(unsigned char *ptr, int size)
+{
+    uint32_t i, j, n, *iptr=(uint32_t*)ptr, fmt, mf=0, bf=0, bs=0, ef=0, offs, mn=0, mx=0, mg=0, siz;
+    uint32_t boffs = 0, bitmaps = 0, metrics = 0, encodings = 0;
+    unsigned char *bitmap = NULL, *bm;
+    char *face = NULL, *name = NULL, *style = NULL, *manu = NULL;
+    char *str, *s, *v;
+    int x, y, o, a, b = 0, k, w, h = 0, p, r, sx = 1, m, defchar = 0;
+#define pcf32(f,o) (f&(1<<2)? (ptr[o+0]<<24)|(ptr[o+1]<<16)|(ptr[o+2]<<8)|ptr[o+3] : \
+    (ptr[o+3]<<24)|(ptr[o+2]<<16)|(ptr[o+1]<<8)|ptr[o+0])
+#define pcf16(f,o) (f&(1<<2)? (ptr[o+0]<<8)|ptr[o+1] : (ptr[o+1]<<8)|ptr[o+0])
+
+    /* parse tables */
+    for(i = 0; i < iptr[1]; i++) {
+        fmt = iptr[i*4+3]; offs = iptr[i*4+5];
+        if(offs + iptr[i*4+4] >= (uint32_t)size) continue;
+        switch(iptr[i*4+2]) {
+            case (1<<0): /* PCF_PROPERTIES */
+                n = pcf32(fmt,offs+4); str = (char*)ptr + offs + ((n * 9 + 3)/4 + 3)*4;
+                for(j = 0; j < n; j++) {
+                    s = str + pcf32(fmt,offs + 8 + j * 9); v = str + pcf32(fmt,offs + 13 + j * 9);
+                    if(!strcmp(s, "FACE_NAME") && !face) face = v; else
+                    if(!strcmp(s, "FONT_NAME") && !face) face = v; else
+                    if(!strcmp(s, "FONT_VERSION") && !ctx.revision) sfn_setstr(&ctx.revision, v, 0); else
+                    if(!strcmp(s, "ADD_STYLE_NAME") && !ctx.name && !style) style = v; else
+                    if(!strcmp(s, "FOUNDRY") && !ctx.manufacturer) manu = v; else
+                    if(!strcmp(s, "HOMEPAGE") && !ctx.manufacturer && !manu) manu = v; else
+                    if(!strcmp(s, "FAMILY_NAME") && !ctx.familyname) sfn_setstr(&ctx.subname, v, 0); else
+                    if(!strcmp(s, "WEIGHT_NAME") && !ctx.subname) sfn_setstr(&ctx.subname, v, 0); else
+                    if(!strcmp(s, "COPYRIGHT") && !ctx.license) sfn_setstr(&ctx.license, v, 0); else
+                    if(!strcmp(s, "PIXEL_SIZE")) { k = pcf32(fmt,offs + 13 + j * 9); if(k > h) h = k; } else
+                    if(!strcmp(s, "UNDERLINE_POSITION")) {
+                        relul = (int)pcf32(fmt,offs + 13 + j * 9); if(relul < 0) relul = -relul;
+                    }
+                }
+            break;
+            case (1<<2): /* PCF_METRICS */
+                metrics = offs; mf = fmt; b = 0;
+                if(fmt & 0x100) {
+                    n = pcf16(fmt,offs + 4);
+                    for(j=0; j<n; j++) { k = (int)ptr[offs+3+6+j*5]-0x80; if(k > b) b = k; }
+                    for(j=0; j<n; j++) { k = (int)ptr[offs+4+6+j*5]-0x80 + b; if(k > h) h = k; }
+                } else {
+                    n = pcf32(fmt,offs + 4);
+                    for(j = 0; j < n; j++) { k = pcf16(fmt,offs+6+8+j*12); if(k > b) b = k; }
+                    for(j = 0; j < n; j++) { k = pcf16(fmt,offs+8+8+j*12) + b; if(k > h) h = k; }
+                }
+                if(!mn && !mx && n) mx = n - 1;
+                if(!mg || n < mg) mg = n;
+            break;
+            case (1<<3): /* PCF_BITMAPS */
+                boffs = offs + 8; bf = fmt; n = pcf32(fmt,offs+4);
+                bitmaps = boffs + n * 4 + 16; bs = iptr[i*4+4] + offs - bitmaps;
+                p = 1 << (fmt & 3); sx = fmt & (1 << 2) ? 1 : -1;
+                if(!mg || n < mg) mg = n;
+            break;
+            case (1<<5): /* PCF_BDF_ENCODINGS */
+                encodings = offs + 14; ef = fmt;
+                mn = (pcf16(fmt, offs + 8)<<8) | pcf16(fmt, offs + 4);
+                mx = (pcf16(fmt, offs + 10)<<8) | pcf16(fmt, offs + 6);
+                defchar = pcf16(fmt, offs + 12);
+            break;
+        }
+    }
+    if(!ctx.name) {
+        if(!face) face = ctx.familyname;
+        if(face && style && style[0]) {
+            i = strlen(face); j = strlen(style);
+            name = malloc(i + j + 2);
+            if(!name) { fprintf(stderr,"libsfn: memory allocation error\n"); return; }
+            memcpy(name, face, i);
+            name[i] = ' ';
+            memcpy(name + i + 1, style, j);
+            name[i + j + 1] = 0;
+            sfn_setstr(&ctx.name, name, 0);
+            free(name);
+        } else
+            sfn_setstr(&ctx.name, ctx.familyname, 0);
+    }
+    if(!ctx.manufacturer && manu)
+        sfn_setstr(&ctx.manufacturer, manu, 0);
+    printf("\r  Name '%s' num_glyphs: %d, ascender: %d, underline: %d, height: %d\n", face, mg, b, b + relul, h);
+    if(!b || !h || !mg || !mx || !bitmaps) return;
+    if(mg > 65534) mg = 65534;
+    ctx.baseline = b;
+    ctx.underline = b + relul;
+    ctx.height = h;
+
+    /* parse bitmaps and add glyphs. Encoding table must be handled as optional */
+    for(unicode = mn; (uint32_t)unicode <= mx; unicode++) {
+        if(pbar) (*pbar)(0, 0, unicode, mx - mn + 1, PBAR_BITMAP);
+        i = encodings ? pcf16(ef, encodings + unicode * 2) : unicode;
+        if(i >= mg) continue;
+        offs = pcf32(bf, boffs + i * 4); siz = (i >= mg - 1 ? bs : (uint32_t)pcf32(bf, boffs + i * 4 + 4)) - offs;
+        if(mf & 0x100) {
+            x = (int)ptr[metrics+6+i*5]-0x80; a = (int)ptr[metrics+3+6+i*5]-0x80;
+            w = (int)ptr[metrics+2+6+i*5]-0x80; r = (int)ptr[metrics+1+6+i*5]-0x80;
+        } else {
+            x = (int16_t)pcf16(mf,metrics+8+i*12); a = pcf16(mf,metrics+6+8+i*12);
+            w = pcf16(mf,metrics+4+8+i*12); r = pcf16(mf,metrics+2+8+i*12);
+        }
+        /* do some heuristics and validation because PCF fonts are *usually* buggy... */
+        if(x < 0) { o = -x; x = 0; } else o = 0;
+        if(w < r) r = w;
+        n = (siz / p); y = b - a;
+        if(n > (uint32_t)h) n = h;
+        if(y < 0) y = 0;
+        if(y + n > (uint32_t)h) y = h - n;
+        k = n * r; if(k < 1 || k > 65536) continue;
+        bitmap = realloc(bitmap, k);
+        if(!bitmap) { fprintf(stderr,"libsfn: memory allocation error\n"); return; }
+        memset(bitmap, 0xFF, k);
+        if(siz > n * p) siz = n * p;
+        for(j = 0; siz; siz -= p, offs += p) {
+            /* seriously, who have thought even for a moment that messing with both byte and bit endianess is sane? */
+            bm = ptr + bitmaps + offs + (sx < 0 ? p - 1 : 0); m = bf & (1 << 3) ? 1 << 7 : 1;
+            for(k = 0; k < r; k++) {
+                bitmap[j++] = bm[0] & m ? 0xFE : 0xFF;
+                if(bf & (1 << 3)) { m >>= 1; if(!m) { m = 1 << 7; bm += sx; } }
+                else { m <<= 1; if(m > 0x80) { m = 1; bm += sx; } }
+            }
+        }
+        if(unicode == defchar) {
+            sfn_chardel(0);
+            j = 0;
+        } else j = unicode;
+        if(sfn_charadd(j, w, h, x+r, 0, o))
+            sfn_layeradd(j, SSFN_FRAG_BITMAP, x, y, r, n, 0xFE, bitmap);
     }
     if(bitmap) free(bitmap);
 }
@@ -259,7 +524,7 @@ void pixmap_parse(unsigned char *data, int w, int h)
         re = h > w ? h / w : w / h;
     if(h > w ) {
         m = h / (re - rs + 1);
-        if(m < 8 || w < 8) { fprintf(stderr, "unable to determine glyph size\n"); return; }
+        if(m < 8 || w < 8) { fprintf(stderr, "libsfn: unable to determine glyph size\n"); return; }
         for(unicode=rs, i=0; unicode<=re; unicode++, i += w*m) {
             for(y=k=0;y<m;y++)
                 for(j=w-1;j>k;j--)
@@ -270,9 +535,9 @@ void pixmap_parse(unsigned char *data, int w, int h)
         }
     } else {
         m = w / (re - rs + 1);
-        if(m < 8 || h < 8) { fprintf(stderr, "unable to determine glyph size\n"); return; }
+        if(m < 8 || h < 8) { fprintf(stderr, "libsfn: unable to determine glyph size\n"); return; }
         data2 = (unsigned char*)malloc(m*h);
-        if(!data2) { fprintf(stderr,"memory allocation error\n"); return; }
+        if(!data2) { fprintf(stderr,"libsfn: memory allocation error\n"); return; }
         for(unicode=rs; unicode<=re; unicode++) {
             for(y=o=k=0;y<h;y++) {
                 i = y*w + (unicode-rs)*m;
@@ -312,9 +577,10 @@ void png(unsigned char *ptr, int size)
     w = h = size = 0;
     ri.bits_per_channel = 8;
     data = (uint8_t*)stbi__png_load(&s, (int*)&w, (int*)&h, (int*)&f, 0, &ri);
-    if(!data || (f != STBI_rgb_alpha && f != STBI_rgb) || w < 1 || h < 1) { fprintf(stderr,"Unsupported PNG format\n"); return; }
+    if(!data || (f != STBI_rgb_alpha && f != STBI_rgb) || w < 1 || h < 1)
+        { fprintf(stderr,"libsfn: unsupported PNG format\n"); return; }
     data2 = (unsigned char*)malloc(w * h);
-    if(!data2) { fprintf(stderr,"memory allocation error\n"); return; }
+    if(!data2) { fprintf(stderr,"libsfn: memory allocation error\n"); return; }
 #ifdef HAS_QUANT
     handle = liq_attr_create();
     liq_set_max_colors(handle, 254);
@@ -367,12 +633,12 @@ void tga(unsigned char *ptr, int size)
     w = (ptr[13] << 8) + ptr[12];
     h = (ptr[15] << 8) + ptr[14];
     if(w<1 || h<1) {
-tgaerr: fprintf(stderr,"unsupported TGA file format\n");
+tgaerr: fprintf(stderr,"libsfn: unsupported TGA file format\n");
         return;
     }
     m = ((ptr[1]? (ptr[7]>>3)*ptr[5] : 0) + 18);
     data = (unsigned char*)malloc(w*h);
-    if(!data) { fprintf(stderr,"memory allocation error\n"); return; }
+    if(!data) { fprintf(stderr,"libsfn: memory allocation error\n"); return; }
     switch(ptr[2]) {
         case 1:
             if(ptr[6]!=0 || ptr[4]!=0 || ptr[3]!=0 || (ptr[7]!=24 && ptr[7]!=32)) goto tgaerr;
@@ -446,3 +712,4 @@ tgaerr: fprintf(stderr,"unsupported TGA file format\n");
     free(data);
 }
 
+#endif

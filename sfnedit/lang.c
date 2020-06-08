@@ -38,12 +38,15 @@ char *dict[NUMLANGS][NUMTEXTS + 1] = {
 
         "memory allocation error",
         "unable to open display",
+        "unable to load font",
+        "unable to save font",
         "bad glyph size",
 
         "Measuring bounding box",
         "Querying outlines",
         "Querying all kerning combinations",
         "Quantizing image",
+        "Reading file",
         "Reading bitmap",
         "Reading tall pixel map",
         "Reading wide pixel map",

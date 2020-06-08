@@ -42,7 +42,7 @@ fprintf($f,"/*
 
 ");
 system("convert bg.png -alpha extract bga.png");
-foreach(["icon32.png","icons.png","bga.png","logo.sfn"] as $fn) {
+foreach(["icon32.png","icon64.png","icons.png","bga.png","logo.sfn"] as $fn) {
     $data=file_get_contents($fn);
     fprintf($f,"uint8_t ".str_replace(".","_",$fn)."[".strlen($data)."] = {\n");
     for($i=0;$i<strlen($data);$i++)
