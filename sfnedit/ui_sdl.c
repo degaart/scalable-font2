@@ -39,6 +39,15 @@ SDL_Cursor *cursors[5];
 int btnflags = 0, keyflags = 0, mx = 0, my = 0, ti = 0;
 
 /**
+ * Copy text to clipboard
+ */
+void ui_copy(char *s)
+{
+    if(s && *s)
+        SDL_SetClipboardText(s);
+}
+
+/**
  * Create a window
  */
 void *ui_createwin(int w, int h)

@@ -71,8 +71,8 @@ enum {
     MTOOL_RANGES,
     MTOOL_GLYPHS,
     GTOOL_MEASURES,
-    GTOOL_KERN,
     GTOOL_LAYERS,
+    GTOOL_KERN,
     /* file operations */
     FILEOP_NAME,
     FILEOP_SIZE,
@@ -126,6 +126,41 @@ enum {
     GLYPHS_UNDEF,
     GLYPHS_LIGATURE,
     GLYPHS_SELECT,
+    /* coords */
+    COORDS_CLIPBRD,
+    COORDS_WIDTH,
+    COORDS_HEIGHT,
+    COORDS_BASELINE,
+    COORDS_UNDERLINE,
+    COORDS_OVERLAP,
+    COORDS_HADV,
+    COORDS_VADV,
+    COORDS_RTL,
+    COORDS_HORIZ,
+    COORDS_LTR,
+    COORDS_REPOS,
+    COORDS_ITALIC,
+    COORDS_UNITALIC,
+    COORDS_HFLIP,
+    COORDS_VFLIP,
+    COORDS_RECALC,
+    COORDS_DELETE,
+    /* layers */
+    LAYERS_ZOOMOUT,
+    LAYERS_ZOOMIN,
+    LAYERS_CUT,
+    LAYERS_COPY,
+    LAYERS_PASTE,
+    LAYERS_VECTOR,
+    LAYERS_BITMAP,
+    LAYERS_PIXMAP,
+    LAYERS_FOREGROUND,
+    LAYERS_BACKGROUND,
+    LAYERS_DELETE,
+    /* kerning */
+    KERN_DELETE,
+    /* colors */
+    COLORS_SET,
     /* must be the last */
     NUMTEXTS
 };

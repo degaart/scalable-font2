@@ -37,20 +37,20 @@
 #include "lang.h"
 
 uint32_t numbers[] = {0x4aaa4,0x4c444,0xc248e,0xc2c2c,0x24ae2,0xe8c2c,0x68eac,0xe2444,0x4a4a4,0xea62c};
-uint32_t letters[] = {0x4aeaa,0xcacac,0x68886,0xcaaac,0xe8e8e,0xe8e88};
+uint32_t letters[] = {0x4aeaa,0xcacac,0x68886,0xcaaac,0xe8e8e,0xe8e88,0xaa4aa,0xaa444 };
 
 int input_maxlen = 0, input_callback = 0, input_refresh = 0;
 char *input_str = NULL, *input_cur = NULL, *input_scr = NULL, *input_end = NULL, input_buf[256];
 extern int seltool;
+extern char ksearch[];
 
 /**
  * Draw the toolbox
  */
 void ui_toolbox(int idx)
 {
-    int i;
-    char un[256];
     ui_win_t *win = &wins[idx];
+    int i, w;
 
     if(!idx)
         ui_text(win, wins[idx].w - 7*8, 4, verstr);
@@ -67,18 +67,17 @@ void ui_toolbox(int idx)
         for(i = 0; i < 6; i++)
             ui_icon(win, 4 + i * 24, 4, ICON_ABOUT + i, wins[idx].tool == -1 ? 1 : 0);
     } else {
+        w = ssfn_dst.w; ssfn_dst.w = 144;
         for(i = 0; i < 3; i++)
             ui_icon(win, 4 + i * 24, 4, ICON_MEASURES + i, 0);
         if(wins[idx].unicode >= SSFN_LIG_FIRST && wins[idx].unicode <= SSFN_LIG_LAST) {
-            ui_input(win, 6 + 3 * 24, 3, 32, ctx.ligatures[wins[idx].unicode - SSFN_LIG_FIRST], wins[idx].field == 3, 15,
+            ui_input(win, 6 + 3 * 24, 2, 56, ctx.ligatures[wins[idx].unicode - SSFN_LIG_FIRST], wins[idx].field == 3, 15,
                 1024 + wins[idx].unicode - SSFN_LIG_FIRST);
-            sprintf(un, "%s #%d", lang[GLYPHS_LIGATURE], wins[idx].unicode - SSFN_LIG_FIRST);
         } else {
-            ui_box(win, 6 + 3 * 24, 3, 32, 18, theme[THEME_DARK], theme[THEME_DARK], theme[THEME_DARK]);
+            ui_box(win, 6 + 3 * 24, 2, 56, 18, theme[THEME_BG], theme[THEME_BG], theme[THEME_BG]);
             ui_text(win, 8 + 3 * 24, 4, utf8(wins[idx].unicode));
-            sprintf(un, "%s", !wins[idx].uniname || !wins[idx].uniname[0] ? lang[GLYPHS_UNDEF] : wins[idx].uniname);
         }
-        ui_text(win, 42 + 3 * 24, 3, un);
+        ssfn_dst.w = w;
     }
 }
 
@@ -136,20 +135,21 @@ void ui_box(ui_win_t *win, int x, int y, int w, int h, uint32_t l, uint32_t b, u
 void ui_icon(ui_win_t *win, int x, int y, int icon, int inactive)
 {
     int i, j, m, k, w, h;
-    uint8_t *a, *b;
+    uint8_t *a, *b, n;
 
-    if(x < 0 || y < 0 || x >= win->w || y >= win->h) return;
-    w = win->w > x + 16 ? 16 : win->w - x;
-    h = win->h > y + 16 ? 16 : win->h - y;
+    if(x < 0 || y < 0 || x >= ssfn_dst.w || y >= ssfn_dst.h) return;
+    w = win->w > x + 16 ? 16 : ssfn_dst.w - x;
+    h = win->h > y + 16 ? 16 : ssfn_dst.h - y;
     for(k = y*win->p + x, m = (icon * 256 + ((16 - h) << 8) + (16 - w)) << 2, j = 0; j < 16 && y + j < ssfn_dst.h;
         j++, k += win->p, m += 16 * 4) {
         for(i = 0; i < w; i++) {
             if(tools[m + (i<<2)+3]) {
                 a = (uint8_t*)&win->data[k+i];
                 b = (uint8_t*)&tools[m + (i<<2)];
-                if(inactive)
-                    a[0] = a[1] = a[2] = ((int)(b[0] + b[1] + b[2])*b[3]/6 + (256 - b[3])*a[2]) >> 8;
-                else {
+                if(inactive) {
+                    n = (b[3]>>(inactive - 1));
+                    a[0] = a[1] = a[2] = ((int)(b[0] + b[1] + b[2])*n/6 + (256 - n)*a[2]) >> 8;
+                } else {
                     a[2] = (b[0]*b[3] + (256 - b[3])*a[2]) >> 8;
                     a[1] = (b[1]*b[3] + (256 - b[3])*a[1]) >> 8;
                     a[0] = (b[2]*b[3] + (256 - b[3])*a[0]) >> 8;
@@ -181,7 +181,11 @@ char *ui_input(ui_win_t *win, int x, int y, int w, char *str, int active, int ma
     char *s;
     int i;
 
-    ui_box(win, x, y, w+4, 20, theme[active ? THEME_CURSOR : THEME_DARKER], theme[THEME_DARK],
+    if(x < 0 || y < 0 || x >= ssfn_dst.w || y >= ssfn_dst.h || w < 1) return NULL;
+    if(x + w > win->w) w = win->w - x;
+    if(w < 0) return NULL;
+
+    ui_box(win, x, y, w+4, 20, theme[active ? THEME_CURSOR : THEME_DARKER], theme[THEME_INPBG],
         theme[active ? THEME_CURSOR : THEME_LIGHT]);
     ssfn_dst.bg = theme[THEME_INPBG];
     ssfn_dst.w = x + w;
@@ -245,6 +249,8 @@ void ui_button(ui_win_t *win, int x, int y, int w, char *str, int pressed, int a
         l = theme[THEME_BTN1L]; b = theme[THEME_BTN1BL]; B = theme[THEME_BTN1BD]; d = theme[THEME_BTN1D];
     }
     if(x < 0 || y < 0 || x >= ssfn_dst.w || y >= ssfn_dst.h || w < 1) return;
+    if(x + w > win->w) w = win->w - x;
+    if(w < 0) return;
     if(active == -1) {
         l = d = b = B = theme[pressed < 2 ? THEME_DARK: THEME_BTN1BD];
         ssfn_dst.fg = theme[THEME_LIGHTER]; active = 0;
@@ -304,6 +310,7 @@ void ui_bool(ui_win_t *win, int x, int y, char *s, int state, int active)
 void ui_tri(ui_win_t *win, int x, int y, int up)
 {
     int i, j = win->p * y + x;
+    if(x < 0 || y < 0 || x >= ssfn_dst.w || y >= ssfn_dst.h) return;
     if(up) {
         win->data[j+3] = theme[THEME_DARK];
         j += win->p;
@@ -359,15 +366,16 @@ void ui_tri(ui_win_t *win, int x, int y, int up)
 void ui_num(ui_win_t *win, int x, int y, int num, int active, int sel)
 {
     char numstr[16];
-    sprintf(numstr, "%d", num);
-    ui_box(win, x, y, 44, 20, theme[active ? THEME_CURSOR : THEME_DARKER], theme[THEME_INPBG],
+    sprintf(numstr, "%4d", num);
+    if(x < 0 || y < 0 || x >= ssfn_dst.w || y >= ssfn_dst.h) return;
+    ui_box(win, x, y, 52, 20, theme[active ? THEME_CURSOR : THEME_DARKER], theme[THEME_INPBG],
         theme[active ? THEME_CURSOR : THEME_LIGHT]);
-    ui_box(win, x + 32, y + 1, 11, 9, theme[!sel ? THEME_DARKER : THEME_LIGHT], theme[THEME_BG],
+    ui_box(win, x + 40, y + 1, 11, 9, theme[!sel ? THEME_DARKER : THEME_LIGHT], theme[THEME_BG],
         theme[!sel ? THEME_LIGHT : THEME_DARKER]);
-    ui_tri(win, x + 34, y + 3, 1);
-    ui_box(win, x + 32, y + 10, 11, 9, theme[sel == 1 ? THEME_DARKER : THEME_LIGHT], theme[THEME_BG],
+    ui_tri(win, x + 42, y + 3, 1);
+    ui_box(win, x + 40, y + 10, 11, 9, theme[sel == 1 ? THEME_DARKER : THEME_LIGHT], theme[THEME_BG],
         theme[sel == 1 ? THEME_LIGHT : THEME_DARKER]);
-    ui_tri(win, x + 34, y + 12, 0);
+    ui_tri(win, x + 42, y + 12, 0);
     ssfn_dst.bg = 0;
     ui_text(win, x + 2, y + 1, numstr);
 }
@@ -381,8 +389,9 @@ void ui_number(ui_win_t *win, int x, int y, int n, uint32_t c)
 
     if(!n) { p += 12; goto zero; }
     if(n < 0) {
-        win->data[p + 2*win->p ] = win->data[p + 2*win->p + 1] = win->data[p + 2*win->p + 2] = c;
         n = -n;
+        j = n < 100 ? (n < 10 ? 8 : 4) : 0;
+        win->data[p + 2*win->p + j] = win->data[p + 2*win->p + 1 + j] = win->data[p + 2*win->p + 2 + j] = c;
     }
     for(m = 1000; m > 0; m /= 10, p += 4)
         if(n >= m) {
@@ -403,7 +412,8 @@ void ui_hex(ui_win_t *win, char c)
     int i, j, k, p = ssfn_dst.y * win->p + ssfn_dst.x;
     if(c >= '0' && c <= '9') d = numbers[c - '0']; else
     if(c >= 'A' && c <= 'F') d = letters[c - 'A']; else
-    if(c >= 'a' && c <= 'f') d = letters[c - 'a'];
+    if(c >= 'a' && c <= 'f') d = letters[c - 'a']; else
+    if(c >= 'X' && c <= 'Y') d = letters[c - 'X' + 6];
     for(k = 1<<19, j = 0; j < 5 && ssfn_dst.y + j < ssfn_dst.h; j++)
         for(i = 0; i < 4; i++, k >>= 1)
             if((d & k) && ssfn_dst.x + i < ssfn_dst.w) win->data[p + j*win->p +i] = ssfn_dst.fg;
@@ -420,11 +430,11 @@ void ui_glyph(ui_win_t *win, int x, int y, int size, int unicode, int layer)
     uint32_t P, O, *Op, *Ol;
     unsigned long int sR, sG, sB, sA;
     int ox, oy, y0, y1, Y0, Y1, x0, x1, X0, X1, X2, xs, ys, yp, pc, af, fB, fG, fR, fA, bB, bG, bR;
-    ssfn_glyph_t g;
+    sfngc_t g;
 
     g.p = g.h = 0;
-    if(!sfn_glyph(size, unicode, layer, &g)) {
-        if(g.p * g.h >= SSFN_DATA_MAX)
+    if(!sfn_glyph(size, unicode, layer, 1, &g)) {
+        if(g.p * g.h >= (260 + 260 / SSFN_ITALIC_DIV) << 8)
             fprintf(stderr, "sfnedit: %s U+%06X: p %d h %d size %d\n",lang[ERR_SIZE],unicode,g.p,g.h,size);
         return;
     }
@@ -501,4 +511,21 @@ void ui_glyph(ui_win_t *win, int x, int y, int size, int unicode, int layer)
         }
     }
     return;
+}
+
+/**
+ * Display a box with color
+ */
+void ui_argb(ui_win_t *win, int x, int y, int w, int h, uint32_t c)
+{
+    int i, j, k = w < 8 ? (w < 4 ? 2 : 4) : 8, p = y * win->p + x;
+    uint8_t *d, *a = (uint8_t*)&theme[THEME_LIGHT], *b = (uint8_t*)&theme[THEME_DARK], *C = (uint8_t*)&c;
+
+    for(j=0; j < h && y + j < ssfn_dst.h; j++, p += win->p)
+        for(i=0; i < w && x + i < ssfn_dst.w; i++) {
+            d = (j & k) ^ (i & k) ? a : b;
+            ((uint8_t*)&win->data[p+i])[0] = (C[0]*C[3] + (256 - C[3])*d[0])>>8;
+            ((uint8_t*)&win->data[p+i])[1] = (C[1]*C[3] + (256 - C[3])*d[1])>>8;
+            ((uint8_t*)&win->data[p+i])[2] = (C[2]*C[3] + (256 - C[3])*d[2])>>8;
+        }
 }

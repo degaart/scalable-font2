@@ -65,24 +65,25 @@ void view_ranges()
         rres[numranges++] = i;
     }
 
-    ssfn_dst.w = win->w - 24; if(ssfn_dst.w < 1) ssfn_dst.w = 1;
+    ssfn_dst.w = win->w - 8; if(ssfn_dst.w < 1) ssfn_dst.w = 1;
     ssfn_dst.h = win->h;
     ui_bool(win, 8, 29, lang[RANGES_SHOWALL], showallrange, wins[0].field == 6);
-    ui_input(win, win->w - 150, 29, 120, rsearch, wins[0].field == 7, 31, 0);
-    ui_icon(win, win->w - 8 - 16, 30, ICON_SEARCH, 0);
+    ui_icon(win, win->w - 134 - 16, 30, ICON_SEARCH, 0);
+    ui_input(win, win->w - 132, 29, 120, rsearch, wins[0].field == 7, 31, 0);
     ui_rect(win, 7, 51, win->w - 14, win->h - 26 - 51, theme[THEME_DARKER], theme[THEME_LIGHT]);
+    ssfn_dst.w = win->w - 9; if(ssfn_dst.w < 1) ssfn_dst.w = 1;
     ui_box(win, 8, 52, 172, 20, theme[THEME_LIGHT], theme[THEME_BG], theme[THEME_DARKER]);
     ssfn_dst.fg = theme[THEME_LIGHTER];
     ui_text(win, 16, 53, lang[RANGES_COVERAGE]);
     ssfn_dst.fg = theme[THEME_DARKER];
     ui_text(win, 15, 52, lang[RANGES_COVERAGE]);
-    ssfn_dst.w = win->w - 9; if(ssfn_dst.w < 1) ssfn_dst.w = 1;
     ui_box(win, 180, 52, win->w - 189, 20, theme[THEME_LIGHT], theme[THEME_BG], theme[THEME_DARKER]);
     ssfn_dst.fg = theme[THEME_LIGHTER];
     ui_text(win, 188, 53, lang[RANGES_NAME]);
     ssfn_dst.fg = theme[THEME_DARKER];
     ui_text(win, 187, 52, lang[RANGES_NAME]);
     ssfn_dst.fg = theme[THEME_FG];
+    ssfn_dst.bg = 0;
 
     ssfn_dst.y = 72;
     pageranges = (win->h - 26 - 72) / 16; if(pageranges < 1) pageranges = 1;
@@ -170,7 +171,7 @@ void ctrl_ranges_onbtnpress()
 
     if(event.y > 29 && event.y < 48) {
         if(event.x >= 8 && event.x < win->w - 154) { showallrange ^= 1; input_refresh = 1; } else
-        if(event.x >= win->w - 150 && event.x < win->w - 8) wins[0].field = 7;
+        if(event.x >= win->w - 132 && event.x < win->w - 8) wins[0].field = 7;
     } else
     if(event.y > 73 && event.y < win->h - 26) {
         wins[0].field = 8;

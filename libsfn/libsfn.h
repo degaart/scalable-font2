@@ -57,6 +57,20 @@ enum {
 typedef void (*sfnprogressbar_t)(int step, int numstep, int curr, int total, int msg);
 
 /**
+ * Glyph cache structure, private (same as ssfn_glyph_t but with larger bit widths)
+ */
+typedef struct {
+    uint16_t p;                         /* data buffer pitch, bytes per line */
+    uint16_t h;                         /* data buffer height */
+    uint16_t o;                         /* overlap of glyph, scaled to size */
+    uint16_t x;                         /* advance x, scaled to size */
+    uint16_t y;                         /* advance y, scaled to size */
+    uint16_t a;                         /* ascender, scaled to size */
+    uint16_t d;                         /* descender, scaled to size */
+    uint8_t data[(260 + 260 / SSFN_ITALIC_DIV) << 8];        /* data buffer */
+} sfngc_t;
+
+/**
  * Fragments structure, private
  */
 typedef struct {
@@ -204,8 +218,8 @@ unsigned char sfn_cpaladd(int r, int g, int b, int a);
 void sfn_skipadd(int unicode);
 int sfn_load(char *filename, int dump);
 int sfn_save(char *filename, int ascii, int compress);
-void sfn_sanitize();
-int sfn_glyph(int size, int unicode, int layer, ssfn_glyph_t *g);
+void sfn_sanitize(int unicode);
+int sfn_glyph(int size, int unicode, int layer, int postproc, sfngc_t *g);
 void sfn_rasterize(int size);
 void sfn_vectorize();
 void sfn_coverage();

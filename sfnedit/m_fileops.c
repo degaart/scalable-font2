@@ -222,10 +222,10 @@ void view_fileops(int save)
     }
     pathX[i] = ssfn_dst.x - 8;
 
-    ssfn_dst.w = win->w - 24; if(ssfn_dst.w < 1) ssfn_dst.w = 1;
+    ssfn_dst.w = win->w - 8; if(ssfn_dst.w < 1) ssfn_dst.w = 1;
     ssfn_dst.h = win->h;
-    ui_input(win, win->w - 150, 29, 120, fsearch, wins[0].field == 7, 255, 0);
-    ui_icon(win, win->w - 8 - 16, 30, ICON_SEARCH, 0);
+    ui_icon(win, win->w - 134 - 16, 30, ICON_SEARCH, 0);
+    ui_input(win, win->w - 132, 29, 120, fsearch, wins[0].field == 7, 255, 0);
     ui_rect(win, 7, 51, win->w - 14, win->h - 102, theme[THEME_DARKER], theme[THEME_LIGHT]);
     ui_box(win, 8, 52, 18, 20, theme[THEME_LIGHT], theme[THEME_BG], theme[THEME_DARKER]);
     ssfn_dst.w = win->w - 284; if(ssfn_dst.w < 1) ssfn_dst.w = 1;
@@ -345,7 +345,7 @@ void ctrl_fileops_onenter(int save)
                     ui_cursorwin(&wins[0], CURSOR_LOADING);
                     ui_flushwin(&wins[0], wins[0].w - 12 - j, wins[0].h - 44, j, 32);
                     if(sfn_load(fn, 0)) {
-                        sfn_sanitize();
+                        sfn_sanitize(-1);
                         strcpy(filename, files[selfiles].name);
                         wins[0].tool = MAIN_TOOL_GLYPHS;
                         wins[0].field = selfield = -1;
@@ -382,7 +382,7 @@ void ctrl_fileops_onenter(int save)
                     ui_button(&wins[0], wins[0].w - 12 - j, wins[0].h - 44, j, lang[FILEOP_SAVE], 2, -1);
                     ui_cursorwin(&wins[0], CURSOR_LOADING);
                     ui_flushwin(&wins[0], 0, wins[0].h - 44, wins[0].w, 32);
-                    sfn_sanitize();
+                    sfn_sanitize(-1);
 printf("save '%s'\n",fn);
 sleep(1);
 /*
@@ -471,7 +471,7 @@ void ctrl_fileops_onbtnpress(int save)
     int i, j = wins[0].w / 4;
     selfield = 0; wins[0].field = -1;
     if(event.y >= 29 && event.y <= 49) {
-        if(event.x >= wins[0].w - 150 && event.x <= wins[0].w - 30) wins[0].field = 7;
+        if(event.x >= wins[0].w - 132 && event.x <= wins[0].w - 8) wins[0].field = 7;
         else {
             for(i = 0; i < pathlen; i++)
                 if(event.x >= pathX[i] - 3 && event.x <= pathX[i + 1] - 5) {
@@ -523,7 +523,7 @@ void ctrl_fileops_onclick(int save)
 {
     int i, j = wins[0].w / 4;
     if(event.y >= 29 && event.y <= 49) {
-        if(event.x < wins[0].w - 150 && selfield >= 4 && event.x >= pathX[selfield-4] - 3 && event.x <= pathX[selfield-3] - 5) {
+        if(event.x < wins[0].w - 132 && selfield >= 4 && event.x >= pathX[selfield-4] - 3 && event.x <= pathX[selfield-3] - 5) {
             pathlen = selfield - 3;
             for(fn[0] = 0, i = 0; i < pathlen; i++)
                 strcat(fn, path[i]);
@@ -561,6 +561,7 @@ void view_dosave()
     ui_win_t *win = &wins[0];
 
     question_y = (win->h / 2) + 16;
+    ssfn_dst.bg = 0;
     ui_text(win, (win->w - ui_textwidth(lang[FILEOP_DOSAVE])) / 2, question_y - 48, lang[FILEOP_DOSAVE]);
     ui_button(win, 20, question_y, (win->w - 80) / 2, lang[FILEOP_YES], selfield == 1, win->field == 6);
     ui_button(win, win->w / 2 + 20, question_y, (win->w - 80) / 2, lang[FILEOP_NO], selfield == 2 ? 3 : 2, win->field == 7);
@@ -611,6 +612,7 @@ void view_new()
     ui_win_t *win = &wins[0];
 
     question_y = (win->h / 2) + 16;
+    ssfn_dst.bg = 0;
     ui_text(win, (win->w - ui_textwidth(lang[FILEOP_NEW])) / 2, question_y - 48, lang[FILEOP_NEW]);
     ui_button(win, 20, question_y, (win->w - 80) / 2, lang[FILEOP_YES], selfield == 1 ? 3 : 2, win->field == 6);
     ui_button(win, win->w / 2 + 20, question_y, (win->w - 80) / 2, lang[FILEOP_NO], selfield == 2, win->field == 7);

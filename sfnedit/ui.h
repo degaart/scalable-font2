@@ -46,6 +46,7 @@ enum {
     THEME_LIGHTER,
     THEME_DARKER,
     THEME_INPBG,
+
     THEME_BTNB,
     THEME_BTN0L,
     THEME_BTN0BL,
@@ -55,10 +56,23 @@ enum {
     THEME_BTN1BL,
     THEME_BTN1BD,
     THEME_BTN1D,
+
     THEME_SELBG,
     THEME_SELFG,
     THEME_CURSOR,
-    THEME_UNDEF
+    THEME_UNDEF,
+
+    THEME_AXIS,
+    THEME_GRID,
+    THEME_DIM,
+
+    THEME_BASE,
+    THEME_UNDER,
+    THEME_OVL,
+    THEME_ADV,
+    THEME_HINT,
+
+    THEME_LAST
 };
 
 #define MAIN_W          800
@@ -80,8 +94,8 @@ enum {
     ICON_RANGES,
     ICON_GLYPHS,
     ICON_MEASURES,
-    ICON_KERNING,
     ICON_LAYERS,
+    ICON_KERNING,
     ICON_FOLDER,
     ICON_FILE,
     ICON_SEARCH,
@@ -91,13 +105,23 @@ enum {
     ICON_COPY,
     ICON_PASTE,
     ICON_DELETE,
-    ICON_BOUNDING,
-    ICON_HINTING,
+    ICON_UARR,
+    ICON_LARR,
+    ICON_RARR,
+    ICON_DARR,
+    ICON_RHORIZ,
     ICON_VERT,
     ICON_HORIZ,
+    ICON_SHEAR,
+    ICON_UNSHEAR,
+    ICON_BOLDER,
+    ICON_UNBOLD,
+    ICON_HFLIP,
+    ICON_VFLIP,
     ICON_VECTOR,
     ICON_BITMAP,
-    ICON_PIXMAP
+    ICON_PIXMAP,
+    ICON_ERASE
 };
 
 #define WINTYPE_MAIN  -1U
@@ -139,8 +163,8 @@ enum {
 
 enum {
     GLYPH_TOOL_COORD,
-    GLYPH_TOOL_KERN,
     GLYPH_TOOL_LAYER,
+    GLYPH_TOOL_KERN,
     GLYPH_TOOL_COLOR
 };
 
@@ -156,6 +180,7 @@ typedef struct {
     int field;
     int tool;
     int zoom;
+    int layer;
     int histmin, histmax;
 /*    hist_t *hist;*/
 } ui_win_t;
@@ -171,7 +196,7 @@ typedef struct {
 
 extern char verstr[], ws[], *status, *errstatus;
 extern uint32_t theme[];
-extern int numwin, cursor, zip, ascii, selfield, rs, re, modified;
+extern int numwin, cursor, zip, ascii, selfield, rs, re, modified, posx, posy;
 extern ui_win_t *wins;
 extern ui_event_t event;
 extern uint8_t *icon16, *icon64, *tools, *bga;
@@ -185,6 +210,7 @@ void copypaste_paste(int tounicode, int oneunicode);
 void copypaste_fini();
 
 /* driver specific */
+void ui_copy(char *s);
 void *ui_createwin(int w, int h);
 void ui_titlewin(ui_win_t *win, char *title);
 void ui_resizewin(ui_win_t *win, int w, int h);
@@ -211,6 +237,7 @@ void ui_num(ui_win_t *win, int x, int y, int num, int active, int sel);
 void ui_number(ui_win_t *win, int x, int y, int n, uint32_t c);
 void ui_hex(ui_win_t *win, char c);
 void ui_glyph(ui_win_t *win, int x, int y, int size, int unicode, int layer);
+void ui_argb(ui_win_t *win, int x, int y, int w, int h, uint32_t c);
 
 /* common */
 void ui_gettheme(char *fn);
@@ -221,6 +248,7 @@ void ui_updatetitle(int idx);
 void ui_closewin(int idx);
 int ui_getwin(void *wid);
 void ui_pb(int step, int numstep, int curr, int total, int msg);
+void ui_chrinfo(int unicode);
 void ui_refreshwin(int idx, int wx, int wy, int ww, int wh);
 void ui_refreshall();
 void ui_main(char *fn);
@@ -267,3 +295,17 @@ void ctrl_glyphs_onkey();
 void ctrl_glyphs_onbtnpress();
 void ctrl_glyphs_onclick();
 void ctrl_glyphs_onmove();
+
+void ctrl_coords_onbtnpress(int idx);
+void ctrl_coords_onclick(int idx);
+void ctrl_coords_onmove(int idx);
+void ctrl_layers_onbtnpress(int idx);
+void ctrl_layers_onclick(int idx);
+void ctrl_layers_onmove(int idx);
+void ctrl_kern_onbtnpress(int idx);
+void ctrl_kern_onclick(int idx);
+void ctrl_kern_onmove(int idx);
+void ctrl_colors_onenter(int idx);
+void ctrl_colors_onbtnpress(int idx);
+void ctrl_colors_onclick(int idx);
+void ctrl_colors_onmove(int idx);

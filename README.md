@@ -2,11 +2,12 @@ Scalable Screen Font 2.0
 ========================
 
 This is a portable, single ANSI C/C++ header file, a scalable bitmap and vector font renderer. It has only memory
-related libc dependency and it does not use floating point numbers. It's extremely small (ca. 28 kilobytes) and it is
-very easy on memory, perfect for embedded systems and hobby OS kernels. It was a hobby project for me, so donations
-and contributions would be much appreciated if it turns out to be useful to you.
+related libc dependency and it does not use floating point numbers. It's extremely small (less than 32 kilobytes)
+and it is very easy on memory, perfect for embedded systems and hobby OS kernels. It was a hobby project for me,
+so donations and contributions would be much appreciated if it turns out to be useful to you.
 
- - [ssfn.h](https://gitlab.com/bztsrc/scalable-font2/blob/master/ssfn.h) the SSFN renderer itself
+ - [ssfn.h](https://gitlab.com/bztsrc/scalable-font2/blob/master/ssfn.h) the SSFN [renderer SDK](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/API.md)
+ - [libsfn](https://gitlab.com/bztsrc/scalable-font2/tree/master/libsfn) the font [manipulator SDK](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/libsfn.md)
  - [sfnconv](https://gitlab.com/bztsrc/scalable-font2/tree/master/sfnconv) a command line SSFN converter tool
  - [sfnedit](https://gitlab.com/bztsrc/scalable-font2/tree/master/sfnedit) multiplatform SSFN font converter and editor with a GUI (WiP)
  - [sfntest](https://gitlab.com/bztsrc/scalable-font2/tree/master/sfntest) test applications and [API](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/API.md) usage examples
@@ -34,6 +35,12 @@ There's a small ANSI C utility and also a GUI editor to do that. They support im
 Using SSFN means your fonts will require less space, and also the renderer can work a lot faster than other renderer
 libraries. Check out [comparition](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/compare.md) with other font
 formats (measurements for the feature demo above can be found at the bottom of that page).
+
+Support the Development by Donation
+-----------------------------------
+
+If you like it or find it useful, your donation of any amount will be very much appreciated:<br>
+<a href="bitcoin:3NBKzD1DHXr7Pd1ntGxvGqjDmcFKSccndf"><img src="https://gitlab.com/bztsrc/scalable-font2/raw/master/donate.png"><br>BTC 3NBKzD1DHXr7Pd1ntGxvGqjDmcFKSccndf</a>
 
 Example Code
 ------------

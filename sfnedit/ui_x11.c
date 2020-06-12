@@ -30,10 +30,12 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <Xlib.h>
 #include <Xutil.h>
 #include <Xos.h>
 #include <Xatom.h>
+#include <Xmu/Atoms.h>
 #include <keysymdef.h>
 #include <cursorfont.h>
 #include "lang.h"
@@ -42,12 +44,25 @@
 
 Display *display;
 Visual *visual;
-Atom wmDel;
+Atom wmDel, wmTargets;
 Cursor cursors[5];
 extern uint8_t *tools, *icon32, *icon64;
 #define ICON_LENGTH (2 + 16 * 16 + 2 + 32 * 32 + 2 + 64 * 64)
 long icons[ICON_LENGTH];
 int screen_num = 0, red_shift,green_shift,blue_shift, btnflags = 0, keyflags = 0, keypressed = 0;
+unsigned char selection[8] = { 0 };
+
+/**
+ * Copy text to clipboard
+ */
+void ui_copy(char *s)
+{
+    if(s && *s) {
+        memcpy(selection, s, sizeof(selection));
+        XSetSelectionOwner(display, XA_CLIPBOARD(display), (Window)wins[0].winid, CurrentTime);
+    } else
+        selection[0] = 0;
+}
 
 /**
  * Create a window
@@ -191,6 +206,7 @@ void ui_init()
     cursors[CURSOR_GRAB] = XCreateFontCursor(display, XC_hand2);
 
     wmDel = XInternAtom(display, "WM_DELETE_WINDOW", False);
+    wmTargets = XInternAtom(display, "TARGETS", False);
 }
 
 /**
@@ -209,7 +225,7 @@ void ui_fini()
  */
 void ui_getevent()
 {
-    XEvent e;
+    XEvent e, r;
     KeySym k;
 
     e.type = None;
@@ -300,6 +316,21 @@ void ui_getevent()
             btnflags &= ~(1<<(e.xbutton.button-1));
             event.w = btnflags;
             event.h = keyflags;
+        break;
+        case SelectionRequest:
+            if(selection[0]) {
+                XChangeProperty(display, e.xselectionrequest.requestor, e.xselectionrequest.property,
+                    XA_UTF8_STRING(display), 8, PropModeReplace, selection, strlen((char*)selection));
+                r.xselection.type = SelectionNotify;
+                r.xselection.requestor = e.xselectionrequest.requestor;
+                r.xselection.property = e.xselectionrequest.property;
+                r.xselection.display = display;
+                r.xselection.selection = e.xselectionrequest.selection;
+                r.xselection.target = e.xselectionrequest.target;
+                r.xselection.time = e.xselectionrequest.time;
+                XSendEvent(display, e.xselectionrequest.requestor, 0, 0, &r);
+                XFlush(display);
+            }
         break;
     }
 }

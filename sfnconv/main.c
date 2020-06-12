@@ -378,7 +378,7 @@ int main(int argc, char **argv)
     /* save output font */
     if(!dump) {
         if(!in || !outfile) usage();
-        sfn_sanitize();
+        sfn_sanitize(-1);
         if(rasterize) {
             if(rasterize == -1) {
                 sfn_vectorize();

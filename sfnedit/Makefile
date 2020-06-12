@@ -55,19 +55,19 @@ ifeq ("$(DRIVER)","")
 ifneq ("$(wildcard /opt/local/include/X11/Xlib.h)","")
 SRCS += ui_x11.c
 CFLAGS += -I/opt/local/include/X11
-LIBS += -lX11 -L/opt/X11/lib -L/opt/local/lib
+LIBS +=-L/opt/X11/lib -L/opt/local/lib -lX11 -lXmu 
 DRIVER = x11
 else
 ifneq ("$(wildcard /usr/local/lib/libX11*)","")
 SRCS += ui_x11.c
 CFLAGS += -I/usr/local/include/X11
-LIBS += -L/usr/local/lib -L/usr/local/X11/lib -lX11
+LIBS += -L/usr/local/lib -L/usr/local/X11/lib -lX11 -lXmu
 DRIVER = x11
 else
 ifneq ("$(wildcard /usr/lib/libX11*)","")
 SRCS += ui_x11.c
 CFLAGS += -I/usr/include/X11
-LIBS += -lX11
+LIBS += -lX11 -lXmu
 DRIVER = x11
 endif
 endif

@@ -64,9 +64,13 @@ void view_props()
     ui_tri(win, fieldtexts + typetexts + 7, 48, 0);
     k = fieldtexts + typetexts + 32;
     i = (win->w - k - 20) / 4;
+    ssfn_dst.w = k+i-2;
     ui_bool(win, k, 40, lang[PROP_BOLD], ctx.style & SSFN_STYLE_BOLD, wins[0].field == 7);
+    ssfn_dst.w = k+2*i-2;
     ui_bool(win, k+i, 40, lang[PROP_ITALIC], ctx.style & SSFN_STYLE_ITALIC, wins[0].field == 8);
+    ssfn_dst.w = k+3*i-2;
     ui_bool(win, k+2*i, 40, lang[PROP_USRDEF1], ctx.style & SSFN_STYLE_USRDEF1, wins[0].field == 9);
+    ssfn_dst.w = win->w - 1;
     ui_bool(win, k+3*i, 40, lang[PROP_USRDEF2], ctx.style & SSFN_STYLE_USRDEF2, wins[0].field == 10);
     ui_text(win, 20, 64, lang[PROP_NAME]);
     ui_input(win, fieldtexts, 64, j, ctx.name, wins[0].field == 11, 255, 3);

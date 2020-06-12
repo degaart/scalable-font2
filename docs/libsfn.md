@@ -227,14 +227,26 @@ void sfn_skipadd(int unicode);
 Unfortunatelly many fonts has bad glyphs. You can specify a list of UNICODE code points to skip on load with
 this function, you can call it repeatedly.
 
+#### Parameters
+
+| Parameter | Description                                                     |
+| --------- | --------------------------------------------------------------- |
+| unicode   | code point                                                      |
+
 ### Consistency Checks
 
 ```c
-void sfn_sanitize();
+void sfn_sanitize(int unicode);
 ```
 
 Enforces internal self-consistency on the in-memory font. It worth calling this function after `sfn_load` and
-before `sfn_save`.
+before `sfn_save`. When `unicode` is -1, it does this for all glyphs.
+
+#### Parameters
+
+| Parameter | Description                                                     |
+| --------- | --------------------------------------------------------------- |
+| unicode   | code point or -1 for all glyphs                                 |
 
 ### Vectorize Bitmap Glyphs
 
@@ -449,10 +461,11 @@ Updated `ctx.glyphs[unicode].hintv[]` and `ctx.glyphs[unicode].hinth[]` arrays.
 ### Rasterize a Character or Layer
 
 ```c
-int sfn_glyph(int size, int unicode, int layer, ssfn_glyph_t *g);
+int sfn_glyph(int size, int unicode, int layer, int postproc, sfngc_t *g);
 ```
 
-Rasterizes the specified layer or, if layer is -1 all layers.
+Rasterizes the specified layer or, if layer is -1 all layers. The structure for `sfngc_t` is exactly
+the same as `ssfn_glyph_t`, but with wider properties that allows rasterization to larges sizes as well.
 
 #### Parameters
 
@@ -461,6 +474,7 @@ Rasterizes the specified layer or, if layer is -1 all layers.
 | size      | size to rasterize at                                            |
 | unicode   | code point                                                      |
 | layer     | layer to rasterize, or -1 for all                               |
+| prostproc | do postprocess for bitmaps                                      |
 | g         | pointer to a glyph structure to fill                            |
 
 #### Return value

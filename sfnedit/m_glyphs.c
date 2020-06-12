@@ -50,37 +50,48 @@ void view_glyphs()
 
     ssfn_dst.ptr = (uint8_t*)win->data;
     ssfn_dst.p = win->p*4;
-    ssfn_dst.w = win->w - 24; if(ssfn_dst.w < 1) ssfn_dst.w = 1;
+    ssfn_dst.w = win->w - 150; if(ssfn_dst.w < 1) ssfn_dst.w = 1;
     ssfn_dst.h = win->h;
-    ui_box(win, 8, 29, 20, 20, theme[wins[0].field == 6 ? THEME_FG : (!selfield ? THEME_DARKER : THEME_LIGHT)], theme[THEME_BG],
-        theme[wins[0].field == 6 ? THEME_FG : (!selfield ? THEME_LIGHT : THEME_DARKER)]);
+    ui_box(win, 8, 29, 20, 20, theme[wins[0].field == 6 ? THEME_CURSOR : (!selfield ? THEME_DARKER : THEME_LIGHT)],
+        theme[wins[0].field == 6 ? THEME_LIGHT : THEME_BG],
+        theme[wins[0].field == 6 ? THEME_CURSOR : (!selfield ? THEME_LIGHT : THEME_DARKER)]);
     ui_icon(win, 10, 31, ICON_VECTOR, 0);
     if(rastsize < 8) rastsize = 8;
     if(rastsize > SSFN_SIZE_MAX) rastsize = SSFN_SIZE_MAX;
-    ui_num(win, 40, 29, rastsize, wins[0].field == 7, selfield - 1);
-    ui_box(win, 85, 29, 20, 20, theme[wins[0].field == 7 ? THEME_FG : (selfield == 3 ? THEME_DARKER : THEME_LIGHT)],
-        theme[THEME_BG], theme[wins[0].field == 7 ? THEME_FG : (selfield == 3 ? THEME_LIGHT : THEME_DARKER)]);
-    ui_icon(win, 88, 31, ICON_BITMAP, 0);
-    ui_box(win, 117, 29, 20, 20, theme[wins[0].field == 8 ? THEME_FG : (selfield == 4 ? THEME_DARKER : THEME_LIGHT)],
-        theme[THEME_BG], theme[wins[0].field == 8 ? THEME_FG : (selfield == 4 ? THEME_LIGHT : THEME_DARKER)]);
+    ui_num(win, 32, 29, rastsize, wins[0].field == 7, selfield - 1);
+    ui_rect(win, 32, 29, 72, 20, theme[wins[0].field == 7 ? THEME_CURSOR : THEME_DARKER],
+        theme[wins[0].field == 7 ? THEME_CURSOR : THEME_LIGHT]);
+    ui_box(win, 83, 30, 20, 18, theme[wins[0].field == 7 ? THEME_LIGHT : (selfield == 3 ? THEME_DARKER : THEME_LIGHT)],
+        theme[wins[0].field == 7 ? THEME_LIGHT : THEME_BG], theme[wins[0].field == 7 ? THEME_LIGHT :
+        (selfield == 3 ? THEME_LIGHT : THEME_DARKER)]);
+    ui_icon(win, 85, 31, ICON_BITMAP, 0);
+    ui_box(win, 117, 29, 20, 20, theme[wins[0].field == 8 ? THEME_CURSOR : (selfield == 4 ? THEME_DARKER : THEME_LIGHT)],
+        theme[wins[0].field == 8 ? THEME_LIGHT : THEME_BG], theme[wins[0].field == 8 ? THEME_CURSOR :
+        (selfield == 4 ? THEME_LIGHT : THEME_DARKER)]);
     ui_icon(win, 119, 31, ICON_ZOOMOUT, 0);
-    ui_box(win, 138, 29, 20, 20, theme[wins[0].field == 9 ? THEME_FG : (selfield == 5 ? THEME_DARKER : THEME_LIGHT)],
-        theme[THEME_BG], theme[wins[0].field == 9 ? THEME_FG : (selfield == 5 ? THEME_LIGHT : THEME_DARKER)]);
-    ui_icon(win, 140, 31, ICON_ZOOMIN, 0);
-    ui_box(win, 170, 29, 20, 20, theme[wins[0].field == 10 ? THEME_FG : (selfield == 6 ? THEME_DARKER : THEME_LIGHT)],
-        theme[THEME_BG], theme[wins[0].field == 10 ? THEME_FG : (selfield == 6 ? THEME_LIGHT : THEME_DARKER)]);
-    ui_icon(win, 173, 31, ICON_CUT, 0);
-    ui_box(win, 190, 29, 20, 20, theme[wins[0].field == 11 ? THEME_FG : (selfield == 7 ? THEME_DARKER : THEME_LIGHT)],
-        theme[THEME_BG], theme[wins[0].field == 11 ? THEME_FG : (selfield == 7 ? THEME_LIGHT : THEME_DARKER)]);
-    ui_icon(win, 193, 31, ICON_COPY, 0);
-    ui_box(win, 210, 29, 20, 20, theme[wins[0].field == 12 ? THEME_FG : (selfield == 8 ? THEME_DARKER : THEME_LIGHT)],
-        theme[THEME_BG], theme[wins[0].field == 12 ? THEME_FG : (selfield == 8 ? THEME_LIGHT : THEME_DARKER)]);
-    ui_icon(win, 213, 31, ICON_PASTE, 0);
-    ui_box(win, 242, 29, 20, 20, theme[wins[0].field == 13 ? THEME_FG : (selfield == 9 ? THEME_DARKER : THEME_LIGHT)],
-        theme[THEME_BG], theme[wins[0].field == 13 ? THEME_FG : (selfield == 9 ? THEME_LIGHT : THEME_DARKER)]);
-    ui_icon(win, 244, 31, ICON_DELETE, 0);
+    ui_box(win, 139, 29, 20, 20, theme[wins[0].field == 9 ? THEME_CURSOR : (selfield == 5 ? THEME_DARKER : THEME_LIGHT)],
+        theme[wins[0].field == 9 ? THEME_LIGHT : THEME_BG], theme[wins[0].field == 9 ? THEME_CURSOR :
+        (selfield == 5 ? THEME_LIGHT : THEME_DARKER)]);
+    ui_icon(win, 141, 31, ICON_ZOOMIN, 0);
+    ui_box(win, 172, 29, 20, 20, theme[wins[0].field == 10 ? THEME_CURSOR : (selfield == 6 ? THEME_DARKER : THEME_LIGHT)],
+        theme[wins[0].field == 10 ? THEME_LIGHT : THEME_BG], theme[wins[0].field == 10 ? THEME_CURSOR :
+        (selfield == 6 ? THEME_LIGHT : THEME_DARKER)]);
+    ui_icon(win, 175, 31, ICON_CUT, 0);
+    ui_box(win, 194, 29, 20, 20, theme[wins[0].field == 11 ? THEME_CURSOR : (selfield == 7 ? THEME_DARKER : THEME_LIGHT)],
+        theme[wins[0].field == 11 ? THEME_LIGHT : THEME_BG], theme[wins[0].field == 11 ? THEME_CURSOR :
+        (selfield == 7 ? THEME_LIGHT : THEME_DARKER)]);
+    ui_icon(win, 197, 31, ICON_COPY, 0);
+    ui_box(win, 216, 29, 20, 20, theme[wins[0].field == 12 ? THEME_CURSOR : (selfield == 8 ? THEME_DARKER : THEME_LIGHT)],
+        theme[wins[0].field == 12 ? THEME_LIGHT : THEME_BG], theme[wins[0].field == 12 ? THEME_CURSOR :
+        (selfield == 8 ? THEME_LIGHT : THEME_DARKER)]);
+    ui_icon(win, 219, 31, ICON_PASTE, 0);
+    ui_box(win, 250, 29, 20, 20, theme[wins[0].field == 13 ? THEME_CURSOR : (selfield == 9 ? THEME_DARKER : THEME_LIGHT)],
+        theme[wins[0].field == 13 ? THEME_LIGHT : THEME_BG], theme[wins[0].field == 13 ? THEME_CURSOR :
+        (selfield == 9 ? THEME_LIGHT : THEME_DARKER)]);
+    ui_icon(win, 252, 31, ICON_DELETE, 0);
 
-    ui_box(win, 274, 29, win->w - 150 - 274, 18, theme[THEME_BG], theme[THEME_BG], theme[THEME_BG]);
+    ssfn_dst.w = win->w - 8; if(ssfn_dst.w < 1) ssfn_dst.w = 1;
+    ui_box(win, 284, 29, win->w - 150 - 284, 18, theme[THEME_BG], theme[THEME_BG], theme[THEME_BG]);
     if(!gsearch[0]) {
         for(i = 0; i < UNICODE_NUMBLOCKS && (scrollglyphs < ublocks[i].start || scrollglyphs > ublocks[i].end); i++);
         if(i < UNICODE_NUMBLOCKS) s = ublocks[i].name;
@@ -88,19 +99,20 @@ void view_glyphs()
         s = lang[GLYPHS_RESULTS];
     if(s) {
         ssfn_dst.fg = theme[THEME_LIGHTER];
-        ui_text(win, 274, 29, s);
+        ui_text(win, 284, 30, s);
         ssfn_dst.fg = theme[THEME_DARKER];
-        ui_text(win, 273, 28, s);
+        ui_text(win, 283, 29, s);
         ssfn_dst.fg = theme[THEME_FG];
     }
-    ui_input(win, win->w - 150, 29, 120, gsearch, wins[0].field == 14, 31, 0);
-    ui_icon(win, win->w - 8 - 16, 30, ICON_SEARCH, 0);
+    ui_icon(win, win->w - 134 - 16, 30, ICON_SEARCH, 0);
+    ui_input(win, win->w - 132, 29, 120, gsearch, wins[0].field == 14, 31, 0);
     gsize = (win->w - 20) / (1<<gzoom);
     i = gsize * (1<<gzoom); x = (win->w - i) / 2 + 1;
     pageglyphs = ((win->h - 26 - 53) / gsize - 1) * (1<<gzoom); if(pageglyphs < (1<<gzoom)) pageglyphs = (1<<gzoom);
     scrollglyphs &= ~((1 << gzoom) - 1);
     ui_rect(win, x - 1, 51, i + 1, win->h - 26 - 51, theme[THEME_DARKER], theme[THEME_LIGHT]);
     ssfn_dst.w = x + i;
+    ssfn_dst.bg = 0;
     if(greset || (input_refresh && !gsearch[0])) {
         gsearch[0] = 0;
         for(i = 0; i < 0x110000; i++) gres[i] = i;
@@ -210,6 +222,7 @@ void ctrl_glyphs_onenter()
             sfn_vectorize();
             ui_cursorwin(&wins[0], CURSOR_PTR);
             ui_refreshall();
+            modified++;
         break;
         case 7:
             wins[0].field = -1;
@@ -219,6 +232,7 @@ void ctrl_glyphs_onenter()
             sfn_rasterize(rastsize);
             ui_cursorwin(&wins[0], CURSOR_PTR);
             ui_refreshall();
+            modified++;
         break;
         case 8:
             if(gzoom < 6) gzoom++;
@@ -238,6 +252,7 @@ void ctrl_glyphs_onenter()
             selstart = selend = glast = -1;
             ui_cursorwin(&wins[0], CURSOR_PTR);
             ui_refreshall();
+            modified++;
         break;
         case 13:
             if(selend == -1)
@@ -246,6 +261,7 @@ void ctrl_glyphs_onenter()
                 for(i = selstart; i <= selend; i++)
                     sfn_chardel(gres[i]);
                 ui_refreshall();
+                modified++;
             }
         break;
     }
@@ -256,29 +272,47 @@ void ctrl_glyphs_onenter()
  */
 void ctrl_glyphs_onkey()
 {
+
     switch(event.x) {
-        case K_UP: if(scrollglyphs > 0) scrollglyphs -= (1<<gzoom); break;
-        case K_DOWN: if(scrollglyphs + pageglyphs + (1<<gzoom) < numglyphs) scrollglyphs += (1<<gzoom); break;
-        case K_PGUP: if(scrollglyphs > pageglyphs) scrollglyphs -= pageglyphs; else scrollglyphs = 0; break;
+        case K_UP:
+            if(wins[0].field == 7) rastsize++;
+            else {
+                if(scrollglyphs > 0) scrollglyphs -= (1<<gzoom);
+                wins[0].field = 15;
+            }
+        break;
+        case K_DOWN:
+            if(wins[0].field == 7) rastsize--;
+            else {
+                if(scrollglyphs + pageglyphs + (1<<gzoom) < numglyphs) scrollglyphs += (1<<gzoom);
+                wins[0].field = 15;
+            }
+        break;
+        case K_PGUP:
+            if(scrollglyphs > pageglyphs) scrollglyphs -= pageglyphs; else scrollglyphs = 0;
+            wins[0].field = 15;
+        break;
         case K_PGDN:
             if(scrollglyphs + pageglyphs + (1<<gzoom) < numglyphs) scrollglyphs += pageglyphs;
             else scrollglyphs = (numglyphs - pageglyphs - 1) & ~((1<<gzoom) - 1);
+            wins[0].field = 15;
         break;
-        case K_HOME: scrollglyphs = 0; break;
-        case K_END: scrollglyphs = (numglyphs - pageglyphs - 1) & ~((1<<gzoom) - 1); break;
+        case K_HOME: scrollglyphs = 0; wins[0].field = 15; break;
+        case K_END: scrollglyphs = (numglyphs - pageglyphs - 1) & ~((1<<gzoom) - 1); wins[0].field = 15; break;
         case K_DEL: case K_BACKSPC: if(selend != -1) { wins[0].field = 13; ctrl_glyphs_onenter(); wins[0].field = -1; } break;
         default:
             if(event.h & (3 << 1)) {
                 switch(event.x) {
                     case 'a': case 'A': selstart = 0; selend = numglyphs - 1; break;
-                    case 'x': case 'X': wins[0].field = 10; ctrl_glyphs_onenter(); wins[0].field = -1; break;
-                    case 'c': case 'C': wins[0].field = 11; ctrl_glyphs_onenter(); wins[0].field = -1; break;
-                    case 'v': case 'V': wins[0].field = 12; ctrl_glyphs_onenter(); wins[0].field = -1; break;
+                    case 'x': case 'X': wins[0].field = 10; ctrl_glyphs_onenter(); break;
+                    case 'c': case 'C': wins[0].field = 11; ctrl_glyphs_onenter(); break;
+                    case 'v': case 'V': wins[0].field = 12; ctrl_glyphs_onenter(); break;
                 }
+                wins[0].field = 15;
             } else
             if(event.x >= ' ') {
                 strcpy(gsearch, (char*)&event.x);
-                wins[0].field = 15;
+                wins[0].field = 14;
                 input_refresh = 1;
                 input_maxlen = 0;
                 input_str = NULL;
@@ -299,19 +333,19 @@ void ctrl_glyphs_onbtnpress()
     if(event.w != 1) glast = -1;
     if(event.y > 29 && event.y < 50) {
         if(event.x >= 8 && event.x < 28) selfield = 0; else
-        if(((event.w >> 3) & 3) && event.x >= 40 && event.x < 83) {
+        if(((event.w >> 3) & 3) && event.x >= 32 && event.x < 83) {
             if(event.w & (1 << 3)) rastsize++;
             if(event.w & (1 << 4)) rastsize--;
         } else
         if(event.x >= 72 && event.x < 83) selfield = event.y < 41 ? 1 : 2; else
-        if(event.x >= 85 && event.x < 105) selfield = 3; else
+        if(event.x >= 83 && event.x < 103) selfield = 3; else
         if(event.x >= 117 && event.x < 138) selfield = 4; else
-        if(event.x >= 138 && event.x < 158) selfield = 5; else
-        if(event.x >= 170 && event.x < 190) selfield = 6; else
-        if(event.x >= 190 && event.x < 210) selfield = 7; else
-        if(event.x >= 210 && event.x < 230) selfield = 8; else
-        if(event.x >= 242 && event.x < 262) selfield = 9; else
-        if(event.x >= win->w - 150 && event.x < win->w - 8) wins[0].field = 14;
+        if(event.x >= 139 && event.x < 159) selfield = 5; else
+        if(event.x >= 172 && event.x < 192) selfield = 6; else
+        if(event.x >= 194 && event.x < 214) selfield = 7; else
+        if(event.x >= 216 && event.x < 236) selfield = 8; else
+        if(event.x >= 250 && event.x < 270) selfield = 9; else
+        if(event.x >= win->w - 132 && event.x < win->w - 8) wins[0].field = 14;
     } else
     if(event.y >= 52 && event.y < win->h - 26) {
         wins[0].field = 15;
@@ -342,15 +376,15 @@ void ctrl_glyphs_onclick()
             if(selfield == 1 && event.y < 41) rastsize++;
             if(selfield == 2 && event.y >= 41) rastsize--;
         } else
-        if(event.x >= 85 && event.x < 105 && selfield == 3) { wins[0].field = 7; ctrl_glyphs_onenter(); }
+        if(event.x >= 83 && event.x < 103 && selfield == 3) { wins[0].field = 7; ctrl_glyphs_onenter(); }
         if(event.x >= 117 && event.x < 138 && selfield == 4) { wins[0].field = 8; ctrl_glyphs_onenter(); wins[0].field = -1; }
-        if(event.x >= 138 && event.x < 158 && selfield == 5) { wins[0].field = 9; ctrl_glyphs_onenter(); wins[0].field = -1; }
-        if(event.x >= 170 && event.x < 190 && selfield == 6) { wins[0].field = 10; ctrl_glyphs_onenter(); wins[0].field = -1; }
-        if(event.x >= 190 && event.x < 210 && selfield == 7) { wins[0].field = 11; ctrl_glyphs_onenter(); wins[0].field = -1; }
-        if(event.x >= 210 && event.x < 230 && selfield == 8) { wins[0].field = 12; ctrl_glyphs_onenter(); wins[0].field = -1; }
-        if(event.x >= 242 && event.x < 262 && selfield == 9) { wins[0].field = 13; ctrl_glyphs_onenter(); wins[0].field = -1; }
+        if(event.x >= 139 && event.x < 159 && selfield == 5) { wins[0].field = 9; ctrl_glyphs_onenter(); wins[0].field = -1; }
+        if(event.x >= 172 && event.x < 192 && selfield == 6) { wins[0].field = 10; ctrl_glyphs_onenter(); wins[0].field = -1; }
+        if(event.x >= 194 && event.x < 214 && selfield == 7) { wins[0].field = 11; ctrl_glyphs_onenter(); wins[0].field = -1; }
+        if(event.x >= 216 && event.x < 236 && selfield == 8) { wins[0].field = 12; ctrl_glyphs_onenter(); wins[0].field = -1; }
+        if(event.x >= 250 && event.x < 270 && selfield == 9) { wins[0].field = 13; ctrl_glyphs_onenter(); wins[0].field = -1; }
     } else
-    if(event.y >= 52 && event.y < wins[0].h - 26 && selfield == 10 && selstart > -1 && selend == -1) ui_openwin(selstart);
+    if(event.y >= 52 && event.y < wins[0].h - 26 && selfield == 10 && selstart > -1 && selend == -1) ui_openwin(gres[selstart]);
     selfield = -1;
 }
 
@@ -360,16 +394,16 @@ void ctrl_glyphs_onclick()
 void ctrl_glyphs_onmove()
 {
     int i;
-    char *s, *u;
+
     if(event.y > 29 && event.y < 49) {
         if(event.x >= 8 && event.x < 28) status = lang[GLYPHS_VECTORIZE]; else
-        if(event.x >= 40 && event.x < 105) status = lang[GLYPHS_RASTERIZE]; else
+        if(event.x >= 32 && event.x < 103) status = lang[GLYPHS_RASTERIZE]; else
         if(event.x >= 117 && event.x < 138) status = lang[GLYPHS_ZOOMOUT]; else
-        if(event.x >= 138 && event.x < 158) status = lang[GLYPHS_ZOOMIN]; else
-        if(event.x >= 170 && event.x < 190) status = lang[GLYPHS_CUT]; else
-        if(event.x >= 190 && event.x < 210) status = lang[GLYPHS_COPY]; else
-        if(event.x >= 210 && event.x < 230) status = lang[GLYPHS_PASTE]; else
-        if(event.x >= 242 && event.x < 262) status = lang[GLYPHS_DELETE];
+        if(event.x >= 139 && event.x < 159) status = lang[GLYPHS_ZOOMIN]; else
+        if(event.x >= 172 && event.x < 192) status = lang[GLYPHS_CUT]; else
+        if(event.x >= 194 && event.x < 214) status = lang[GLYPHS_COPY]; else
+        if(event.x >= 216 && event.x < 236) status = lang[GLYPHS_PASTE]; else
+        if(event.x >= 250 && event.x < 270) status = lang[GLYPHS_DELETE];
         glast = -1;
     } else
     if(event.y >= 52 && event.y < wins[0].h - 26) {
@@ -382,19 +416,7 @@ void ctrl_glyphs_onmove()
                     ui_refreshwin(0, 0, 0, wins[0].w, wins[0].h - 18);
                     sprintf(gstat, "%s U+%06x .. U+%06X", lang[GLYPHS_SELECT], gres[selstart], gres[selend]);
                 } else {
-                    u = utf8(gres[i]);
-                    if(!u[1]) u[2] = u[3] = 0; else if(!u[2]) u[3] = 0;
-                    if(gres[i] >= SSFN_LIG_FIRST && gres[i] <= SSFN_LIG_LAST) {
-                        sprintf(gstat, "U+%06X  %02x %02x %02x %02x  %d  %s  %s #%d", gres[i],
-                            (unsigned char)u[0], (unsigned char)u[1], (unsigned char)u[2], (unsigned char)u[3], gres[i],
-                            ctx.ligatures[gres[i] - SSFN_LIG_FIRST] ? ctx.ligatures[gres[i] - SSFN_LIG_FIRST] : "",
-                            lang[GLYPHS_LIGATURE], gres[i] - SSFN_LIG_FIRST);
-                    } else {
-                        s = uninames[uniname(gres[i])].name;
-                        sprintf(gstat, "U+%06X  %02x %02x %02x %02x  %d  %s  %s", gres[i],
-                            (unsigned char)u[0], (unsigned char)u[1], (unsigned char)u[2], (unsigned char)u[3], gres[i],
-                            u, s && *s ? s : lang[GLYPHS_UNDEF]);
-                    }
+                    ui_chrinfo(gres[i]);
                 }
                 glast = gres[i];
             }

@@ -78,8 +78,8 @@ char *dict[NUMLANGS][NUMTEXTS + 1] = {
         "Blocks coverage",
         "Characters",
         "Measures",
-        "Kerning",
         "Layers",
+        "Kerning",
 
         "Name",
         "Size",
@@ -138,6 +138,41 @@ char *dict[NUMLANGS][NUMTEXTS + 1] = {
         "Search results",
         "undefined by UNICODE",
         "SSFN LIGATURE",
-        "Selected"
+        "Selected",
+
+        "UTF-8 copied to clipboard",
+        "Glyph's width",
+        "Glyph's height",
+        "Baseline position (global)",
+        "Underline position (global)",
+        "Horizontal overlap",
+        "Horizontal advance",
+        "Vertical advance",
+        "Right-to-Left advance",
+        "Horizontal advance",
+        "Left-to-Right advance",
+        "Reposition glyph",
+        "Make italic",
+        "Make unitalic",
+        "Flip horizontally",
+        "Flip vertically",
+        "Recalculate dimensions",
+        "Drop all layers",
+
+        "Zoom out layer",
+        "Zoom in layer",
+        "Copy and delete layer",
+        "Copy layer",
+        "Paste layer",
+        "Add a new vector layer",
+        "Add a new bitmap layer",
+        "Add a new pixel map layer",
+        "Change foreground color",
+        "Erase to transparency",
+        "Drop current layer",
+
+        "Delete kerning pair",
+
+        "OK"
     }
 };

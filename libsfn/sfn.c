@@ -2111,13 +2111,13 @@ void sfn_setstr(char **s, char *n, int len)
 /**
  * Sanitize context, make sure dimensions and positions are valid
  */
-void sfn_sanitize()
+void sfn_sanitize(int unicode)
 {
     sfncont_t *cont;
-    int i, j, k, l, h;
+    int i, j, k, l, h, s, e;
 
-    ctx.width = ctx.height = 0;
-    for(i = 0; i < 0x110000; i++) {
+    if(unicode == -1) { s = 0; e = 0x110000; } else { s = unicode; e = unicode + 1; }
+    for(i = s; i < e; i++) {
         if(ctx.glyphs[i].layers) {
             h = 0;
             for(j = 0; j < ctx.glyphs[i].numlayer; j++)
@@ -2147,6 +2147,8 @@ void sfn_sanitize()
                         }
                     }
                 }
+                if(ctx.glyphs[i].layers[j].color >= ctx.numcpal || ctx.glyphs[i].layers[j].type == SSFN_FRAG_PIXMAP)
+                    ctx.glyphs[i].layers[j].color = 0xFE;
                 /* try to autodetect base line */
                 if(!ctx.baseline && (ctx.glyphs[i].layers[j].type == SSFN_FRAG_BITMAP || ctx.glyphs[i].layers[j].type ==
                     SSFN_FRAG_PIXMAP) && ((i >= '0' && i <= '9') || (i >= 'A' && i < 'Q') || (i >= 'a' && i < 'g') ||
@@ -2166,14 +2168,17 @@ void sfn_sanitize()
         }
         if(ctx.glyphs[i].kern)
             qsort(ctx.glyphs[i].kern, ctx.glyphs[i].numkern, sizeof(sfnkern_t), krnsrt);
-        if(ctx.glyphs[i].width > ctx.width) ctx.width = ctx.glyphs[i].width;
-        if(ctx.glyphs[i].height > ctx.height) ctx.height = ctx.glyphs[i].height;
         if(ctx.glyphs[i].ovl_x > 63) ctx.glyphs[i].ovl_x = 63;
         if(ctx.glyphs[i].adv_x) ctx.glyphs[i].adv_y = 0;
         if(ctx.family == SSFN_FAMILY_MONOSPACE) {
             if(ctx.glyphs[i].adv_x) ctx.glyphs[i].adv_x = ((ctx.glyphs[i].width + 7) & ~7) + adv;
             else ctx.glyphs[i].adv_y = ctx.height + adv;
         }
+    }
+    ctx.width = ctx.height = 0;
+    for(i = 0; i < 0x110000; i++) {
+        if(ctx.glyphs[i].width > ctx.width) ctx.width = ctx.glyphs[i].width;
+        if(ctx.glyphs[i].height > ctx.height) ctx.height = ctx.glyphs[i].height;
     }
     if(!ctx.baseline || ctx.baseline > ctx.height) ctx.baseline = ctx.height * 80 / 100;
     if(relul) ctx.underline = ctx.baseline + relul;
@@ -2227,11 +2232,12 @@ static void _sfn_b(int p,int h, int x0,int y0, int x1,int y1, int x2,int y2, int
  * @param size size
  * @param unicode code point
  * @param layer layer index or -1 for all
+ * @param postproc do postprocess for bitmaps
  * @param g glyph data to return
  */
-int sfn_glyph(int size, int unicode, int layer, ssfn_glyph_t *g)
+int sfn_glyph(int size, int unicode, int layer, int postproc, sfngc_t *g)
 {
-    uint8_t ci = 0, cb = 0, cs;
+    uint8_t ci = 0, cb = 0;
     uint16_t r[640];
     int i, j, k, l, p, m, n, o, w, h, a, A, b, B, nr, x;
     sfncont_t *cont;
@@ -2243,7 +2249,7 @@ int sfn_glyph(int size, int unicode, int layer, ssfn_glyph_t *g)
     p = w + (ci ? h / SSFN_ITALIC_DIV : 0) + cb;
     g->p = p;
     g->h = h;
-    if(p * h >= SSFN_DATA_MAX) return 0;
+    if(p * h >= (260 + 260 / SSFN_ITALIC_DIV) << 8) return 0;
     g->x = ctx.glyphs[unicode].adv_x * h / ctx.height;
     g->y = ctx.glyphs[unicode].adv_y * h / ctx.height;
     g->o = ctx.glyphs[unicode].ovl_x * h / ctx.height;
@@ -2325,21 +2331,21 @@ int sfn_glyph(int size, int unicode, int layer, ssfn_glyph_t *g)
                                 ctx.glyphs[unicode].layers[n].type == SSFN_FRAG_BITMAP ? ctx.glyphs[unicode].layers[n].color : l;
                     }
                 }
-                if(ctx.glyphs[unicode].layers[n].type == SSFN_FRAG_BITMAP) {
-                    cs = ctx.glyphs[unicode].layers[n].color;
-                    m = cs == 0xFD ? 0xFC : 0xFD;
+                if(postproc && ctx.glyphs[unicode].layers[n].type == SSFN_FRAG_BITMAP) {
+                    B = ctx.glyphs[unicode].layers[n].color;
+                    m = B == 0xFD ? 0xFC : 0xFD;
                     for(k = h; k > ctx.height + 4; k -= 2*ctx.height) {
                         for(j = 1; j < a - 1; j++)
                             for(i = 1; i < b - 1; i++) {
                                 l = j * p + i;
-                                if(g->data[l] == 0xFF && (g->data[l - p] == cs ||
-                                    g->data[l + p] == cs) && (g->data[l - 1] == cs ||
-                                    g->data[l + 1] == cs)) g->data[l] = m;
+                                if(g->data[l] == 0xFF && (g->data[l - p] == B ||
+                                    g->data[l + p] == B) && (g->data[l - 1] == B ||
+                                    g->data[l + 1] == B)) g->data[l] = m;
                             }
                         for(j = 1; j < a - 1; j++)
                             for(i = 1; i < b - 1; i++) {
                                 l = j * p + i;
-                                if(g->data[l] == m) g->data[l] = cs;
+                                if(g->data[l] == m) g->data[l] = B;
                             }
                     }
                 }
@@ -2359,10 +2365,10 @@ void sfn_rasterize(int size)
     uint32_t P;
     unsigned long int sA;
     int i, j, k, m, n, w, x, y, y0, y1, Y0, Y1, x0, x1, X0, X1, X2, xs, ys, yp, pc, nc = 0, numchars = 0;
-    ssfn_glyph_t g;
+    sfngc_t g;
 
     if(size < 8) size = 8;
-    if(size > 192) size = 192;
+    if(size > 255) size = 255;
 
     for(i = 0; i < 0x110000; i++)
         if(ctx.glyphs[i].numlayer) numchars++;
@@ -2370,7 +2376,7 @@ void sfn_rasterize(int size)
     for(i = 0; i < 0x110000; i++) {
         if(!ctx.glyphs[i].numlayer) continue;
         if(pbar) (*pbar)(0, 0, ++nc, numchars, PBAR_RASTERIZE);
-        n = sfn_glyph(size, i, -1, &g);
+        n = sfn_glyph(size, i, -1, 0, &g);
         for(j = 0; j < ctx.glyphs[i].numlayer; j++)
             if(ctx.glyphs[i].layers[j].data)
                 free(ctx.glyphs[i].layers[j].data);
@@ -2428,7 +2434,7 @@ void sfn_rasterize(int size)
         }
     }
     ctx.width = ctx.height = ctx.baseline = ctx.underline = 0;
-    sfn_sanitize();
+    sfn_sanitize(-1);
 }
 
 /**
@@ -2442,12 +2448,11 @@ void sfn_vectorize()
     potrace_path_t *p;
     potrace_state_t *st;
     potrace_dpoint_t (*c)[3];
-    ssfn_glyph_t g;
+    sfngc_t g;
     sfnlayer_t *lyr;
 
     param = potrace_param_default();
     if(!param) { fprintf(stderr,"libsfn: memory allocation error\n"); return; }
-    param->turdsize = 0;
 
     for(i = 0; i < 0x110000; i++)
         if(ctx.glyphs[i].numlayer) numchars++;
@@ -2456,7 +2461,7 @@ void sfn_vectorize()
     for(i = 0; i < 0x110000; i++) {
         if(!ctx.glyphs[i].numlayer) continue;
         if(pbar) (*pbar)(0, 0, ++nc, numchars, PBAR_VECTORIZE);
-        n = sfn_glyph(SSFN_SIZE_MAX, i, -1, &g);
+        n = sfn_glyph(254, i, -1, 0, &g);
         for(j = 0; j < ctx.glyphs[i].numlayer; j++)
             if(ctx.glyphs[i].layers[j].data)
                 free(ctx.glyphs[i].layers[j].data);
@@ -2502,7 +2507,7 @@ void sfn_vectorize()
     if(bm.map) free(bm.map);
     potrace_param_free(param);
     ctx.width = ctx.height = ctx.baseline = ctx.underline = 0;
-    sfn_sanitize();
+    sfn_sanitize(-1);
     if(ctx.height > 0 && old > 0) {
         for(i = 0; i < 0x110000; i++) {
             ctx.glyphs[i].adv_x = ctx.glyphs[i].adv_x * ctx.height / old;

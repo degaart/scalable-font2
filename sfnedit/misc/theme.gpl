@@ -7,16 +7,24 @@ Name: SSFN Editor default theme
  96  96  96 #606060	lighter
  48  48  48 #303030	darker
  60  60  60 #3c3c3c	input background
- 16  16  16 #101010	button 1 border
+ 16  16  16 #101010	button border
 104 104 104 #686868	button 1 lighter
  81  81  81 #515151	button 1 border lighter
  72  72  72 #484848	button 1 border darker
  64  64  64 #404040	button 1 darker
-116  76  76 #744c4c	button 2 border
- 93  53  53 #5d3535	button 2 lighter
- 84  44  44 #542c2c	button 2 border lighter
- 76  36  36 #4c2424	button 2 border darker
- 92  92  92 #5c5c5c	button 2 darker
-240 240 240 #f0f0f0	selection background
-144 144 144 #909090	selection foreground
- 78  78  78 #4e4e4e	selection border
+116  76  76 #744c4c	button 2 lighter
+ 93  53  53 #5d3535	button 2 border lighter
+ 84  44  44 #542c2c	button 2 border darker
+ 76  36  36 #4c2424	button 2 darker
+ 92  92  92 #5c5c5c	selection background
+240 240 240 #f0f0f0	selection foreground
+144 144 144 #909090	selection border
+ 78  78  78 #4e4e4e	undefined glyph background
+ 16  16  16 #101010	axis colour
+ 48  48  48 #303030	grid colour
+ 84  84  84 #545454	dimensions marker
+128   0   0 #800000	baseline
+  0  64  64 #004040	underline
+  0 255 255 #00FFFF	overlap
+255   0   0 #FF0000	advance
+  0 127 127 #007F7F	hinting grid

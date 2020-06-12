@@ -46,13 +46,16 @@ char verstr[8];
 uint8_t *icon32, *icon64, *tools, *bga;
 
 uint32_t theme[] = { 0xFF454545, 0xFFBEBEBE, 0xFF5C5C5C, 0xFF343434, 0xFF606060, 0xFF303030, 0xFF3C3C3C,
-    0xFF101010, 0xFF686868, 0xFF515151, 0xFF484848, 0xFF404040, 0xFF744C4C, 0xFF5D3535, 0xFF542C2C, 0xFF4C2424,
-    0xFF5C5C5C, 0xFFF0F0F0, 0xFF909090, 0xFF4E4E4E };
+    0xFF101010, 0xFF686868, 0xFF515151, 0xFF484848, 0xFF404040,
+                0xFF744C4C, 0xFF5D3535, 0xFF542C2C, 0xFF4C2424,
+    0xFF5C5C5C, 0xFFF0F0F0, 0xFF909090, 0xFF4E4E4E,
+    0xFF101010, 0xFF303030, 0xFF545454,
+    0xFF800000, 0xFF004040, 0xFF00FFFF, 0xFFFF0000, 0xFF007F7F };
 /*
     0xFFF0F0F0, 0xFFF4F4F4, 0xFFBEBEBE, 0xFF808080, 0xFF5C5C5C, 0xFF4C4C4C, 0xFF454545, 0xFF383838, 0xFF303030,
     0xFFFF0000, 0xFF800000, 0xFF004040, 0xFF0000FF, 0xFF00FF00, 0xFFFF0000, 0xFF00FFFF };
 */
-int gw = 36+16+512, gh = 24+8+512, gotevt = 0, quiet = 0, lastpercent = 100, mainloop = 1, modified = 0;
+int gw = 36+16+512, gh = 24+8+512, gotevt = 0, quiet = 0, lastpercent = 100, mainloop = 1, modified = 0, posx = 0, posy = 0;
 char ws[0x110000], *status, *errstatus = NULL;
 
 int numwin = 0;
@@ -66,7 +69,7 @@ ssfn_t logofnt;
 int cursor = CURSOR_PTR, lastcursor = -1, seltool = -1;
 int zip = 1, ascii = 0, selfield = -1;
 
-extern int lastsave, input_maxlen, input_callback, selstart, selend, selfiles, clkfiles, selranges, clkranges;
+extern int lastsave, input_maxlen, input_callback, selstart, selend, selfiles, clkfiles, selranges, clkranges, selkern;
 extern char *input_str, *input_cur, *input_scr, *input_end, gstat[];
 
 /**
@@ -161,9 +164,9 @@ int ui_maxfield(int idx)
         }
     } else {
         switch(wins[idx].tool) {
-            case GLYPH_TOOL_COORD: return 7;
-            case GLYPH_TOOL_LAYER: return 7;
-            case GLYPH_TOOL_KERN: return 7;
+            case GLYPH_TOOL_COORD: return 23;
+            case GLYPH_TOOL_LAYER: return 15;
+            case GLYPH_TOOL_KERN: return 8;
             case GLYPH_TOOL_COLOR: return 7;
         }
     }
@@ -213,6 +216,7 @@ void ui_openwin(uint32_t unicode)
     wins[j].field = -1;
     wins[j].tool = 0;
     wins[j].zoom = 512;
+    wins[j].layer = 0;
     input_maxlen = 0;
     input_str = NULL;
     ui_updatetitle(j);
@@ -256,7 +260,7 @@ void ui_closewin(int idx)
     wins[idx].surface = NULL;
     wins[idx].data = NULL;
     wins[idx].unicode = -1;
-    wins[idx].histmin = wins[idx].histmax = 0;
+    wins[idx].layer = wins[idx].histmin = wins[idx].histmax = 0;
     while(numwin && !wins[numwin-1].winid) numwin--;
 }
 
@@ -385,6 +389,28 @@ void ui_pb(int step, int numstep, int curr, int total, int msg)
 }
 
 /**
+ * Get character info to status bar
+ */
+void ui_chrinfo(int unicode)
+{
+    char *u, *s;
+    u = utf8(unicode);
+    if(!u[1]) u[2] = u[3] = 0; else if(!u[2]) u[3] = 0;
+    if(unicode >= SSFN_LIG_FIRST && unicode <= SSFN_LIG_LAST) {
+        sprintf(gstat, "U+%06X  %02x %02x %02x %02x  %d  %s  %s #%d", unicode,
+            (unsigned char)u[0], (unsigned char)u[1], (unsigned char)u[2], (unsigned char)u[3], unicode,
+            ctx.ligatures[unicode - SSFN_LIG_FIRST] ? ctx.ligatures[unicode - SSFN_LIG_FIRST] : "",
+            lang[GLYPHS_LIGATURE], unicode - SSFN_LIG_FIRST);
+    } else {
+        s = uninames[uniname(unicode)].name;
+        sprintf(gstat, "U+%06X  %02x %02x %02x %02x  %d  %s  %s", unicode,
+            (unsigned char)u[0], (unsigned char)u[1], (unsigned char)u[2], (unsigned char)u[3], unicode,
+            u, s && *s ? s : lang[GLYPHS_UNDEF]);
+    }
+    status = gstat;
+}
+
+/**
  * Redraw part of a window
  */
 void ui_refreshwin(int idx, int wx, int wy, int ww, int wh)
@@ -392,6 +418,7 @@ void ui_refreshwin(int idx, int wx, int wy, int ww, int wh)
     ui_win_t *win = &wins[idx];
     int i, j, k, m, p, q;
     uint8_t *b = (uint8_t*)&theme[THEME_BG], *c = (uint8_t*)&theme[THEME_LIGHT];
+    char st[32];
 
     if(idx < 0 || idx >= numwin || win->w < 8 || win->h < 8 || wx+ww < 32 || wy+wh < 32) return;
     ssfn_dst.fg = theme[THEME_FG];
@@ -430,16 +457,21 @@ void ui_refreshwin(int idx, int wx, int wy, int ww, int wh)
             case GLYPH_TOOL_COLOR: view_color(idx); break;
         }
     }
+    ssfn_dst.w = wins[event.win].w;
+    ssfn_dst.h = wins[event.win].h;
+    ssfn_dst.fg = theme[THEME_FG];
     if(errstatus) {
         ui_box(&wins[event.win], 0, wins[event.win].h - 18, wins[event.win].w, 18,
-        theme[THEME_BTN1D], theme[THEME_BTN1D], theme[THEME_BTN1D]);
+            theme[THEME_BTN1D], theme[THEME_BTN1D], theme[THEME_BTN1D]);
         ssfn_dst.bg = theme[THEME_BTN1D];
-        ssfn_dst.w = wins[event.win].w;
-        ssfn_dst.h = wins[event.win].h;
-        ssfn_dst.fg = theme[THEME_FG];
         ui_text(&wins[event.win], 0, wins[event.win].h - 18, errstatus);
-    } else
+    } else {
         ui_box(win, 0, win->h - 18, win->w, 18, theme[THEME_DARK], theme[THEME_DARK], theme[THEME_DARK]);
+        if(event.win && posx != -1 && posy != -1) {
+            sprintf(st, "X: %3d Y: %3d", posx, posy);
+            ui_text(win, 0, win->h - 18, st);
+        }
+    }
     ui_flushwin(win, wx, wy, ww, wh);
 }
 
@@ -462,6 +494,7 @@ void ui_refreshall()
                     free(wins[i].hist);
                 }
 */
+                wins[i].layer = 0;
                 ui_resizewin(&wins[i], wins[i].w, wins[i].h);
                 ui_refreshwin(i, 0, 0, wins[i].w, wins[i].h);
             }
@@ -510,7 +543,7 @@ void ui_inputfinish()
 void ui_main(char *fn)
 {
     int i, j;
-    char *s;
+    char *s, st[32];
 
     /* load resources */
     ui_loadrc();
@@ -523,7 +556,7 @@ void ui_main(char *fn)
     ui_refreshwin(0, 0, 0, wins[0].w, wins[0].h);
     wins[0].tool = -1;
     if(fn && sfn_load(fn, 0)) {
-        sfn_sanitize();
+        sfn_sanitize(-1);
         wins[0].tool = MAIN_TOOL_GLYPHS;
         ui_updatetitle(0);
         ui_resizewin(&wins[0], wins[0].w, wins[0].h);
@@ -532,6 +565,7 @@ void ui_main(char *fn)
         wins[0].tool = MAIN_TOOL_ABOUT;
     ui_cursorwin(&wins[0], CURSOR_PTR);
 
+    ui_openwin(0x30);
     /* main event loop */
     while(mainloop) {
         ui_getevent();
@@ -547,25 +581,27 @@ void ui_main(char *fn)
             case E_REFRESH: ui_refreshwin(event.win, event.x, event.y, event.w, event.h); break;
             case E_MOUSEMOVE:
                 status = NULL; cursor = CURSOR_PTR;
-                if(event.y < 23) {
+                if(event.win && wins[event.win].tool == GLYPH_TOOL_COORD && event.y < 24 && event.x >= 144)
+                    cursor = CURSOR_GRAB;
+                if(event.y < 23 && event.x < 144) {
                     i = (event.x - 1) / 24;
-                    if(i < (!event.win ? 6 : 3)) {
+                    if(i < (!event.win ? 6 : 3))
                         status = lang[(!event.win ? MTOOL_ABOUT : GTOOL_MEASURES) + i];
-                    }
-                    if(event.win && event.x >= 6 + 3 * 24 && event.x < 32 + 6 + 3 * 24) {
-                        s = utf8(wins[event.win].unicode);
-                        if(!s[1]) s[2] = s[3] = 0; else if(!s[2]) s[3] = 0;
-                        sprintf(gstat, "U+%06X  %02x %02x %02x %02x  %d", wins[event.win].unicode, (unsigned char)s[0],
-                            (unsigned char)s[1], (unsigned char)s[2], (unsigned char)s[3], wins[event.win].unicode);
-                        status = gstat;
-                    }
+                    if(event.win && event.x >= 6 + 3 * 24)
+                        ui_chrinfo(wins[event.win].unicode);
                 } else {
-                    if(!event.win) {
+                    if(!event.win)
                         switch(wins[0].tool) {
                             case MAIN_TOOL_ABOUT: ctrl_about_onmove(); break;
                             case MAIN_TOOL_GLYPHS: ctrl_glyphs_onmove(); break;
                         }
-                    }
+                    else
+                        switch(wins[event.win].tool) {
+                            case GLYPH_TOOL_COORD: ctrl_coords_onmove(event.win); break;
+                            case GLYPH_TOOL_LAYER: ctrl_layers_onmove(event.win); break;
+                            case GLYPH_TOOL_KERN: ctrl_kern_onmove(event.win); break;
+                            case GLYPH_TOOL_COLOR: ctrl_colors_onmove(event.win); break;
+                        }
                 }
                 ssfn_dst.w = wins[event.win].w;
                 ssfn_dst.h = wins[event.win].h;
@@ -579,14 +615,92 @@ void ui_main(char *fn)
                     ui_box(&wins[event.win], 0, wins[event.win].h - 18, wins[event.win].w, 18,
                         theme[THEME_DARK], theme[THEME_DARK], theme[THEME_DARK]);
                     ssfn_dst.bg = theme[THEME_DARK];
-                    if(status)
+                    if(status) {
                         ui_text(&wins[event.win], 0, wins[event.win].h - 18, status);
+                        posx = posy = -1;
+                    } else if(event.win && posx != -1 && posy != -1) {
+                        sprintf(st, "X: %3d Y: %3d", posx, posy);
+                        ui_text(&wins[event.win], 0, wins[event.win].h - 18, st);
+                    }
                 }
                 if(cursor != lastcursor) {
                     ui_cursorwin(&wins[event.win], cursor);
                     lastcursor = cursor;
                 }
                 ui_flushwin(&wins[event.win], 0, wins[event.win].h - 18, wins[event.win].w, 18);
+            break;
+            case E_BTNPRESS:
+                ui_inputfinish();
+                if(event.win && wins[event.win].tool == GLYPH_TOOL_COORD && event.y < 24 && event.x >= 144 &&
+                    wins[event.win].unicode > 0) {
+                    ui_copy(utf8(wins[event.win].unicode));
+                    ssfn_dst.w = wins[event.win].w;
+                    ssfn_dst.h = wins[event.win].h;
+                    ssfn_dst.fg = theme[THEME_FG];
+                    ssfn_dst.bg = theme[THEME_DARK];
+                    ui_box(&wins[event.win], 0, wins[event.win].h - 18, wins[event.win].w, 18,
+                        theme[THEME_DARK], theme[THEME_DARK], theme[THEME_DARK]);
+                    ui_text(&wins[event.win], 0, wins[event.win].h - 18, lang[COORDS_CLIPBRD]);
+                    ui_flushwin(&wins[event.win], 0, wins[event.win].h - 18, wins[event.win].w, 18);
+                } else
+                if(event.y < 23 && event.x < 144) {
+                    selstart = selend = selfiles = clkfiles = selranges = clkranges = -1;
+                    i = (event.x - 1) / 24;
+                    if(i < (!event.win ? 6 : 3)) {
+                        seltool = i;
+                        ui_refreshwin(event.win, 0, 0, wins[event.win].w, wins[event.win].h);
+                    }
+                } else {
+                    if(!event.win)
+                        switch(wins[0].tool) {
+                            case MAIN_TOOL_LOAD: ctrl_fileops_onbtnpress(0); break;
+                            case MAIN_TOOL_SAVE: ctrl_fileops_onbtnpress(1); break;
+                            case MAIN_TOOL_PROPS: ctrl_props_onbtnpress(); break;
+                            case MAIN_TOOL_RANGES: ctrl_ranges_onbtnpress(); break;
+                            case MAIN_TOOL_GLYPHS: ctrl_glyphs_onbtnpress(); break;
+                            case MAIN_TOOL_DOSAVE: ctrl_dosave_onbtnpress(); break;
+                            case MAIN_TOOL_NEW: ctrl_new_onbtnpress(); break;
+                        }
+                    else
+                        switch(wins[event.win].tool) {
+                            case GLYPH_TOOL_COORD: ctrl_coords_onbtnpress(event.win); break;
+                            case GLYPH_TOOL_LAYER: ctrl_layers_onbtnpress(event.win); break;
+                            case GLYPH_TOOL_KERN: ctrl_kern_onbtnpress(event.win); break;
+                            case GLYPH_TOOL_COLOR: ctrl_colors_onbtnpress(event.win); break;
+                        }
+                    ui_refreshwin(event.win, 0, 0, wins[event.win].w, wins[event.win].h);
+                }
+            break;
+            case E_BTNRELEASE:
+                if(event.y < 23 && event.x < 144) {
+                    i = (event.x - 1) / 24;
+                    if(i < (!event.win ? 6 : 3) && i == seltool) {
+                        wins[event.win].tool = i;
+                        wins[event.win].field = selfield = selkern = -1;
+                        ui_resizewin(&wins[event.win], wins[event.win].w, wins[event.win].h);
+                    }
+                } else {
+                    if(!event.win)
+                        switch(wins[0].tool) {
+                            case MAIN_TOOL_ABOUT: ctrl_about_onclick(); break;
+                            case MAIN_TOOL_LOAD: ctrl_fileops_onclick(0); break;
+                            case MAIN_TOOL_SAVE: ctrl_fileops_onclick(1); break;
+                            case MAIN_TOOL_PROPS: ctrl_props_onclick(); break;
+                            case MAIN_TOOL_GLYPHS: ctrl_glyphs_onclick(); break;
+                            case MAIN_TOOL_DOSAVE: ctrl_dosave_onclick(); break;
+                            case MAIN_TOOL_NEW: ctrl_new_onclick(); break;
+                        }
+                    else
+                        switch(wins[event.win].tool) {
+                            case GLYPH_TOOL_COORD: ctrl_coords_onclick(event.win); break;
+                            case GLYPH_TOOL_LAYER: ctrl_layers_onclick(event.win); break;
+                            case GLYPH_TOOL_KERN: ctrl_kern_onclick(event.win); break;
+                            case GLYPH_TOOL_COLOR: ctrl_colors_onclick(event.win); break;
+                        }
+                }
+                seltool = selfield = -1;
+                ui_resizewin(&wins[event.win], wins[event.win].w, wins[event.win].h);
+                ui_refreshwin(event.win, 0, 0, wins[event.win].w, wins[event.win].h);
             break;
             case E_KEY:
                 seltool = -1;
@@ -626,11 +740,11 @@ void ui_main(char *fn)
                         } else {
                             if(wins[event.win].field > -1 && wins[event.win].field < (!event.win ? 6 : 3)) {
                                 wins[event.win].tool = wins[event.win].field;
-                                wins[event.win].field = seltool = selfield = -1;
+                                wins[event.win].field = seltool = selfield = selkern = -1;
                                 ui_resizewin(&wins[event.win], wins[event.win].w, wins[event.win].h);
                                 ui_refreshwin(event.win, 0, 0, wins[event.win].w, wins[event.win].h);
                             } else {
-                                if(!event.win) {
+                                if(!event.win)
                                     switch(wins[0].tool) {
                                         case MAIN_TOOL_ABOUT: ctrl_about_onenter(); break;
                                         case MAIN_TOOL_LOAD: ctrl_fileops_onenter(0); break;
@@ -642,7 +756,12 @@ void ui_main(char *fn)
                                         case MAIN_TOOL_NEW: ctrl_new_onenter(); break;
                                         break;
                                     }
-                                }
+                                else
+                                    switch(wins[event.win].tool) {
+                                        case GLYPH_TOOL_COLOR: ctrl_colors_onenter(event.win); break;
+                                    }
+                                ui_resizewin(&wins[event.win], wins[event.win].w, wins[event.win].h);
+                                ui_refreshwin(event.win, 0, 0, wins[event.win].w, wins[event.win].h);
                             }
                         }
                     break;
@@ -708,62 +827,6 @@ void ui_main(char *fn)
                         }
                     break;
                 }
-            break;
-            case E_BTNPRESS:
-                ui_inputfinish();
-                if(event.y < 23) {
-                    selstart = selend = selfiles = clkfiles = selranges = clkranges = -1;
-                    i = (event.x - 1) / 24;
-                    if(i < (!event.win ? 6 : 3)) {
-                        seltool = i;
-                        ui_refreshwin(event.win, 0, 0, wins[event.win].w, wins[event.win].h);
-                    }
-                    if(event.win && event.x >= 6 + 3 * 24 && event.x < 32 + 6 + 3 * 24) {
-                        s = utf8(wins[event.win].unicode);
-                        if(!s[1]) s[2] = s[3] = 0; else if(!s[2]) s[3] = 0;
-                        printf("U+%06X  %02x %02x %02x %02x  %d  %s\n", wins[event.win].unicode, (unsigned char)s[0],
-                            (unsigned char)s[1], (unsigned char)s[2], (unsigned char)s[3], wins[event.win].unicode,
-                            wins[event.win].unicode >= ' ' ? s : "");
-                    }
-                } else {
-                    if(!event.win) {
-                        switch(wins[0].tool) {
-                            case MAIN_TOOL_LOAD: ctrl_fileops_onbtnpress(0); break;
-                            case MAIN_TOOL_SAVE: ctrl_fileops_onbtnpress(1); break;
-                            case MAIN_TOOL_PROPS: ctrl_props_onbtnpress(); break;
-                            case MAIN_TOOL_RANGES: ctrl_ranges_onbtnpress(); break;
-                            case MAIN_TOOL_GLYPHS: ctrl_glyphs_onbtnpress(); break;
-                            case MAIN_TOOL_DOSAVE: ctrl_dosave_onbtnpress(); break;
-                            case MAIN_TOOL_NEW: ctrl_new_onbtnpress(); break;
-                        }
-                    }
-                    ui_refreshwin(event.win, 0, 0, wins[event.win].w, wins[event.win].h);
-                }
-            break;
-            case E_BTNRELEASE:
-                if(event.y < 23) {
-                    i = (event.x - 1) / 24;
-                    if(i < (!event.win ? 6 : 3) && i == seltool) {
-                        wins[event.win].tool = i;
-                        wins[event.win].field = selfield = -1;
-                        ui_resizewin(&wins[event.win], wins[event.win].w, wins[event.win].h);
-                    }
-                } else {
-                    if(!event.win) {
-                        switch(wins[0].tool) {
-                            case MAIN_TOOL_ABOUT: ctrl_about_onclick(); break;
-                            case MAIN_TOOL_LOAD: ctrl_fileops_onclick(0); break;
-                            case MAIN_TOOL_SAVE: ctrl_fileops_onclick(1); break;
-                            case MAIN_TOOL_PROPS: ctrl_props_onclick(); break;
-                            case MAIN_TOOL_GLYPHS: ctrl_glyphs_onclick(); break;
-                            case MAIN_TOOL_DOSAVE: ctrl_dosave_onclick(); break;
-                            case MAIN_TOOL_NEW: ctrl_new_onclick(); break;
-                        }
-                    }
-                }
-                seltool = selfield = -1;
-                ui_resizewin(&wins[event.win], wins[event.win].w, wins[event.win].h);
-                ui_refreshwin(event.win, 0, 0, wins[event.win].w, wins[event.win].h);
             break;
         }
     } /* while mainloop */
