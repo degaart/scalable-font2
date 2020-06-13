@@ -43,7 +43,14 @@ void view_coords(int idx)
     char *u, s[48];
 
     if(x < 0) x = 0;
+    ssfn_dst.w = x - 2;
+    ssfn_dst.h = win->h - 22;
+    ui_grid(win, ctx.glyphs[win->unicode].width, ctx.glyphs[win->unicode].height);
+    ui_gridbg(win, 20 + win->ox, 36 + win->oy, win->zoom * ctx.glyphs[win->unicode].width,
+        win->zoom * ctx.glyphs[win->unicode].height, win->zoom, win->p, win->data);
+
     ssfn_dst.w = win->w - 1;
+    ssfn_dst.h = win->h - 20;
 
     u = utf8(win->unicode);
     if(!u[1]) u[2] = u[3] = 0; else if(!u[2]) u[3] = 0;
@@ -156,6 +163,24 @@ void ctrl_setsize(int idx, int dw, int dh)
  * Position glyph
  */
 void ctrl_pos(int idx, int dx, int dy)
+{
+    ui_win_t *win = &wins[idx];
+}
+
+/**
+ * On enter handler
+ */
+void ctrl_coords_onenter(int idx)
+{
+    ui_win_t *win = &wins[idx];
+    switch(win->field) {
+    }
+}
+
+/**
+ * On key handler
+ */
+void ctrl_coords_onkey(int idx)
 {
     ui_win_t *win = &wins[idx];
 }

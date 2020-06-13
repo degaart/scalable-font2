@@ -32,6 +32,10 @@
 #include <string.h>
 #include "libsfn.h"
 
+#ifdef __WIN32__
+#include <windows.h>
+#endif
+
 #ifdef HAS_ZLIB
 #include <zlib.h>
 #define CPFILE gzFile
@@ -59,8 +63,28 @@ char *copypaste_fn = NULL;
 int copypaste_init()
 {
     char *home;
+#ifdef __WIN32__
+    char *s;
+    wchar_t tmp[MAX_PATH];
+    DWORD i, l;
+#endif
     if(!copypaste_fn) {
 #ifdef __WIN32__
+        tmp[0] = 0; l = GetTempPathW(MAX_PATH, tmp);
+        if(!tmp[0] || l < 1 || l >= MAX_PATH || !(copypaste_fn = (char*)malloc(l + 16))) return 0;
+        for(i = 0, s = copypaste_fn; tmp[i]; i++) {
+            if(tmp[i] < 0x80) {
+                *s++ = tmp[i];
+            } else if(tmp[i] < 0x800) {
+                *s++ = ((tmp[i]>>6)&0x1F)|0xC0;
+                *s++ = (tmp[i]&0x3F)|0x80;
+            } else {
+                *s++ = ((tmp[i]>>12)&0x0F)|0xE0;
+                *s++ = ((tmp[i]>>6)&0x3F)|0x80;
+                *s++ = (tmp[i]&0x3F)|0x80;
+            }
+        }
+        strcpy(s, "\\sfneditcb.dat");
 #else
         home = getenv("HOME");
         if(!home) home = "/tmp";

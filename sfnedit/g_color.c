@@ -34,6 +34,7 @@
 #include "lang.h"
 
 int hue = 0, sat = 0, val = 0, colorsel = 0;
+extern int sellayers;
 
 /**
  * Color conversion RGB to HSV
@@ -176,9 +177,9 @@ void ctrl_colors_onenter(int idx)
     ui_win_t *win = &wins[idx];
 
     win->field = selfield = -1; win->tool = GLYPH_TOOL_LAYER;
-    if(win->layer < ctx.glyphs[win->unicode].numlayer && ctx.glyphs[win->unicode].layers[win->layer].color != colorsel) {
-        ctx.glyphs[win->unicode].layers[win->layer].color = colorsel;
-        if(ctx.glyphs[win->unicode].layers[win->layer].type != SSFN_FRAG_PIXMAP) modified++;
+    if(sellayers < ctx.glyphs[win->unicode].numlayer && ctx.glyphs[win->unicode].layers[sellayers].color != colorsel) {
+        ctx.glyphs[win->unicode].layers[sellayers].color = colorsel;
+        if(ctx.glyphs[win->unicode].layers[sellayers].type != SSFN_FRAG_PIXMAP) modified++;
     }
 }
 

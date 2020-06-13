@@ -35,7 +35,9 @@
 #include <Xutil.h>
 #include <Xos.h>
 #include <Xatom.h>
+#ifdef HAS_XMU
 #include <Xmu/Atoms.h>
+#endif
 #include <keysymdef.h>
 #include <cursorfont.h>
 #include "lang.h"
@@ -50,7 +52,9 @@ extern uint8_t *tools, *icon32, *icon64;
 #define ICON_LENGTH (2 + 16 * 16 + 2 + 32 * 32 + 2 + 64 * 64)
 long icons[ICON_LENGTH];
 int screen_num = 0, red_shift,green_shift,blue_shift, btnflags = 0, keyflags = 0, keypressed = 0;
+#ifdef HAS_XMU
 unsigned char selection[8] = { 0 };
+#endif
 
 /**
  * Copy text to clipboard
@@ -58,10 +62,16 @@ unsigned char selection[8] = { 0 };
 void ui_copy(char *s)
 {
     if(s && *s) {
+#ifdef HAS_XMU
         memcpy(selection, s, sizeof(selection));
         XSetSelectionOwner(display, XA_CLIPBOARD(display), (Window)wins[0].winid, CurrentTime);
     } else
         selection[0] = 0;
+#else
+        /* in lack of Xmu and XA_CLIPBOARD, we just print it to console */
+        printf("UTF8: %s\n", s);
+    }
+#endif
 }
 
 /**
@@ -225,7 +235,10 @@ void ui_fini()
  */
 void ui_getevent()
 {
-    XEvent e, r;
+    XEvent e;
+#ifdef HAS_XMU
+    XEvent r;
+#endif
     KeySym k;
 
     e.type = None;
@@ -317,6 +330,7 @@ void ui_getevent()
             event.w = btnflags;
             event.h = keyflags;
         break;
+#ifdef HAS_XMU
         case SelectionRequest:
             if(selection[0]) {
                 XChangeProperty(display, e.xselectionrequest.requestor, e.xselectionrequest.property,
@@ -332,5 +346,6 @@ void ui_getevent()
                 XFlush(display);
             }
         break;
+#endif
     }
 }

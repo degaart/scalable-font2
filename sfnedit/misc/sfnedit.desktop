@@ -1,0 +1,15 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=SFNEdit
+Comment=Scalable Screen Font Editor
+Exec=sfnedit
+Icon=sfnedit
+Terminal=false
+StartupNotify=false
+Categories=Application;Graphics;Editor;
+MimeType=text/s-ssfont;font/x-ssfont;font/sfnt;application/vnd.ms-opentype;
+Actions=Edit
+[Desktop Action Edit]
+Name=Edit with SFNEdit
+Exec=sfnedit %F

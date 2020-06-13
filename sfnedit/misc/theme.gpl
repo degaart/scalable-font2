@@ -21,7 +21,7 @@ Name: SSFN Editor default theme
 144 144 144 #909090	selection border
  78  78  78 #4e4e4e	undefined glyph background
  16  16  16 #101010	axis colour
- 48  48  48 #303030	grid colour
+ 52  52  52 #343434	grid colour
  84  84  84 #545454	dimensions marker
 128   0   0 #800000	baseline
   0  64  64 #004040	underline

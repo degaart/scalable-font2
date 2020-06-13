@@ -34,6 +34,7 @@
 #include "lang.h"
 
 extern int colorsel;
+int sellayers = 0, scrolllayers = 0, pagelayers = 0;
 
 /**
  * Layer editor window
@@ -45,12 +46,24 @@ void view_layers(int idx)
     uint32_t c;
 
     if(x < 0) x = 0;
-    ssfn_dst.w = win->w - 1;
+    ssfn_dst.w = x - 2;
+    ssfn_dst.h = win->h - 22;
+    ui_grid(win, ctx.glyphs[win->unicode].width, ctx.glyphs[win->unicode].height);
+    ui_gridbg(win, 20 + win->ox, 36 + win->oy, win->zoom * ctx.glyphs[win->unicode].width,
+        win->zoom * ctx.glyphs[win->unicode].height, win->zoom, win->p, win->data);
 
-    if(win->layer >= ctx.glyphs[win->unicode].numlayer)
-        win->layer = 0;
-    if(win->layer < ctx.glyphs[win->unicode].numlayer)
-        colorsel = ctx.glyphs[win->unicode].layers[win->layer].color;
+    ssfn_dst.w = win->w - 1;
+    ssfn_dst.h = win->h - 20;
+
+    if(sellayers >= ctx.glyphs[win->unicode].numlayer) sellayers = ctx.glyphs[win->unicode].numlayer - 1;
+    if(sellayers < 0) sellayers = 0;
+    pagelayers = (win->h - 26 - 44) / 66; if(pagelayers < 1) pagelayers = 1;
+    if(scrolllayers + pagelayers > ctx.glyphs[win->unicode].numlayer) scrolllayers = ctx.glyphs[win->unicode].numlayer-pagelayers;
+    if(scrolllayers < 0) scrolllayers = 0;
+    if(sellayers >= ctx.glyphs[win->unicode].numlayer)
+        sellayers = 0;
+    if(sellayers < ctx.glyphs[win->unicode].numlayer)
+        colorsel = ctx.glyphs[win->unicode].layers[sellayers].color;
     else colorsel = 0xFE;
     c = colorsel < ctx.numcpal ? *((uint32_t*)&ctx.cpal[colorsel << 2]) : (colorsel == 0xFF ? 0 : 0xFF000000 | theme[THEME_FG]);
 
@@ -76,23 +89,23 @@ void view_layers(int idx)
     ui_box(win, x, win->h - 42, 22, 22, theme[win->field == 13 ? THEME_CURSOR : (selfield == 8 ? THEME_DARKER : THEME_LIGHT)],
         theme[win->field == 13 ? THEME_LIGHT : THEME_BG],
         theme[win->field == 13 ? THEME_CURSOR : (selfield == 8 ? THEME_LIGHT : THEME_DARKER)]);
-    ui_argb(win, x + 3, win->h - 39, 16, 16, win->layer < ctx.glyphs[win->unicode].numlayer ? c : 0);
+    ui_argb(win, x + 3, win->h - 39, 16, 16, sellayers < ctx.glyphs[win->unicode].numlayer ? c : 0);
 
     ui_box(win, x+24, win->h - 42, 22, 22, theme[win->field == 14 ? THEME_CURSOR : (selfield == 9 ? THEME_DARKER : THEME_LIGHT)],
         theme[win->field == 14 ? THEME_LIGHT : THEME_BG],
         theme[win->field == 14 ? THEME_CURSOR : (selfield == 9 ? THEME_LIGHT : THEME_DARKER)]);
-    ui_icon(win, x+27, win->h - 39, ICON_ERASE, win->layer >= ctx.glyphs[win->unicode].numlayer);
+    ui_icon(win, x+27, win->h - 39, ICON_ERASE, sellayers >= ctx.glyphs[win->unicode].numlayer);
 
     ui_box(win, x+48, win->h - 42, 22, 22, theme[win->field == 15 ? THEME_CURSOR : (selfield == 10 ? THEME_DARKER : THEME_LIGHT)],
         theme[win->field == 15 ? THEME_LIGHT : THEME_BG],
         theme[win->field == 15 ? THEME_CURSOR : (selfield == 10 ? THEME_LIGHT : THEME_DARKER)]);
-    ui_icon(win, x+51, win->h - 39, ICON_DELETE, win->layer >= ctx.glyphs[win->unicode].numlayer);
+    ui_icon(win, x+51, win->h - 39, ICON_DELETE, sellayers >= ctx.glyphs[win->unicode].numlayer);
 
     ui_box(win, x, 26, 70, win->h - 26 - 44, theme[win->field == 12 ? THEME_CURSOR : THEME_DARKER], theme[THEME_BG],
         theme[win->field == 12 ? THEME_CURSOR : THEME_LIGHT]);
     ssfn_dst.w = x + 68; ssfn_dst.h = win->h - 47; j = 29; x += 3;
-    for(i = 0; i < ctx.glyphs[win->unicode].numlayer && j < ssfn_dst.h; i++, j += 66) {
-        if(i == win->layer) {
+    for(i = scrolllayers; i < ctx.glyphs[win->unicode].numlayer && j < ssfn_dst.h; i++, j += 66) {
+        if(i == sellayers) {
             c = theme[THEME_SELBG];
             ssfn_dst.fg = theme[THEME_SELFG];
         } else {
@@ -103,6 +116,26 @@ void view_layers(int idx)
         ui_icon(win, x, j+48, ctx.glyphs[win->unicode].layers[i].type + ICON_VECTOR, 2);
         ui_glyph(win, x, j, 64, win->unicode, i);
     }
+    ssfn_dst.fg = theme[THEME_FG];
+    ssfn_dst.bg = 0;
+}
+
+/**
+ * On enter handler
+ */
+void ctrl_layers_onenter(int idx)
+{
+    ui_win_t *win = &wins[idx];
+    switch(win->field) {
+    }
+}
+
+/**
+ * On key handler
+ */
+void ctrl_layers_onkey(int idx)
+{
+    ui_win_t *win = &wins[idx];
 }
 
 /**
@@ -124,7 +157,12 @@ void ctrl_layers_onbtnpress(int idx)
         if(event.x > 224 && event.x < 246) selfield = 3; else
         if(event.x > 248 && event.x < 270) selfield = 4;
     } else
-    if(event.y > win->h - 42 && event.x > x && win->layer < ctx.glyphs[win->unicode].numlayer) {
+    if(event.y > 26 && event.y < win->h - 42 && event.x > x && event.x < x + 70) {
+        if(event.w & 1) sellayers = (event.y - 28) / 64 + scrolllayers; else
+        if(event.w & (1 << 3)) scrolllayers--; else
+        if(event.w & (1 << 4)) scrolllayers++;
+    } else
+    if(event.y > win->h - 42 && event.x > x && sellayers < ctx.glyphs[win->unicode].numlayer) {
         if(event.x > x && event.x < x + 24) selfield = 8; else
         if(event.x > x + 24 && event.x < x + 48) selfield = 9; else
         if(event.x > x + 48 && event.x < x + 72) selfield = 10;
@@ -153,6 +191,7 @@ void ctrl_layers_onclick(int idx)
         if(event.x > x && event.x < x + 24 && selfield == 8) win->tool = GLYPH_TOOL_COLOR; else
         if(event.x > x + 24 && event.x < x + 48 && selfield == 9) { colorsel = 0xFF; ctrl_colors_onenter(idx); } else
         if(event.x > x + 48 && event.x < x + 72) selfield = 10;
+        win->field = -1;
     }
     selfield = -1;
 }

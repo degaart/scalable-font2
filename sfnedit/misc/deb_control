@@ -1,0 +1,11 @@
+Package: sfnedit
+Version: 2.0.0
+Architecture: amd64
+Essential: no
+Section: Development
+Priority: optional
+Maintainer: bzt
+Homepage: https://gitlab.com/bztsrc/scalable-font2
+Installed-Size: SIZE
+Description: Scalable Screen Font SDK and font editor
+  Contains the single header rendering SDK, a command line font converter and a GUI editor

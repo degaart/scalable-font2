@@ -28,7 +28,7 @@
  */
 
 #include <stdint.h>
-/*#include "hist.h"*/
+#include "hist.h"
 
 #ifdef __WIN32__
 # define DIRSEP '\\'
@@ -179,10 +179,9 @@ typedef struct {
     int p;
     int field;
     int tool;
-    int zoom;
-    int layer;
+    int zoom, ox, oy, sx, sy;
     int histmin, histmax;
-/*    hist_t *hist;*/
+    hist_t *hist;
 } ui_win_t;
 
 typedef struct {
@@ -209,6 +208,9 @@ void copypaste_copy(int fromunicode, int layer);
 void copypaste_paste(int tounicode, int oneunicode);
 void copypaste_fini();
 
+/* history functions */
+void hist_free(ui_win_t *win);
+
 /* driver specific */
 void ui_copy(char *s);
 void *ui_createwin(int w, int h);
@@ -226,6 +228,8 @@ void ui_getevent();
 void ui_toolbox(int idx);
 void ui_rect(ui_win_t *win, int x, int y, int w, int h, uint32_t l, uint32_t d);
 void ui_box(ui_win_t *win, int x, int y, int w, int h, uint32_t l, uint32_t b, uint32_t d);
+void ui_grid(ui_win_t *win, int w, int h);
+void ui_gridbg(ui_win_t *win, int x, int y, int w, int h, int z, int p, uint32_t *d);
 void ui_icon(ui_win_t *win, int x, int y, int icon, int inactive);
 int ui_textwidth(char *str);
 void ui_text(ui_win_t *win, int x, int y, char *str);
@@ -236,8 +240,9 @@ void ui_tri(ui_win_t *win, int x, int y, int up);
 void ui_num(ui_win_t *win, int x, int y, int num, int active, int sel);
 void ui_number(ui_win_t *win, int x, int y, int n, uint32_t c);
 void ui_hex(ui_win_t *win, char c);
-void ui_glyph(ui_win_t *win, int x, int y, int size, int unicode, int layer);
 void ui_argb(ui_win_t *win, int x, int y, int w, int h, uint32_t c);
+void ui_glyph(ui_win_t *win, int x, int y, int size, int unicode, int layer);
+void ui_edit(ui_win_t *win, int x, int y, int w, int h, int layer, int p, uint32_t *d);
 
 /* common */
 void ui_gettheme(char *fn);
@@ -296,12 +301,18 @@ void ctrl_glyphs_onbtnpress();
 void ctrl_glyphs_onclick();
 void ctrl_glyphs_onmove();
 
+void ctrl_coords_onenter(int idx);
+void ctrl_coords_onkey(int idx);
 void ctrl_coords_onbtnpress(int idx);
 void ctrl_coords_onclick(int idx);
 void ctrl_coords_onmove(int idx);
+void ctrl_layers_onenter(int idx);
+void ctrl_layers_onkey(int idx);
 void ctrl_layers_onbtnpress(int idx);
 void ctrl_layers_onclick(int idx);
 void ctrl_layers_onmove(int idx);
+void ctrl_kern_onenter(int idx);
+void ctrl_kern_onkey(int idx);
 void ctrl_kern_onbtnpress(int idx);
 void ctrl_kern_onclick(int idx);
 void ctrl_kern_onmove(int idx);

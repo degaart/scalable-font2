@@ -36,7 +36,7 @@
 #include "util.h"
 
 int scrollglyphs = 0, numglyphs = 0, pageglyphs = 0, selstart = -1, selend = -1, rastsize = 64, greset = 1, gres[0x110000];
-int gsize, glast = -1, gzoom = 4;
+int gsize, glast = -1;
 char gsearch[32] = { 0 }, gstat[256] = { 0 }, gdef[0x110000];
 
 /**
@@ -106,10 +106,10 @@ void view_glyphs()
     }
     ui_icon(win, win->w - 134 - 16, 30, ICON_SEARCH, 0);
     ui_input(win, win->w - 132, 29, 120, gsearch, wins[0].field == 14, 31, 0);
-    gsize = (win->w - 20) / (1<<gzoom);
-    i = gsize * (1<<gzoom); x = (win->w - i) / 2 + 1;
-    pageglyphs = ((win->h - 26 - 53) / gsize - 1) * (1<<gzoom); if(pageglyphs < (1<<gzoom)) pageglyphs = (1<<gzoom);
-    scrollglyphs &= ~((1 << gzoom) - 1);
+    gsize = (win->w - 20) / (1<<wins[0].zoom);
+    i = gsize * (1<<wins[0].zoom); x = (win->w - i) / 2 + 1;
+    pageglyphs = ((win->h - 26 - 53) / gsize - 1) * (1<<wins[0].zoom); if(pageglyphs < (1<<wins[0].zoom)) pageglyphs = (1<<wins[0].zoom);
+    scrollglyphs &= ~((1 << wins[0].zoom) - 1);
     ui_rect(win, x - 1, 51, i + 1, win->h - 26 - 51, theme[THEME_DARKER], theme[THEME_LIGHT]);
     ssfn_dst.w = x + i;
     ssfn_dst.bg = 0;
@@ -142,9 +142,9 @@ void view_glyphs()
         }
     }
     greset = input_refresh = 0;
-    ssfn_dst.h = win->h - 26;
+    ssfn_dst.h = win->h - 27;
     for(i = scrollglyphs, j = 0, y = 52; i < numglyphs && y < ssfn_dst.h; i++, j++) {
-        if(j == (1<<gzoom)) { j = 0; y += gsize; }
+        if(j == (1<<wins[0].zoom)) { j = 0; y += gsize; }
         if(ctx.glyphs[gres[i]].numlayer || (iswhitespace(gres[i]) && ctx.glyphs[gres[i]].adv_x+ctx.glyphs[gres[i]].adv_y > 0)) {
             ui_box(win, x + j * gsize, y, gsize - 1, gsize - 1, theme[THEME_DARKER],
                 theme[i >= selstart && i <= selend ? THEME_SELBG : THEME_DARKER], theme[THEME_DARKER]);
@@ -175,7 +175,7 @@ void view_glyphs()
     }
     if(i == numglyphs)
         for(; y < ssfn_dst.h; i++, j++) {
-            if(j == (1<<gzoom)) { j = 0; y += gsize; }
+            if(j == (1<<wins[0].zoom)) { j = 0; y += gsize; }
             ui_box(win, x + j * gsize, y, gsize - 1, gsize - 1, theme[THEME_BG], theme[THEME_BG], theme[THEME_BG]);
         }
     ssfn_dst.fg = theme[THEME_FG];
@@ -235,10 +235,10 @@ void ctrl_glyphs_onenter()
             modified++;
         break;
         case 8:
-            if(gzoom < 6) gzoom++;
+            if(wins[0].zoom < 6) wins[0].zoom++;
         break;
         case 9:
-            if(gzoom > 2) gzoom--;
+            if(wins[0].zoom > 2) wins[0].zoom--;
         break;
         case 10:
             ctrl_glyphs_copy(1);
@@ -277,14 +277,14 @@ void ctrl_glyphs_onkey()
         case K_UP:
             if(wins[0].field == 7) rastsize++;
             else {
-                if(scrollglyphs > 0) scrollglyphs -= (1<<gzoom);
+                if(scrollglyphs > 0) scrollglyphs -= (1<<wins[0].zoom);
                 wins[0].field = 15;
             }
         break;
         case K_DOWN:
             if(wins[0].field == 7) rastsize--;
             else {
-                if(scrollglyphs + pageglyphs + (1<<gzoom) < numglyphs) scrollglyphs += (1<<gzoom);
+                if(scrollglyphs + pageglyphs + (1<<wins[0].zoom) < numglyphs) scrollglyphs += (1<<wins[0].zoom);
                 wins[0].field = 15;
             }
         break;
@@ -293,12 +293,12 @@ void ctrl_glyphs_onkey()
             wins[0].field = 15;
         break;
         case K_PGDN:
-            if(scrollglyphs + pageglyphs + (1<<gzoom) < numglyphs) scrollglyphs += pageglyphs;
-            else scrollglyphs = (numglyphs - pageglyphs - 1) & ~((1<<gzoom) - 1);
+            if(scrollglyphs + pageglyphs + (1<<wins[0].zoom) < numglyphs) scrollglyphs += pageglyphs;
+            else scrollglyphs = (numglyphs - pageglyphs - 1) & ~((1<<wins[0].zoom) - 1);
             wins[0].field = 15;
         break;
         case K_HOME: scrollglyphs = 0; wins[0].field = 15; break;
-        case K_END: scrollglyphs = (numglyphs - pageglyphs - 1) & ~((1<<gzoom) - 1); wins[0].field = 15; break;
+        case K_END: scrollglyphs = (numglyphs - pageglyphs - 1) & ~((1<<wins[0].zoom) - 1); wins[0].field = 15; break;
         case K_DEL: case K_BACKSPC: if(selend != -1) { wins[0].field = 13; ctrl_glyphs_onenter(); wins[0].field = -1; } break;
         default:
             if(event.h & (3 << 1)) {
@@ -350,15 +350,15 @@ void ctrl_glyphs_onbtnpress()
     if(event.y >= 52 && event.y < win->h - 26) {
         wins[0].field = 15;
         if(event.w & (1 << 3)) {
-            if(scrollglyphs > 0) scrollglyphs -= (1<<gzoom);
+            if(scrollglyphs > 0) scrollglyphs -= (1<<wins[0].zoom);
         } else
         if(event.w & (1 << 4)) {
-            if(scrollglyphs + pageglyphs + (1<<gzoom) < numglyphs) scrollglyphs += (1<<gzoom);
+            if(scrollglyphs + pageglyphs + (1<<wins[0].zoom) < numglyphs) scrollglyphs += (1<<wins[0].zoom);
         } else
         if(event.w & 1) {
             selfield = 10;
-            selstart = ((event.y - 52) / gsize) * (1<<gzoom) + (event.x - ((wins[0].w - gsize * (1<<gzoom))/2 + 1)) / gsize +
-                scrollglyphs;
+            selstart = ((event.y - 52) / gsize) * (1<<wins[0].zoom) + (event.x - ((wins[0].w - gsize * (1<<wins[0].zoom))/2 + 1))
+                / gsize + scrollglyphs;
             if(selstart < 0 || selstart >= numglyphs) selstart = -1;
             selend = glast = -1;
         }
@@ -407,7 +407,8 @@ void ctrl_glyphs_onmove()
         glast = -1;
     } else
     if(event.y >= 52 && event.y < wins[0].h - 26) {
-        i = ((event.y - 52) / gsize) * (1<<gzoom) + (event.x - ((wins[0].w - gsize * (1<<gzoom))/2 + 1)) / gsize + scrollglyphs;
+        i = ((event.y - 52) / gsize) * (1<<wins[0].zoom) + (event.x - ((wins[0].w - gsize * (1<<wins[0].zoom))/2 + 1))
+            / gsize + scrollglyphs;
         if(i >= 0 && i < numglyphs) {
             status = gstat;
             if(gres[i] != glast) {

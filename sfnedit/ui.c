@@ -49,12 +49,9 @@ uint32_t theme[] = { 0xFF454545, 0xFFBEBEBE, 0xFF5C5C5C, 0xFF343434, 0xFF606060,
     0xFF101010, 0xFF686868, 0xFF515151, 0xFF484848, 0xFF404040,
                 0xFF744C4C, 0xFF5D3535, 0xFF542C2C, 0xFF4C2424,
     0xFF5C5C5C, 0xFFF0F0F0, 0xFF909090, 0xFF4E4E4E,
-    0xFF101010, 0xFF303030, 0xFF545454,
+    0xFF101010, 0xFF343434, 0xFF545454,
     0xFF800000, 0xFF004040, 0xFF00FFFF, 0xFFFF0000, 0xFF007F7F };
-/*
-    0xFFF0F0F0, 0xFFF4F4F4, 0xFFBEBEBE, 0xFF808080, 0xFF5C5C5C, 0xFF4C4C4C, 0xFF454545, 0xFF383838, 0xFF303030,
-    0xFFFF0000, 0xFF800000, 0xFF004040, 0xFF0000FF, 0xFF00FF00, 0xFFFF0000, 0xFF00FFFF };
-*/
+
 int gw = 36+16+512, gh = 24+8+512, gotevt = 0, quiet = 0, lastpercent = 100, mainloop = 1, modified = 0, posx = 0, posy = 0;
 char ws[0x110000], *status, *errstatus = NULL;
 
@@ -190,7 +187,7 @@ int ui_textwidth(char *str)
  */
 void ui_openwin(uint32_t unicode)
 {
-    int w = gw, h = gh, i, j=0;
+    int w = gw, h = gh, i, j = 0;
 
     for(i=0; i < numwin; i++) {
         if(wins[i].winid) {
@@ -214,11 +211,10 @@ void ui_openwin(uint32_t unicode)
     wins[j].uniname = uninames[uniname(unicode)].name;
     wins[j].winid = ui_createwin(w, h);
     wins[j].field = -1;
-    wins[j].tool = 0;
-    wins[j].zoom = 512;
-    wins[j].layer = 0;
+    wins[j].tool = wins[j].zoom = wins[j].ox = wins[j].oy = wins[j].sx = wins[j].sy = 0;
+    if(unicode == WINTYPE_MAIN) wins[j].zoom = 4;
     input_maxlen = 0;
-    input_str = NULL;
+    input_str = input_cur = NULL;
     ui_updatetitle(j);
     ui_resizewin(&wins[j], w, h);
     ui_focuswin(&wins[j]);
@@ -234,14 +230,9 @@ void ui_closewin(int idx)
 
     ui_cursorwin(&wins[idx], CURSOR_PTR);
     ui_cursorwin(&wins[0], CURSOR_PTR);
+    ui_refreshwin(0, 0, 0, wins[0].w, wins[0].h);
     if(idx < 0 || idx >= numwin || !wins[idx].winid) return;
-/*
-    if(wins[idx].hist) {
-        hist_cleanup(&wins[idx], 0);
-        free(wins[idx].hist);
-    }
-    wins[idx].hist = NULL;
-*/
+    hist_free(&wins[idx]);
     if(!idx) {
         for(i=1; i < numwin; i++)
             if(wins[i].winid)
@@ -260,7 +251,7 @@ void ui_closewin(int idx)
     wins[idx].surface = NULL;
     wins[idx].data = NULL;
     wins[idx].unicode = -1;
-    wins[idx].layer = wins[idx].histmin = wins[idx].histmax = 0;
+    wins[idx].histmin = wins[idx].histmax = 0;
     while(numwin && !wins[numwin-1].winid) numwin--;
 }
 
@@ -300,21 +291,25 @@ static void ui_loadrc()
     s.img_buffer_end = s.img_buffer_original_end = icon32_png + sizeof(icon32_png);
     ri.bits_per_channel = 8;
     icon32 = (uint8_t*)stbi__png_load(&s, (int*)&w, (int*)&h, (int*)&f, 0, &ri);
+    if(!icon32) ui_error("ui_loadrc", ERR_MEM);
 
     s.img_buffer = s.img_buffer_original = icon64_png;
     s.img_buffer_end = s.img_buffer_original_end = icon64_png + sizeof(icon64_png);
     ri.bits_per_channel = 8;
     icon64 = (uint8_t*)stbi__png_load(&s, (int*)&w, (int*)&h, (int*)&f, 0, &ri);
+    if(!icon64) ui_error("ui_loadrc", ERR_MEM);
 
     s.img_buffer = s.img_buffer_original = icons_png;
     s.img_buffer_end = s.img_buffer_original_end = icons_png + sizeof(icons_png);
     ri.bits_per_channel = 8;
     tools = (uint8_t*)stbi__png_load(&s, (int*)&w, (int*)&h, (int*)&f, 0, &ri);
+    if(!tools) ui_error("ui_loadrc", ERR_MEM);
 
     s.img_buffer = s.img_buffer_original = bga_png;
     s.img_buffer_end = s.img_buffer_original_end = bga_png + sizeof(bga_png);
     ri.bits_per_channel = 8;
     bga = (uint8_t*)stbi__png_load(&s, (int*)&w, (int*)&h, (int*)&f, 0, &ri);
+    /* not an issue if we can't load this */
 
     /* uncompress ui font */
     ptr = unifont_gz + 3;
@@ -325,6 +320,7 @@ static void ui_loadrc()
     f = sizeof(unifont_gz) - ((uint64_t)ptr - (uint64_t)unifont_gz);
     w = 0;
     ssfn_src = (ssfn_font_t*)stbi_zlib_decode_malloc_guesssize_headerflag((const char*)ptr, f, 4096, (int*)&w, 0);
+    if(!ssfn_src) ui_error("ui_loadrc", ERR_MEM);
     memset(&ws, 0, sizeof(ws));
     ptr = (uint8_t*)ssfn_src + ssfn_src->characters_offs;
     for(ptr = (uint8_t*)ssfn_src + ssfn_src->characters_offs, w = 0; w < 0x110000; w++) {
@@ -424,7 +420,7 @@ void ui_refreshwin(int idx, int wx, int wy, int ww, int wh)
     ssfn_dst.fg = theme[THEME_FG];
     ssfn_dst.bg = 0;
     input_maxlen = 0;
-    if(!idx && wins[idx].tool != MAIN_TOOL_GLYPHS) {
+    if(bga && !idx && wins[idx].tool != MAIN_TOOL_GLYPHS) {
         p = win->w > 256 ? 256 : win->w;
         q = win->h > 256 ? 256 : win->h;
         for(k = (win->h-q+1)*win->p - p, m = ((256 - q) << 8) + (256 - p), j = 0; j < q; j++, k += win->p, m += 256)
@@ -460,6 +456,7 @@ void ui_refreshwin(int idx, int wx, int wy, int ww, int wh)
     ssfn_dst.w = wins[event.win].w;
     ssfn_dst.h = wins[event.win].h;
     ssfn_dst.fg = theme[THEME_FG];
+    ssfn_dst.bg = 0;
     if(errstatus) {
         ui_box(&wins[event.win], 0, wins[event.win].h - 18, wins[event.win].w, 18,
             theme[THEME_BTN1D], theme[THEME_BTN1D], theme[THEME_BTN1D]);
@@ -488,13 +485,7 @@ void ui_refreshall()
                 !ctx.glyphs[wins[i].unicode].adv_x && !ctx.glyphs[wins[i].unicode].adv_y)
                     ui_closewin(i);
             else {
-/*
-                if(wins[i].hist) {
-                    hist_cleanup(&wins[i], 0);
-                    free(wins[i].hist);
-                }
-*/
-                wins[i].layer = 0;
+                hist_free(&wins[i]);
                 ui_resizewin(&wins[i], wins[i].w, wins[i].h);
                 ui_refreshwin(i, 0, 0, wins[i].w, wins[i].h);
             }
@@ -507,34 +498,34 @@ void ui_refreshall()
 void ui_inputfinish()
 {
     char *s = input_str;
-    if(!input_maxlen || !input_str || !input_callback) return;
-    switch(input_callback) {
-        case 1:
-            if((input_str[0] == 'U' || input_str[0] == 'u') && input_str[1] == '+') rs = (int)gethex(input_str + 2, 6);
-            else rs = (int)ssfn_utf8(&s);
-            if(rs < 0) rs = 0;
-            if(rs > 0x10FFFF) rs = 0x10FFFF;
-            sprintf(input_str, "U+%X", rs);
-        break;
-        case 2:
-            if((input_str[0] == 'U' || input_str[0] == 'u') && input_str[1] == '+') re = (int)gethex(input_str + 2, 6);
-            else re = (int)ssfn_utf8(&s);
-            if(re < 0) re = 0;
-            if(re > 0x10FFFF) re = 0x10FFFF;
-            sprintf(input_str, "U+%X", re);
-        break;
-        case 3: sfn_setstr(&ctx.name, input_str, 0); break;
-        case 4: sfn_setstr(&ctx.familyname, input_str, 0); break;
-        case 5: sfn_setstr(&ctx.subname, input_str, 0); break;
-        case 6: sfn_setstr(&ctx.revision, input_str, 0); break;
-        case 7: sfn_setstr(&ctx.manufacturer, input_str, 0); break;
-        case 8: sfn_setstr(&ctx.license, input_str, 0); break;
-        default:
-            if(input_callback >= 1024 && input_callback <= 1024 + SSFN_LIG_LAST - SSFN_LIG_FIRST)
-                sfn_setstr(&ctx.ligatures[input_callback - 1024], input_str, 0);
-        break;
-    }
-    input_str = input_cur = NULL;
+    if(input_maxlen && input_str && input_callback)
+        switch(input_callback) {
+            case 1:
+                if((input_str[0] == 'U' || input_str[0] == 'u') && input_str[1] == '+') rs = (int)gethex(input_str + 2, 6);
+                else rs = (int)ssfn_utf8(&s);
+                if(rs < 0) rs = 0;
+                if(rs > 0x10FFFF) rs = 0x10FFFF;
+                sprintf(input_str, "U+%X", rs);
+            break;
+            case 2:
+                if((input_str[0] == 'U' || input_str[0] == 'u') && input_str[1] == '+') re = (int)gethex(input_str + 2, 6);
+                else re = (int)ssfn_utf8(&s);
+                if(re < 0) re = 0;
+                if(re > 0x10FFFF) re = 0x10FFFF;
+                sprintf(input_str, "U+%X", re);
+            break;
+            case 3: sfn_setstr(&ctx.name, input_str, 0); break;
+            case 4: sfn_setstr(&ctx.familyname, input_str, 0); break;
+            case 5: sfn_setstr(&ctx.subname, input_str, 0); break;
+            case 6: sfn_setstr(&ctx.revision, input_str, 0); break;
+            case 7: sfn_setstr(&ctx.manufacturer, input_str, 0); break;
+            case 8: sfn_setstr(&ctx.license, input_str, 0); break;
+            default:
+                if(input_callback >= 1024 && input_callback <= 1024 + SSFN_LIG_LAST - SSFN_LIG_FIRST)
+                    sfn_setstr(&ctx.ligatures[input_callback - 1024], input_str, 0);
+            break;
+        }
+    input_str = input_cur = NULL; input_maxlen = 0;
 }
 
 /**
@@ -735,7 +726,6 @@ void ui_main(char *fn)
                                 wins[event.win].field = -1;
                             else
                                 wins[event.win].field++;
-                            input_maxlen = 0; input_str = input_cur = NULL;
                             ui_refreshwin(event.win, 0, 0, wins[event.win].w, wins[event.win].h);
                         } else {
                             if(wins[event.win].field > -1 && wins[event.win].field < (!event.win ? 6 : 3)) {
@@ -758,6 +748,9 @@ void ui_main(char *fn)
                                     }
                                 else
                                     switch(wins[event.win].tool) {
+                                        case GLYPH_TOOL_COORD: ctrl_coords_onenter(event.win); break;
+                                        case GLYPH_TOOL_LAYER: ctrl_coords_onenter(event.win); break;
+                                        case GLYPH_TOOL_KERN: ctrl_kern_onenter(event.win); break;
                                         case GLYPH_TOOL_COLOR: ctrl_colors_onenter(event.win); break;
                                     }
                                 ui_resizewin(&wins[event.win], wins[event.win].w, wins[event.win].h);
@@ -815,7 +808,7 @@ void ui_main(char *fn)
                             input_refresh = 0;
                         } else {
                             if(!event.win) {
-                                switch(wins[0].tool) {
+                                switch(wins[0].tool)
                                     case MAIN_TOOL_LOAD:
                                     case MAIN_TOOL_SAVE: ctrl_fileops_onkey(); break;
                                     case MAIN_TOOL_PROPS: ctrl_props_onkey(); break;
@@ -823,7 +816,12 @@ void ui_main(char *fn)
                                     case MAIN_TOOL_GLYPHS: ctrl_glyphs_onkey(); break;
                                     case MAIN_TOOL_NEW: ctrl_new_onkey(); break;
                                 }
-                            }
+                            else
+                                switch(wins[event.win].tool) {
+                                    case GLYPH_TOOL_COORD: ctrl_coords_onkey(event.win); break;
+                                    case GLYPH_TOOL_LAYER: ctrl_coords_onkey(event.win); break;
+                                    case GLYPH_TOOL_KERN: ctrl_kern_onkey(event.win); break;
+                                }
                         }
                     break;
                 }

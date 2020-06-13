@@ -29,12 +29,13 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #include "libsfn.h"
 #include "ui.h"
 #include "lang.h"
 
 char ksearch[32] = { 0 };
-int selkern = 0;
+int selkern = 0, scrollkern = 0, pagekern = 0;
 
 /**
  * Kerning window
@@ -65,17 +66,21 @@ void view_kern(int idx)
     ui_box(win, x+48, win->h - 42, 22, 22, theme[win->field == 8 ? THEME_CURSOR : (selfield == 2 ? THEME_DARKER : THEME_LIGHT)],
         theme[win->field == 8 ? THEME_LIGHT : THEME_BG],
         theme[win->field == 8 ? THEME_CURSOR : (selfield == 2 ? THEME_LIGHT : THEME_DARKER)]);
-    ui_icon(win, x+51, win->h - 39, ICON_DELETE, 0);
+    ui_icon(win, x+51, win->h - 39, ICON_DELETE, ctx.glyphs[win->unicode].numkern < 1);
 
     if(selkern >= ctx.glyphs[win->unicode].numkern) selkern = ctx.glyphs[win->unicode].numkern - 1;
     if(selkern < 0) selkern = 0;
 
     ui_box(win, x, 26, 70, win->h - 26 - 44, theme[win->field == 5 ? THEME_CURSOR : THEME_DARKER], theme[THEME_BG],
         theme[win->field == 5 ? THEME_CURSOR : THEME_LIGHT]);
-
+    if(selkern >= ctx.glyphs[win->unicode].numkern) selkern = ctx.glyphs[win->unicode].numkern - 1;
+    if(selkern < 0) selkern = 0;
+    pagekern = (win->h - 47 - 29) / 22; if(pagekern < 1) pagekern = 1;
+    if(scrollkern + pagekern > ctx.glyphs[win->unicode].numkern) scrollkern = ctx.glyphs[win->unicode].numkern-pagekern;
+    if(scrollkern < 0) scrollkern = 0;
     ssfn_dst.w = x + 68; ssfn_dst.h = win->h - 47; ssfn_dst.y = 29; x += 3;
-    for(i = 0; i < ctx.glyphs[win->unicode].numkern && ssfn_dst.y < ssfn_dst.h; i++, ssfn_dst.y += 11) {
-        if(i == win->layer) {
+    for(i = scrollkern; i < ctx.glyphs[win->unicode].numkern && ssfn_dst.y < ssfn_dst.h; i++, ssfn_dst.y += 11) {
+        if(i == selkern) {
             c = theme[THEME_SELBG];
             ssfn_dst.fg = theme[THEME_SELFG];
         } else {
@@ -102,6 +107,31 @@ void view_kern(int idx)
 }
 
 /**
+ * On enter handler
+ */
+void ctrl_kern_onenter(int idx)
+{
+    ui_win_t *win = &wins[idx];
+    switch(win->field) {
+        case 6: ctx.glyphs[win->unicode].rtl = 1; break;
+        case 7: ctx.glyphs[win->unicode].rtl = 0; break;
+        case 8:
+            memcpy(&ctx.glyphs[win->unicode].kern[selkern], &ctx.glyphs[win->unicode].kern[selkern+1],
+                (ctx.glyphs[win->unicode].numkern - selkern) * sizeof(sfnkern_t));
+            ctx.glyphs[win->unicode].numkern--;
+        break;
+    }
+}
+
+/**
+ * On key handler
+ */
+void ctrl_kern_onkey(int idx)
+{
+    ui_win_t *win = &wins[idx];
+}
+
+/**
  * On button press handler
  */
 void ctrl_kern_onbtnpress(int idx)
@@ -111,10 +141,15 @@ void ctrl_kern_onbtnpress(int idx)
     if(x < 0) x = 0;
     selfield = win->field = -1;
     if(event.y < 26 && event.x > win->w - 130 - 16) win->field = 4;
+    if(event.y > 26 && event.y < win->h - 44 && event.x > x && event.x < x + 70) {
+        if(event.w & 1) selkern = (event.y - 31) / 22 + scrollkern; else
+        if(event.w & (1 << 3)) scrollkern--; else
+        if(event.w & (1 << 4)) scrollkern++;
+    } else
     if(event.y > win->h - 42 && event.x > x) {
-        if(event.x > x && event.x < x + 24) selfield = 0; else
-        if(event.x > x + 24 && event.x < x + 48) selfield = 1; else
-        if(event.x > x + 48 && event.x < x + 72) selfield = 2;
+        if(event.x > x && event.x < x + 24 && ctx.glyphs[win->unicode].adv_y < 1) selfield = 0; else
+        if(event.x > x + 24 && event.x < x + 48 && ctx.glyphs[win->unicode].adv_y < 1) selfield = 1; else
+        if(event.x > x + 48 && event.x < x + 72 && ctx.glyphs[win->unicode].numkern) selfield = 2;
     }
 }
 
@@ -126,11 +161,14 @@ void ctrl_kern_onclick(int idx)
     ui_win_t *win = &wins[idx];
     int x = win->w - 74;
     if(x < 0) x = 0;
-    if(event.y < 26 && event.x > win->w - 130 - 16) win->field = 4;
+    if(event.y < 26 && event.x > win->w - 130 - 16) win->field = 4; else
     if(event.y > win->h - 42 && event.x > x) {
-        if(event.x > x && event.x < x + 24) selfield = 0; else
-        if(event.x > x + 24 && event.x < x + 48) selfield = 1; else
-        if(event.x > x + 48 && event.x < x + 72) selfield = 2;
+        if(event.x > x && event.x < x + 24 && selfield == 0) { win->field = 6; ctrl_kern_onenter(idx); } else
+        if(event.x > x + 24 && event.x < x + 48 && selfield == 1) { win->field = 7; ctrl_kern_onenter(idx); } else
+        if(event.x > x + 48 && event.x < x + 72 && ctx.glyphs[win->unicode].numkern && selfield == 2) {
+            win->field = 8; ctrl_kern_onenter(idx);
+        }
+        win->field = -1;
     }
     selfield = -1;
 }

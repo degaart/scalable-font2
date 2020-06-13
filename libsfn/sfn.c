@@ -780,17 +780,24 @@ int sfn_kernadd(int unicode, int next, int x, int y)
     int i;
 
     if(unicode < rs || unicode > re || unicode < 33 || unicode > 0x10FFFF || next < rs || next > re ||
-        next < 33 || next > 0x10FFFFF || (!x && !y)) return 0;
+        next < 33 || next > 0x10FFFFF) return 0;
     if(x < -128) x = -128;
     if(x > 127) x = 127;
     if(y < -128) y = -128;
     if(y > 127) y = 127;
     for(i = 0; i < ctx.glyphs[unicode].numkern; i++)
         if(ctx.glyphs[unicode].kern[i].n == next) {
-            if(x) ctx.glyphs[unicode].kern[i].x = x;
-            if(y) ctx.glyphs[unicode].kern[i].y = y;
+            if(!x && !y) {
+                memcpy(&ctx.glyphs[unicode].kern[i], &ctx.glyphs[unicode].kern[i+1], (ctx.glyphs[unicode].numkern - i) *
+                    sizeof(sfnkern_t));
+                ctx.glyphs[unicode].numkern--;
+            } else {
+                if(x) ctx.glyphs[unicode].kern[i].x = x;
+                if(y) ctx.glyphs[unicode].kern[i].y = y;
+            }
             return 1;
         }
+    if(!x && !y) return 0;
     if(ctx.glyphs[unicode].numkern >= 32767) {
         if(!quiet) fprintf(stderr,"libsfn: too many kerning pairs for U+%06x, truncated to 32767\n", unicode);
         return 1;
@@ -2369,12 +2376,21 @@ void sfn_rasterize(int size)
 
     if(size < 8) size = 8;
     if(size > 255) size = 255;
+    if(ctx.height < 1) ctx.height = 1;
 
     for(i = 0; i < 0x110000; i++)
         if(ctx.glyphs[i].numlayer) numchars++;
 
     for(i = 0; i < 0x110000; i++) {
-        if(!ctx.glyphs[i].numlayer) continue;
+        /* we must rescale characters without glyphs too, like white spaces */
+        ctx.glyphs[i].adv_x = ctx.glyphs[i].adv_x * size / ctx.height;
+        ctx.glyphs[i].adv_y = ctx.glyphs[i].adv_y * size / ctx.height;
+        ctx.glyphs[i].ovl_x = ctx.glyphs[i].ovl_x * size / ctx.height;
+        if(!ctx.glyphs[i].numlayer) {
+            ctx.glyphs[i].width = ctx.glyphs[i].width * size / ctx.height;
+            ctx.glyphs[i].height = ctx.glyphs[i].height * size / ctx.height;
+            continue;
+        }
         if(pbar) (*pbar)(0, 0, ++nc, numchars, PBAR_RASTERIZE);
         n = sfn_glyph(size, i, -1, 0, &g);
         for(j = 0; j < ctx.glyphs[i].numlayer; j++)
@@ -2384,9 +2400,6 @@ void sfn_rasterize(int size)
             ctx.glyphs[i].kern[j].x = ctx.glyphs[i].kern[j].x * size / ctx.height;
             ctx.glyphs[i].kern[j].y = ctx.glyphs[i].kern[j].y * size / ctx.height;
         }
-        ctx.glyphs[i].adv_x = ctx.glyphs[i].adv_x * size / ctx.height;
-        ctx.glyphs[i].adv_y = ctx.glyphs[i].adv_y * size / ctx.height;
-        ctx.glyphs[i].ovl_x = ctx.glyphs[i].ovl_x * size / ctx.height;
         ctx.glyphs[i].numlayer = ctx.glyphs[i].width = ctx.glyphs[i].height = 0;
         if(n) {
             w = g.p * size / g.h;
