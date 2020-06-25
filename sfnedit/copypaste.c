@@ -36,6 +36,8 @@
 #include <windows.h>
 #endif
 
+/* Don't use zlib, too slow on big sets. Disk cache is much faster. */
+/*
 #ifdef HAS_ZLIB
 #include <zlib.h>
 #define CPFILE gzFile
@@ -45,13 +47,16 @@
 #define CPREAD(a,b,c) gzread(c,a,b)
 #define CPEOF gzeof
 #else
+*/
 #define CPFILE FILE*
 #define CPOPEN fopen
 #define CPCLOSE fclose
 #define CPWRITE(a,b,c) fwrite(a,b,1,c)
 #define CPREAD(a,b,c) fread(a,b,1,c)
 #define CPEOF feof
+/*
 #endif
+*/
 
 /* clipboard file */
 char *copypaste_fn = NULL;

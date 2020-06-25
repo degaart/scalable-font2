@@ -49,7 +49,7 @@ uint32_t theme[] = { 0xFF454545, 0xFFBEBEBE, 0xFF5C5C5C, 0xFF343434, 0xFF606060,
     0xFF101010, 0xFF686868, 0xFF515151, 0xFF484848, 0xFF404040,
                 0xFF744C4C, 0xFF5D3535, 0xFF542C2C, 0xFF4C2424,
     0xFF5C5C5C, 0xFFF0F0F0, 0xFF909090, 0xFF4E4E4E,
-    0xFF101010, 0xFF343434, 0xFF545454,
+    0xFF101010, 0xFF343434, 0xFFB0B0B0,
     0xFF800000, 0xFF004040, 0xFF00FFFF, 0xFFFF0000, 0xFF007F7F };
 
 int gw = 36+16+512, gh = 24+8+512, gotevt = 0, quiet = 0, lastpercent = 100, mainloop = 1, modified = 0, posx = 0, posy = 0;
@@ -211,7 +211,7 @@ void ui_openwin(uint32_t unicode)
     wins[j].uniname = uninames[uniname(unicode)].name;
     wins[j].winid = ui_createwin(w, h);
     wins[j].field = -1;
-    wins[j].tool = wins[j].zoom = wins[j].ox = wins[j].oy = wins[j].sx = wins[j].sy = 0;
+    wins[j].rc = 1;
     if(unicode == WINTYPE_MAIN) wins[j].zoom = 4;
     input_maxlen = 0;
     input_str = input_cur = NULL;
@@ -420,7 +420,7 @@ void ui_refreshwin(int idx, int wx, int wy, int ww, int wh)
     ssfn_dst.fg = theme[THEME_FG];
     ssfn_dst.bg = 0;
     input_maxlen = 0;
-    if(bga && !idx && wins[idx].tool != MAIN_TOOL_GLYPHS) {
+    if(bga && (win->help || (!idx && wins[idx].tool != MAIN_TOOL_GLYPHS))) {
         p = win->w > 256 ? 256 : win->w;
         q = win->h > 256 ? 256 : win->h;
         for(k = (win->h-q+1)*win->p - p, m = ((256 - q) << 8) + (256 - p), j = 0; j < q; j++, k += win->p, m += 256)
@@ -431,42 +431,46 @@ void ui_refreshwin(int idx, int wx, int wy, int ww, int wh)
                     ((uint8_t*)&win->data[k+i])[2] = (c[2]*bga[m+i] + (256 - bga[m+i])*b[2])>>8;
                 }
     }
-    ui_toolbox(idx);
-    ssfn_dst.bg = theme[THEME_BG];
-    if(!idx) {
-        switch(wins[idx].tool) {
-            case -1:
-            case MAIN_TOOL_ABOUT: view_about(); break;
-            case MAIN_TOOL_LOAD: view_fileops(0); break;
-            case MAIN_TOOL_SAVE: view_fileops(1); break;
-            case MAIN_TOOL_PROPS: view_props(); break;
-            case MAIN_TOOL_RANGES: view_ranges(); break;
-            case MAIN_TOOL_GLYPHS: view_glyphs(); break;
-            case MAIN_TOOL_DOSAVE: view_dosave(); break;
-            case MAIN_TOOL_NEW: view_new(); break;
-        }
+    if(win->help) {
+        view_help(idx);
     } else {
-        switch(wins[idx].tool) {
-            case GLYPH_TOOL_COORD: view_coords(idx); break;
-            case GLYPH_TOOL_LAYER: view_layers(idx); break;
-            case GLYPH_TOOL_KERN: view_kern(idx); break;
-            case GLYPH_TOOL_COLOR: view_color(idx); break;
+        ui_toolbox(idx);
+        ssfn_dst.bg = theme[THEME_BG];
+        if(!idx) {
+            switch(wins[idx].tool) {
+                case -1:
+                case MAIN_TOOL_ABOUT: view_about(); break;
+                case MAIN_TOOL_LOAD: view_fileops(0); break;
+                case MAIN_TOOL_SAVE: view_fileops(1); break;
+                case MAIN_TOOL_PROPS: view_props(); break;
+                case MAIN_TOOL_RANGES: view_ranges(); break;
+                case MAIN_TOOL_GLYPHS: view_glyphs(); break;
+                case MAIN_TOOL_DOSAVE: view_dosave(); break;
+                case MAIN_TOOL_NEW: view_new(); break;
+            }
+        } else {
+            switch(wins[idx].tool) {
+                case GLYPH_TOOL_COORD: view_coords(idx); break;
+                case GLYPH_TOOL_LAYER: view_layers(idx); break;
+                case GLYPH_TOOL_KERN: view_kern(idx); break;
+                case GLYPH_TOOL_COLOR: view_color(idx); break;
+            }
         }
-    }
-    ssfn_dst.w = wins[event.win].w;
-    ssfn_dst.h = wins[event.win].h;
-    ssfn_dst.fg = theme[THEME_FG];
-    ssfn_dst.bg = 0;
-    if(errstatus) {
-        ui_box(&wins[event.win], 0, wins[event.win].h - 18, wins[event.win].w, 18,
-            theme[THEME_BTN1D], theme[THEME_BTN1D], theme[THEME_BTN1D]);
-        ssfn_dst.bg = theme[THEME_BTN1D];
-        ui_text(&wins[event.win], 0, wins[event.win].h - 18, errstatus);
-    } else {
-        ui_box(win, 0, win->h - 18, win->w, 18, theme[THEME_DARK], theme[THEME_DARK], theme[THEME_DARK]);
-        if(event.win && posx != -1 && posy != -1) {
-            sprintf(st, "X: %3d Y: %3d", posx, posy);
-            ui_text(win, 0, win->h - 18, st);
+        ssfn_dst.w = wins[event.win].w;
+        ssfn_dst.h = wins[event.win].h;
+        ssfn_dst.fg = theme[THEME_FG];
+        ssfn_dst.bg = 0;
+        if(errstatus) {
+            ui_box(&wins[event.win], 0, wins[event.win].h - 18, wins[event.win].w, 18,
+                theme[THEME_BTN1D], theme[THEME_BTN1D], theme[THEME_BTN1D]);
+            ssfn_dst.bg = theme[THEME_BTN1D];
+            ui_text(&wins[event.win], 0, wins[event.win].h - 18, errstatus);
+        } else {
+            ui_box(win, 0, win->h - 18, win->w, 18, theme[THEME_DARK], theme[THEME_DARK], theme[THEME_DARK]);
+            if(event.win && posx != -1 && posy != -1) {
+                sprintf(st, "X: %3d Y: %3d", posx, posy);
+                ui_text(win, 0, win->h - 18, st);
+            }
         }
     }
     ui_flushwin(win, wx, wy, ww, wh);
@@ -562,6 +566,23 @@ void ui_main(char *fn)
         ui_getevent();
         if(event.win < 0) continue;
         if(event.type != E_REFRESH && event.type != E_MOUSEMOVE && event.type != E_BTNRELEASE) errstatus = NULL;
+        if(wins[event.win].help) {
+            switch(event.type) {
+                case E_CLOSE: ui_closewin(event.win); break;
+                case E_RESIZE:
+                    ui_resizewin(&wins[event.win], event.w, event.h);
+                    ui_refreshwin(event.win, 0, 0, event.w, event.h);
+                    if(event.win) { gw = event.w; gh = event.h; }
+                break;
+                case E_REFRESH: ui_refreshwin(event.win, event.x, event.y, event.w, event.h); break;
+                case E_BTNRELEASE: case E_KEY:
+                    wins[event.win].help = 0;
+                    ui_resizewin(&wins[event.win], wins[event.win].w, wins[event.win].h);
+                    ui_refreshwin(event.win, 0, 0, wins[event.win].w, wins[event.win].h);
+                break;
+            }
+            continue;
+        }
         switch(event.type) {
             case E_CLOSE: ui_closewin(event.win); break;
             case E_RESIZE:
@@ -584,6 +605,7 @@ void ui_main(char *fn)
                     if(!event.win)
                         switch(wins[0].tool) {
                             case MAIN_TOOL_ABOUT: ctrl_about_onmove(); break;
+                            case MAIN_TOOL_RANGES: ctrl_ranges_onmove(); break;
                             case MAIN_TOOL_GLYPHS: ctrl_glyphs_onmove(); break;
                         }
                     else
@@ -689,6 +711,10 @@ void ui_main(char *fn)
                             case GLYPH_TOOL_COLOR: ctrl_colors_onclick(event.win); break;
                         }
                 }
+                if(cursor != lastcursor) {
+                    ui_cursorwin(&wins[event.win], cursor);
+                    lastcursor = cursor;
+                }
                 seltool = selfield = -1;
                 ui_resizewin(&wins[event.win], wins[event.win].w, wins[event.win].h);
                 ui_refreshwin(event.win, 0, 0, wins[event.win].w, wins[event.win].h);
@@ -697,6 +723,13 @@ void ui_main(char *fn)
                 seltool = -1;
                 switch(event.x) {
                     case K_ESC: ui_closewin(event.win); break;
+                    case K_F1:
+                        if(event.win || wins[0].tool <= MTOOL_GLYPHS) {
+                            wins[event.win].help = 1;
+                            ui_resizewin(&wins[event.win], wins[event.win].w, wins[event.win].h);
+                            ui_refreshwin(event.win, 0, 0, wins[event.win].w, wins[event.win].h);
+                        }
+                    break;
                     case K_TAB:
                         ui_inputfinish();
                         if(event.h & 1) {

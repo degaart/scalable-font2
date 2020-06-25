@@ -59,6 +59,7 @@ char *dict[NUMLANGS][NUMTEXTS + 1] = {
         "Vectorizing",
         "Copying to clipboard",
 
+        "Help:",
         "If anytime you feel lost, press [F1]. UNICODE database:",
         "Permission is hereby granted, free of charge, to any person",
         "obtaining a copy of this software and associated documentation",
@@ -80,6 +81,7 @@ char *dict[NUMLANGS][NUMTEXTS + 1] = {
         "Measures",
         "Layers",
         "Kerning",
+        "Color Picker",
 
         "Name",
         "Size",
@@ -173,6 +175,19 @@ char *dict[NUMLANGS][NUMTEXTS + 1] = {
 
         "Delete kerning pair",
 
-        "OK"
+        "OK",
+
+        "There's one main window per font with it's properties and character table.",
+        "You can open one glyph window per character.",
+        "Keys available all the time\none\ntwo",
+        "load font",
+        "save font",
+        "font props",
+        "ranges",
+        "glyphs",
+        "measures",
+        "layers",
+        "kerning",
+        "colorpick"
     }
 };

@@ -92,7 +92,7 @@ void view_about()
     ssfn_dst.fg = theme[THEME_FG];
     ssfn_dst.bg = theme[THEME_BG];
     while((i = ssfn_render(&logofnt, &ssfn_dst, s)) > 0) s += i;
-    ssfn_dst.fg = 0xFF000000;
+    ssfn_dst.fg = 0xFF000000 | ((theme[THEME_BG] >> 2) & 0x3F3F3F);
     ssfn_dst.bg = 0;
     j = wins[0].field == 6 ? THEME_FG : THEME_BG;
     p = (win->w - 320) / 2;

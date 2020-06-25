@@ -134,57 +134,81 @@ void ui_box(ui_win_t *win, int x, int y, int w, int h, uint32_t l, uint32_t b, u
  */
 void ui_grid(ui_win_t *win, int w, int h)
 {
-    int sw, sh, p, i, j, k, tw = win->w - 20 - 76, th = win->h - 36 - 24;
+    int sw, sh, p, i, j, k, tw = ssfn_dst.w - 20, th = ssfn_dst.h - 36, ox, oy, px, py;
     uint32_t g = theme[THEME_DIM] & 0xFFFFFF;
     if(win->zoom < 1) {
         i = (tw > th) ? th : tw;
         k = (w > h) ? w : h;
         i = k > 0 ? i / k : 1;
         win->zoom = i > 1 ? i : 1;
-        if(win->zoom > 32) win->zoom = 32;
     }
-    if(win->zoom > 32) win->zoom = 32;
+    if(win->zoom > 64) win->zoom = 64;
     sw = w * win->zoom;
-    k = (tw - sw) / 2;
-    win->ox = k >= 0 ? k : 0;
     sh = h * win->zoom;
-    k = (th - sh) / 2;
-    win->oy = k >= 0 ? k : 0;
-    if(sw > tw) sw = tw;
-    if(sh > th) sh = th;
+    if(win->rc) {
+        win->zx = (tw - sw) / 2;
+        win->zy = (th - sh) / 2;
+    }
+    win->rc = 0;
+    ox = (win->zx > 0 ? win->zx : 0);
+    oy = (win->zy > 0 ? win->zy : 0);
+    px = (win->zx < 0 ? -win->zx : 0);
+    py = (win->zy < 0 ? -win->zy : 0);
+    j = win->zoom * 10; if(j > sw || j > sh) j = win->zoom * 5;
+    ui_box(win,20,27,tw,9,theme[THEME_BG],theme[THEME_BG],theme[THEME_BG]);
     if(sw > 0) {
-        j = win->zoom * 10; if(j > sw) j >>= 2;
-        for(p = 35 * win->p + win->ox + 20, i = 0; i < sw && win->ox + i < tw; i++) {
-            if(!i || i + 1 == sw || !((i + (win->sx * win->zoom)) % j))
+        for(p = 35 * win->p + ox + 20, i = 0; i + px < sw && ox + i < tw; i++) {
+            if(!((i + px) % j))
                 win->data[p - win->p - win->p + i] = win->data[p - win->p + i] = g;
             win->data[p + i] = g;
         }
     }
+    ui_box(win,0,36,20,th,theme[THEME_BG],theme[THEME_BG],theme[THEME_BG]);
     if(sh > 0) {
-        j = win->zoom * 10; if(j > sh) j >>= 2;
-        for(p = (36 + win->oy) * win->p + 19, i = 0; i < sh && win->oy + i < th; i++, p += win->p) {
-            if(!i || i + 1 == sh || !((i + (win->sx * win->zoom)) % j)) win->data[p - 2] = win->data[p - 1] = g;
+        for(p = (36 + oy) * win->p + 19, i = 0; i + py < sh && oy + i < th; i++, p += win->p) {
+            if(!((i + py) % j)) win->data[p - 2] = win->data[p - 1] = g;
             win->data[p] = g;
         }
     }
-    ui_number(win, win->ox + 7, 27, win->sx, g);
-    ui_number(win, win->ox + 7 + sw, 27, sw / win->zoom + win->sx, g);
-    ui_number(win, 0, win->oy + 34, win->sy, g);
-    ui_number(win, 0, win->oy + 33 + sh, sh / win->zoom + win->sy, g);
+    if(ox < ssfn_dst.w) ui_number(win, ox + 7, 27, px / win->zoom, g);
+    i = ox + 7 + sw - px; if(i > tw + 7) i = tw + 7;
+    if(i >= 20 && i < ssfn_dst.w) ui_number(win, i, 27, (px + i - ox - 7) / win->zoom, g);
+    ssfn_dst.h += 4;
+    i = oy + 33 - py + ctx.baseline * win->zoom; if(i > th + 33) i = th + 33;
+    if(i >= 33 && i < ssfn_dst.h - 6) ui_number(win, 0, i, ctx.baseline, theme[THEME_BASE]);
+    i = oy + 33 - py + ctx.underline * win->zoom; if(i > th + 33) i = th + 33;
+    if(i >= 33 && i < ssfn_dst.h - 6) ui_number(win, 0, i, ctx.underline, theme[THEME_UNDER]);
+    if(oy + 34 < ssfn_dst.h - 6) ui_number(win, 0, oy + 34, py / win->zoom, g);
+    i = oy + 33 + sh - py; if(i > th + 33) i = th + 33;
+    if(i >= 33 && i < ssfn_dst.h - 6) ui_number(win, 0, i, (py + i - oy - 33) / win->zoom, g);
+    ssfn_dst.h -= 4;
 }
 
 /**
  * Display grid background
  */
-void ui_gridbg(ui_win_t *win, int x, int y, int w, int h, int z, int p, uint32_t *d)
+void ui_gridbg(ui_win_t *win, int x, int y, int w, int h, int z, int a, int p, uint32_t *d)
 {
-    int i, j, l = y * p + x;
+    int i, j, k, px, py, l = y * p + x;
     uint32_t g = theme[THEME_GRID] & 0xFFFFFF, b = theme[THEME_DARKER] & 0xFFFFFF;
 
-    if(x < 0 || y < 0 || x >= ssfn_dst.w || y >= ssfn_dst.h || w < 1 || h < 1) return;
-    for(j=0; j < h && y + j < ssfn_dst.h; j++, l += p)
-        for(i=0; i < w && x + i < ssfn_dst.w; i++)
-            d[l + i] = !(j % z) || !(i % z) ? g : b;
+    if(x + w < 0 || y + h < 0 || x >= ssfn_dst.w || y >= ssfn_dst.h || w < 1 || h < 1) return;
+    if(!ctx.glyphs[win->unicode].adv_x && !ctx.glyphs[win->unicode].adv_y) a = 0;
+    px = (win->zx < 0 && a ? -win->zx : 0);
+    py = (win->zy < 0 && a ? -win->zy : 0);
+    for(j=0; j + py <= h && y + j < ssfn_dst.h; j++, l += p)
+        if(y + j >= 36)
+            for(i=0; i + px <= w && x + i < ssfn_dst.w; i++)
+                if(x + i >= 20) {
+                    k = (j + py) / z;
+                    if(a && ((!((j + py) % z) && !ctx.glyphs[win->unicode].adv_x && ctx.glyphs[win->unicode].adv_y == k)
+                        || (!((i + px) % z) && !ctx.glyphs[win->unicode].adv_y && (ctx.glyphs[win->unicode].rtl ?
+                        ctx.glyphs[win->unicode].width - ctx.glyphs[win->unicode].adv_x : ctx.glyphs[win->unicode].adv_x) ==
+                        (i + px) / z))) d[l + i] = theme[THEME_ADV];
+                    else if(j + py < h && i + px < w)
+                        d[l + i] = !((j + py) % z) ? (k == ctx.baseline ? theme[THEME_BASE] :
+                            (k == ctx.underline ? theme[THEME_UNDER] : g)) : (!((i + px) % z) ? g : b);
+                }
 }
 
 /**

@@ -132,4 +132,6 @@ void ui_glyph(ui_win_t *win, int x, int y, int size, int unicode, int layer)
  */
 void ui_edit(ui_win_t *win, int x, int y, int w, int h, int layer, int p, uint32_t *d)
 {
+    int i, j, k, first = 1;
+    if(win->unicode > 0x10FFFF) return;
 }

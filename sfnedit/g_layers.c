@@ -33,8 +33,11 @@
 #include "ui.h"
 #include "lang.h"
 
-extern int colorsel;
-int sellayers = 0, scrolllayers = 0, pagelayers = 0;
+extern int colorsel, mousex, mousey;
+int sellayers = 0, scrolllayers = 0, pagelayers = 0, isclick = 0;
+void ctrl_zoom_in(int idx, int mx, int my);
+void ctrl_zoom_out(int idx, int mx, int my);
+void ctrl_move(int idx, int mx, int my);
 
 /**
  * Layer editor window
@@ -46,12 +49,11 @@ void view_layers(int idx)
     uint32_t c;
 
     if(x < 0) x = 0;
-    ssfn_dst.w = x - 2;
-    ssfn_dst.h = win->h - 22;
+    ssfn_dst.w = x - 6;
+    ssfn_dst.h = win->h - 24;
     ui_grid(win, ctx.glyphs[win->unicode].width, ctx.glyphs[win->unicode].height);
-    ui_gridbg(win, 20 + win->ox, 36 + win->oy, win->zoom * ctx.glyphs[win->unicode].width,
-        win->zoom * ctx.glyphs[win->unicode].height, win->zoom, win->p, win->data);
-
+    ui_gridbg(win, 20 + (win->zx > 0 ? win->zx : 0), 36 + (win->zy > 0 ? win->zy : 0),
+        win->zoom * ctx.glyphs[win->unicode].width, win->zoom * ctx.glyphs[win->unicode].height, win->zoom, 1, win->p, win->data);
     ssfn_dst.w = win->w - 1;
     ssfn_dst.h = win->h - 20;
 
@@ -144,28 +146,40 @@ void ctrl_layers_onkey(int idx)
 void ctrl_layers_onbtnpress(int idx)
 {
     ui_win_t *win = &wins[idx];
-    int x = win->w - 74;
+    int x = win->w - 74, ox = win->zx > 0 ? win->zx : 0, oy = win->zy > 0 ? win->zy : 0;
     if(x < 0) x = 0;
-    selfield = -1;
-    if(event.y < 26) {
-        if(event.x > x && event.x < x + 24) selfield = 5; else
-        if(event.x > x + 24 && event.x < x + 48) selfield = 6; else
-        if(event.x > x + 48 && event.x < x + 64) selfield = 7; else
-        if(event.x > 144 && event.x < 166) selfield = 0; else
-        if(event.x > 168 && event.x < 190) selfield = 1; else
-        if(event.x > 198 && event.x < 220) selfield = 2; else
-        if(event.x > 224 && event.x < 246) selfield = 3; else
-        if(event.x > 248 && event.x < 270) selfield = 4;
+    selfield = mousex = mousey = -1;
+    if(event.x > x) {
+        if(event.y < 26) {
+            if(event.x > x && event.x < x + 24) selfield = 5; else
+            if(event.x > x + 24 && event.x < x + 48) selfield = 6; else
+            if(event.x > x + 48 && event.x < x + 64) selfield = 7; else
+            if(event.x > 144 && event.x < 166) selfield = 0; else
+            if(event.x > 168 && event.x < 190) selfield = 1; else
+            if(event.x > 198 && event.x < 220) selfield = 2; else
+            if(event.x > 224 && event.x < 246) selfield = 3; else
+            if(event.x > 248 && event.x < 270) selfield = 4;
+        } else
+        if(event.y > 26 && event.y < win->h - 42 && event.x > x && event.x < x + 70) {
+            if(event.w & 1) sellayers = (event.y - 28) / 64 + scrolllayers; else
+            if(event.w & (1 << 3)) scrolllayers--; else
+            if(event.w & (1 << 4)) scrolllayers++;
+        } else
+        if(event.y > win->h - 42 && event.x > x && sellayers < ctx.glyphs[win->unicode].numlayer) {
+            if(event.x > x && event.x < x + 24) selfield = 8; else
+            if(event.x > x + 24 && event.x < x + 48) selfield = 9; else
+            if(event.x > x + 48 && event.x < x + 72) selfield = 10;
+        }
     } else
-    if(event.y > 26 && event.y < win->h - 42 && event.x > x && event.x < x + 70) {
-        if(event.w & 1) sellayers = (event.y - 28) / 64 + scrolllayers; else
-        if(event.w & (1 << 3)) scrolllayers--; else
-        if(event.w & (1 << 4)) scrolllayers++;
-    } else
-    if(event.y > win->h - 42 && event.x > x && sellayers < ctx.glyphs[win->unicode].numlayer) {
-        if(event.x > x && event.x < x + 24) selfield = 8; else
-        if(event.x > x + 24 && event.x < x + 48) selfield = 9; else
-        if(event.x > x + 48 && event.x < x + 72) selfield = 10;
+    if(event.y < win->h - 22) {
+        if(event.w & (1 << 3)) ctrl_zoom_in(event.win, event.x, event.y); else
+        if(event.w & (1 << 4)) ctrl_zoom_out(event.win, event.x, event.y); else
+        if(event.x >= ox + 20 && event.y >= oy + 36 &&
+            event.x <= ox + 20 + win->zoom * ctx.glyphs[win->unicode].width &&
+            event.y <= oy + 36 + win->zoom * ctx.glyphs[win->unicode].height) {
+                mousex = event.x; mousey = event.y;
+                isclick = 1;
+        }
     }
 }
 
@@ -175,25 +189,33 @@ void ctrl_layers_onbtnpress(int idx)
 void ctrl_layers_onclick(int idx)
 {
     ui_win_t *win = &wins[idx];
-    int x = win->w - 74;
+    int x = win->w - 74, ox = win->zx > 0 ? win->zx : 0, oy = win->zy > 0 ? win->zy : 0;
     if(x < 0) x = 0;
-    if(event.y < 26) {
-        if(event.x > x && event.x < x + 24) selfield = 5; else
-        if(event.x > x + 24 && event.x < x + 48) selfield = 6; else
-        if(event.x > x + 48 && event.x < x + 64) selfield = 7; else
-        if(event.x > 144 && event.x < 166) selfield = 0; else
-        if(event.x > 168 && event.x < 190) selfield = 1; else
-        if(event.x > 198 && event.x < 220) selfield = 2; else
-        if(event.x > 224 && event.x < 246) selfield = 3; else
-        if(event.x > 248 && event.x < 270) selfield = 4;
+    if(event.x > x) {
+        if(event.y < 26) {
+            if(event.x > x && event.x < x + 24) selfield = 5; else
+            if(event.x > x + 24 && event.x < x + 48) selfield = 6; else
+            if(event.x > x + 48 && event.x < x + 64) selfield = 7; else
+            if(event.x > 144 && event.x < 166) selfield = 0; else
+            if(event.x > 168 && event.x < 190) selfield = 1; else
+            if(event.x > 198 && event.x < 220) selfield = 2; else
+            if(event.x > 224 && event.x < 246) selfield = 3; else
+            if(event.x > 248 && event.x < 270) selfield = 4;
+        } else
+        if(event.y > win->h - 42) {
+            if(event.x > x && event.x < x + 24 && selfield == 8) win->tool = GLYPH_TOOL_COLOR; else
+            if(event.x > x + 24 && event.x < x + 48 && selfield == 9) { colorsel = 0xFF; ctrl_colors_onenter(idx); } else
+            if(event.x > x + 48 && event.x < x + 72) selfield = 10;
+            win->field = -1;
+        }
     } else
-    if(event.y > win->h - 42 && event.x > x) {
-        if(event.x > x && event.x < x + 24 && selfield == 8) win->tool = GLYPH_TOOL_COLOR; else
-        if(event.x > x + 24 && event.x < x + 48 && selfield == 9) { colorsel = 0xFF; ctrl_colors_onenter(idx); } else
-        if(event.x > x + 48 && event.x < x + 72) selfield = 10;
-        win->field = -1;
+    if(isclick && event.x >= ox + 20 && event.y >= oy + 36 &&
+        event.x <= ox + 20 + win->zoom * ctx.glyphs[win->unicode].width &&
+        event.y <= oy + 36 + win->zoom * ctx.glyphs[win->unicode].height) {
+            printf("click\n");
     }
-    selfield = -1;
+    cursor = CURSOR_PTR; isclick = 0;
+    selfield = mousex = mousey = -1;
 }
 
 /**
@@ -202,24 +224,33 @@ void ctrl_layers_onclick(int idx)
 void ctrl_layers_onmove(int idx)
 {
     ui_win_t *win = &wins[idx];
-    int x = win->w - 74;
+    int x = win->w - 74, ox = win->zx > 0 ? win->zx : 0, oy = win->zy > 0 ? win->zy : 0;
     if(x < 0) x = 0;
-    posx = posy = -1;
-    if(event.y < 26) {
-        if(event.x > x && event.x < x + 24) status = lang[LAYERS_VECTOR]; else
-        if(event.x > x + 24 && event.x < x + 48) status = lang[LAYERS_BITMAP]; else
-        if(event.x > x + 48 && event.x < x + 64) status = lang[LAYERS_PIXMAP]; else
-        if(event.x > 144 && event.x < 166) status = lang[LAYERS_ZOOMOUT]; else
-        if(event.x > 168 && event.x < 190) status = lang[LAYERS_ZOOMIN]; else
-        if(event.x > 198 && event.x < 220) status = lang[LAYERS_CUT]; else
-        if(event.x > 224 && event.x < 246) status = lang[LAYERS_COPY]; else
-        if(event.x > 248 && event.x < 270) status = lang[LAYERS_PASTE];
+    posx = posy = -1; isclick = 0;
+    if(event.x > x) {
+        if(event.y < 26) {
+            if(event.x > x && event.x < x + 24) status = lang[LAYERS_VECTOR]; else
+            if(event.x > x + 24 && event.x < x + 48) status = lang[LAYERS_BITMAP]; else
+            if(event.x > x + 48 && event.x < x + 64) status = lang[LAYERS_PIXMAP]; else
+            if(event.x > 144 && event.x < 166) status = lang[LAYERS_ZOOMOUT]; else
+            if(event.x > 168 && event.x < 190) status = lang[LAYERS_ZOOMIN]; else
+            if(event.x > 198 && event.x < 220) status = lang[LAYERS_CUT]; else
+            if(event.x > 224 && event.x < 246) status = lang[LAYERS_COPY]; else
+            if(event.x > 248 && event.x < 270) status = lang[LAYERS_PASTE];
+        } else
+        if(event.y > win->h - 42) {
+            if(event.x > x && event.x < x + 24) status = lang[LAYERS_FOREGROUND]; else
+            if(event.x > x + 24 && event.x < x + 48) status = lang[LAYERS_BACKGROUND]; else
+            if(event.x > x + 48 && event.x < x + 72) status = lang[LAYERS_DELETE];
+        }
     } else
-    if(event.y > win->h - 42 && event.x > x) {
-        if(event.x > x && event.x < x + 24) status = lang[LAYERS_FOREGROUND]; else
-        if(event.x > x + 24 && event.x < x + 48) status = lang[LAYERS_BACKGROUND]; else
-        if(event.x > x + 48 && event.x < x + 72) status = lang[LAYERS_DELETE];
-    } else {
-        posx = event.x - 16; posy = event.y - 26 - 8;
+    if(event.x >= ox + 20 && event.y >= oy + 36 &&
+        event.x <= ox + 20 + win->zoom * ctx.glyphs[win->unicode].width &&
+        event.y <= oy + 36 + win->zoom * ctx.glyphs[win->unicode].height && event.y < win->h - 22) {
+            if(mousex != -1 && mousey != -1) ctrl_move(event.win, event.x, event.y);
+            posx = (event.x - ox - 20 - (win->zx < 0 ? win->zx : 0)) / win->zoom;
+            if(posx >= ctx.glyphs[win->unicode].width) posx = -1;
+            posy = (event.y - oy - 36 - (win->zy < 0 ? win->zy : 0)) / win->zoom;
+            if(posy >= ctx.glyphs[win->unicode].height) posy = -1;
     }
 }

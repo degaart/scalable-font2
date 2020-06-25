@@ -35,7 +35,7 @@
 #include "lang.h"
 
 int showallrange = 0, numranges = 0, scrollranges = 0, pageranges = 0, selranges = 0, clkranges = -1, rres[UNICODE_NUMBLOCKS];
-char rsearch[32] = { 0 };
+char rsearch[32] = { 0 }, rstat[64];
 extern int scrollglyphs, selstart, selend, greset;
 
 /**
@@ -192,4 +192,11 @@ void ctrl_ranges_onbtnpress()
     } else wins[0].field = -1;
     ui_resizewin(&wins[0], wins[0].w, wins[0].h);
     ui_refreshwin(0, 0, 0, wins[0].w, wins[0].h);
+}
+
+/**
+ * On mouse move handler
+ */
+void ctrl_ranges_onmove()
+{
 }

@@ -33,6 +33,8 @@
 #include "ui.h"
 #include "lang.h"
 
+int mousex = -1, mousey = -1;
+
 /**
  * Glyph coordinates and dimensions window
  */
@@ -43,12 +45,11 @@ void view_coords(int idx)
     char *u, s[48];
 
     if(x < 0) x = 0;
-    ssfn_dst.w = x - 2;
-    ssfn_dst.h = win->h - 22;
+    ssfn_dst.w = x - 6;
+    ssfn_dst.h = win->h - 24;
     ui_grid(win, ctx.glyphs[win->unicode].width, ctx.glyphs[win->unicode].height);
-    ui_gridbg(win, 20 + win->ox, 36 + win->oy, win->zoom * ctx.glyphs[win->unicode].width,
-        win->zoom * ctx.glyphs[win->unicode].height, win->zoom, win->p, win->data);
-
+    ui_gridbg(win, 20 + (win->zx > 0 ? win->zx : 0), 36 + (win->zy > 0 ? win->zy : 0),
+        win->zoom * ctx.glyphs[win->unicode].width, win->zoom * ctx.glyphs[win->unicode].height, win->zoom, 1, win->p, win->data);
     ssfn_dst.w = win->w - 1;
     ssfn_dst.h = win->h - 20;
 
@@ -145,24 +146,109 @@ void view_coords(int idx)
 }
 
 /**
+ * Zoom in at mouse coordinates
+ */
+void ctrl_zoom_in(int idx, int mx, int my)
+{
+    ui_win_t *win = &wins[idx];
+    if(win->zoom >= 64) { win->zoom = 64; return; }
+    win->zoom++;
+    if(posx == -1 || posy == -1) win->rc = 1;
+    else {
+        win->zx = mx - 20 - posx * win->zoom - win->zoom / 2;
+        win->zy = my - 36 - posy * win->zoom - win->zoom / 2;
+    }
+    ui_resizewin(win, win->w, win->h);
+    ui_refreshwin(event.win, 0, 0, win->w, win->h);
+}
+
+/**
+ * Zoom out at mouse coordinates
+ */
+void ctrl_zoom_out(int idx, int mx, int my)
+{
+    ui_win_t *win = &wins[idx];
+    if(win->zoom <= 1) { win->zoom = 1; return; }
+    win->zoom--;
+    if(posx == -1 || posy == -1) win->rc = 1;
+    else {
+        win->zx = mx - 20 - posx * win->zoom - win->zoom / 2;
+        win->zy = my - 36 - posy * win->zoom - win->zoom / 2;
+    }
+    ui_resizewin(win, win->w, win->h);
+    ui_refreshwin(event.win, 0, 0, win->w, win->h);
+}
+
+/**
+ * Move glyph around
+ */
+void ctrl_move(int idx, int mx, int my)
+{
+    ui_win_t *win = &wins[idx];
+    if(mousex == -1 && mousey == -1) return;
+    win->zx += mx - mousex; mousex = mx;
+    win->zy += my - mousey; mousey = my;
+    cursor = CURSOR_MOVE;
+    ui_resizewin(win, win->w, win->h);
+    ui_refreshwin(event.win, 0, 0, win->w, win->h - 24);
+}
+
+/**
  * Set glyph's size
  */
 void ctrl_setsize(int idx, int dw, int dh)
 {
     ui_win_t *win = &wins[idx];
     int w = ctx.glyphs[win->unicode].width, h = ctx.glyphs[win->unicode].height;
-    if(ctx.glyphs[win->unicode].width + dw > 0 && ctx.glyphs[win->unicode].width + dw < 254)
+    if(ctx.glyphs[win->unicode].width + dw >= 0 && ctx.glyphs[win->unicode].width + dw <= 254)
         ctx.glyphs[win->unicode].width += dw;
-    if(ctx.glyphs[win->unicode].height + dh > 0 && ctx.glyphs[win->unicode].height + dh < 254)
+    if(ctx.glyphs[win->unicode].height + dh >= 0 && ctx.glyphs[win->unicode].height + dh <= 254)
         ctx.glyphs[win->unicode].height += dh;
     if(ctx.glyphs[win->unicode].width != w || ctx.glyphs[win->unicode].height != h) {
     }
+    win->rc = 1;
+    ui_resizewin(win, win->w, win->h);
+    ui_refreshwin(event.win, 0, 0, win->w, win->h - 24);
 }
 
 /**
  * Position glyph
  */
 void ctrl_pos(int idx, int dx, int dy)
+{
+    ui_win_t *win = &wins[idx];
+}
+
+/**
+ * Italize glyph
+ */
+void ctrl_italize(int idx)
+{
+    ui_win_t *win = &wins[idx];
+    win->rc = 1;
+}
+
+/**
+ * Deitalize glyph
+ */
+void ctrl_deitalize(int idx)
+{
+    ui_win_t *win = &wins[idx];
+    win->rc = 1;
+}
+
+/**
+ * Flip glyph horizontally
+ */
+void ctrl_fliph(int idx)
+{
+    ui_win_t *win = &wins[idx];
+}
+
+/**
+ * Flip glyph vertically
+ */
+void ctrl_flipv(int idx)
 {
     ui_win_t *win = &wins[idx];
 }
@@ -191,9 +277,9 @@ void ctrl_coords_onkey(int idx)
 void ctrl_coords_onbtnpress(int idx)
 {
     ui_win_t *win = &wins[idx];
-    int x = win->w - 74;
+    int x = win->w - 74, ox = win->zx > 0 ? win->zx : 0, oy = win->zy > 0 ? win->zy : 0;
     if(x < 0) x = 0;
-    selfield = -1;
+    selfield = mousex = mousey = -1;
     if(event.x > x) {
         if(event.y > 26 && event.y < 48) {
             if(event.w & (1 << 3)) ctrl_setsize(idx, 1, 0); else
@@ -250,6 +336,15 @@ void ctrl_coords_onbtnpress(int idx)
             if(event.x > x && event.x < x + 24) selfield = 24; else
             if(event.x > x + 24 && event.x < x + 48) selfield = 25; else
             if(event.x > x + 48 && event.x < x + 72) selfield = 26;
+        }
+    } else
+    if(event.y < win->h - 22) {
+        if(event.w & (1 << 3)) ctrl_zoom_in(event.win, event.x, event.y); else
+        if(event.w & (1 << 4)) ctrl_zoom_out(event.win, event.x, event.y); else
+        if(event.x >= ox + 20 && event.y >= oy + 36 &&
+            event.x <= ox + 20 + win->zoom * ctx.glyphs[win->unicode].width &&
+            event.y <= oy + 36 + win->zoom * ctx.glyphs[win->unicode].height) {
+                mousex = event.x; mousey = event.y;
         }
     }
 }
@@ -316,17 +411,18 @@ void ctrl_coords_onclick(int idx)
         } else
         if(event.y > 298 && event.y < 340 && event.x > x + 24 && event.x < x + 48 && selfield == 20) ctrl_pos(idx, 0, 1); else
         if(event.y > 342 && event.y < 364) {
-            if(event.x > x && event.x < x + 24 && selfield == 21) {} else
-            if(event.x > x + 24 && event.x < x + 48 && selfield == 22) {} else
-            if(event.x > x + 48 && event.x < x + 72 && selfield == 23) {}
+            if(event.x > x && event.x < x + 24 && selfield == 21) ctrl_italize(idx); else
+            if(event.x > x + 24 && event.x < x + 48 && selfield == 22) ctrl_fliph(idx); else
+            if(event.x > x + 48 && event.x < x + 72 && selfield == 23) { sfn_sanitize(win->unicode); win->rc = 1; }
         } else
         if(event.y > 366 && event.y < 388) {
-            if(event.x > x && event.x < x + 24 && selfield == 24) {} else
-            if(event.x > x + 24 && event.x < x + 48 && selfield == 25) {} else
-            if(event.x > x + 48 && event.x < x + 72 && selfield == 26) sfn_chardel(win->unicode);
+            if(event.x > x && event.x < x + 24 && selfield == 24) ctrl_deitalize(idx); else
+            if(event.x > x + 24 && event.x < x + 48 && selfield == 25) ctrl_flipv(idx); else
+            if(event.x > x + 48 && event.x < x + 72 && selfield == 26) { sfn_chardel(win->unicode); win->rc = 1; }
         }
     }
-    selfield = -1;
+    cursor = CURSOR_PTR;
+    selfield = mousex = mousey = -1;
 }
 
 /**
@@ -335,7 +431,7 @@ void ctrl_coords_onclick(int idx)
 void ctrl_coords_onmove(int idx)
 {
     ui_win_t *win = &wins[idx];
-    int x = win->w - 74;
+    int x = win->w - 74, ox = win->zx > 0 ? win->zx : 0, oy = win->zy > 0 ? win->zy : 0;
     if(x < 0) x = 0;
     posx = posy = -1;
     if(event.x > x) {
@@ -362,7 +458,14 @@ void ctrl_coords_onmove(int idx)
             if(event.x > x + 24 && event.x < x + 48) status = lang[COORDS_VFLIP]; else
             if(event.x > x + 48 && event.x < x + 72) status = lang[COORDS_DELETE];
         }
-    } else {
-        posx = event.x - 16; posy = event.y - 26 - 8;
+    } else
+    if(event.x >= ox + 20 && event.y >= oy + 36 &&
+        event.x <= ox + 20 + win->zoom * ctx.glyphs[win->unicode].width &&
+        event.y <= oy + 36 + win->zoom * ctx.glyphs[win->unicode].height && event.y < win->h - 22) {
+            if(mousex != -1 && mousey != -1) ctrl_move(event.win, event.x, event.y);
+            posx = (event.x - ox - 20 - (win->zx < 0 ? win->zx : 0)) / win->zoom;
+            if(posx >= ctx.glyphs[win->unicode].width) posx = -1;
+            posy = (event.y - oy - 36 - (win->zy < 0 ? win->zy : 0)) / win->zoom;
+            if(posy >= ctx.glyphs[win->unicode].height) posy = -1;
     }
 }

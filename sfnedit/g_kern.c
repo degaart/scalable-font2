@@ -36,6 +36,10 @@
 
 char ksearch[32] = { 0 };
 int selkern = 0, scrollkern = 0, pagekern = 0;
+extern int mousex, mousey, isclick;
+void ctrl_zoom_in(int idx, int mx, int my);
+void ctrl_zoom_out(int idx, int mx, int my);
+void ctrl_move(int idx, int mx, int my);
 
 /**
  * Kerning window
@@ -43,12 +47,26 @@ int selkern = 0, scrollkern = 0, pagekern = 0;
 void view_kern(int idx)
 {
     ui_win_t *win = &wins[idx];
-    int i, x = win->w - 74;
+    int i, x = win->w - 74, ox = win->zx > 0 ? win->zx : 0, oy = win->zy > 0 ? win->zy : 0;
+    int px = win->zx < 0 ? -win->zx : 0, py = win->zy < 0 ? -win->zy : 0;
     char st[8];
     uint32_t c;
 
     if(x < 0) x = 0;
+    ssfn_dst.w = x - 6;
+    ssfn_dst.h = win->h - 24;
+    ui_grid(win, ctx.glyphs[win->unicode].width, ctx.glyphs[win->unicode].height);
+    if(!ctx.glyphs[win->unicode].adv_y) {
+        ui_gridbg(win, 20 + ox + (ctx.glyphs[win->unicode].rtl ? -1 : 1)* (win->zoom * ctx.glyphs[win->unicode].width) - px,
+            36 + oy - py, win->zoom * ctx.width, win->zoom * ctx.height, win->zoom, 0, win->p, win->data);
+    } else if(!ctx.glyphs[win->unicode].adv_x) {
+        ui_gridbg(win, 20 + ox - px, 36 + oy + win->zoom * ctx.glyphs[win->unicode].height - py,
+            win->zoom * ctx.width, win->zoom * ctx.height, win->zoom, 0, win->p, win->data);
+    }
+    ui_gridbg(win, 20 + ox, 36 + oy,
+        win->zoom * ctx.glyphs[win->unicode].width, win->zoom * ctx.glyphs[win->unicode].height, win->zoom, 1, win->p, win->data);
     ssfn_dst.w = win->w - 1;
+    ssfn_dst.h = win->h - 20;
 
     ui_icon(win, win->w - 130 - 16, 4, ICON_SEARCH, 0);
     ui_input(win, win->w - 128, 2, 120, ksearch, win->field == 4, 31, 0);
@@ -137,19 +155,31 @@ void ctrl_kern_onkey(int idx)
 void ctrl_kern_onbtnpress(int idx)
 {
     ui_win_t *win = &wins[idx];
-    int x = win->w - 74;
+    int x = win->w - 74, ox = win->zx > 0 ? win->zx : 0, oy = win->zy > 0 ? win->zy : 0;
     if(x < 0) x = 0;
-    selfield = win->field = -1;
-    if(event.y < 26 && event.x > win->w - 130 - 16) win->field = 4;
-    if(event.y > 26 && event.y < win->h - 44 && event.x > x && event.x < x + 70) {
-        if(event.w & 1) selkern = (event.y - 31) / 22 + scrollkern; else
-        if(event.w & (1 << 3)) scrollkern--; else
-        if(event.w & (1 << 4)) scrollkern++;
+    selfield = win->field = mousex = mousey = -1;
+    if(event.y < 26 && event.x > win->w - 130 - 16) win->field = 4; else
+    if(event.x > x) {
+        if(event.y > 26 && event.y < win->h - 44 && event.x > x && event.x < x + 70) {
+            if(event.w & 1) selkern = (event.y - 31) / 22 + scrollkern; else
+            if(event.w & (1 << 3)) scrollkern--; else
+            if(event.w & (1 << 4)) scrollkern++;
+        } else
+        if(event.y > win->h - 42 && event.x > x) {
+            if(event.x > x && event.x < x + 24 && ctx.glyphs[win->unicode].adv_y < 1) selfield = 0; else
+            if(event.x > x + 24 && event.x < x + 48 && ctx.glyphs[win->unicode].adv_y < 1) selfield = 1; else
+            if(event.x > x + 48 && event.x < x + 72 && ctx.glyphs[win->unicode].numkern) selfield = 2;
+        }
     } else
-    if(event.y > win->h - 42 && event.x > x) {
-        if(event.x > x && event.x < x + 24 && ctx.glyphs[win->unicode].adv_y < 1) selfield = 0; else
-        if(event.x > x + 24 && event.x < x + 48 && ctx.glyphs[win->unicode].adv_y < 1) selfield = 1; else
-        if(event.x > x + 48 && event.x < x + 72 && ctx.glyphs[win->unicode].numkern) selfield = 2;
+    if(event.y < win->h - 22) {
+        if(event.w & (1 << 3)) ctrl_zoom_in(event.win, event.x, event.y); else
+        if(event.w & (1 << 4)) ctrl_zoom_out(event.win, event.x, event.y); else
+        if(event.x >= ox + 20 && event.y >= oy + 36 &&
+            event.x <= ox + 20 + win->zoom * ctx.glyphs[win->unicode].width &&
+            event.y <= oy + 36 + win->zoom * ctx.glyphs[win->unicode].height) {
+                mousex = event.x; mousey = event.y;
+                isclick = 1;
+        }
     }
 }
 
@@ -159,18 +189,26 @@ void ctrl_kern_onbtnpress(int idx)
 void ctrl_kern_onclick(int idx)
 {
     ui_win_t *win = &wins[idx];
-    int x = win->w - 74;
+    int x = win->w - 74, ox = win->zx > 0 ? win->zx : 0, oy = win->zy > 0 ? win->zy : 0;
     if(x < 0) x = 0;
     if(event.y < 26 && event.x > win->w - 130 - 16) win->field = 4; else
-    if(event.y > win->h - 42 && event.x > x) {
-        if(event.x > x && event.x < x + 24 && selfield == 0) { win->field = 6; ctrl_kern_onenter(idx); } else
-        if(event.x > x + 24 && event.x < x + 48 && selfield == 1) { win->field = 7; ctrl_kern_onenter(idx); } else
-        if(event.x > x + 48 && event.x < x + 72 && ctx.glyphs[win->unicode].numkern && selfield == 2) {
-            win->field = 8; ctrl_kern_onenter(idx);
+    if(event.x > x) {
+        if(event.y > win->h - 42 && event.x > x) {
+            if(event.x > x && event.x < x + 24 && selfield == 0) { win->field = 6; ctrl_kern_onenter(idx); } else
+            if(event.x > x + 24 && event.x < x + 48 && selfield == 1) { win->field = 7; ctrl_kern_onenter(idx); } else
+            if(event.x > x + 48 && event.x < x + 72 && ctx.glyphs[win->unicode].numkern && selfield == 2) {
+                win->field = 8; ctrl_kern_onenter(idx);
+            }
+            win->field = -1;
         }
-        win->field = -1;
+    } else
+    if(isclick && event.x >= ox + 20 && event.y >= oy + 36 &&
+        event.x <= ox + 20 + win->zoom * ctx.glyphs[win->unicode].width &&
+        event.y <= oy + 36 + win->zoom * ctx.glyphs[win->unicode].height && posx != -1 && posy != -1) {
+            printf("click\n");
     }
-    selfield = -1;
+    cursor = CURSOR_PTR; isclick = 0;
+    selfield = mousex = mousey = -1;
 }
 
 /**
@@ -179,11 +217,23 @@ void ctrl_kern_onclick(int idx)
 void ctrl_kern_onmove(int idx)
 {
     ui_win_t *win = &wins[idx];
-    int x = win->w - 74;
+    int x = win->w - 74, ox = win->zx > 0 ? win->zx : 0, oy = win->zy > 0 ? win->zy : 0;
     if(x < 0) x = 0;
-    if(event.y > win->h - 42 && event.x > x) {
-        if(event.x > x && event.x < x + 24) status = lang[COORDS_RTL]; else
-        if(event.x > x + 24 && event.x < x + 48) status = lang[COORDS_LTR]; else
-        if(event.x > x + 48 && event.x < x + 72) status = lang[KERN_DELETE];
+    posx = posy = -1; isclick = 0;
+    if(event.x > x) {
+        if(event.y > win->h - 42) {
+            if(event.x > x && event.x < x + 24) status = lang[COORDS_RTL]; else
+            if(event.x > x + 24 && event.x < x + 48) status = lang[COORDS_LTR]; else
+            if(event.x > x + 48 && event.x < x + 72) status = lang[KERN_DELETE];
+        }
+    } else
+    if(event.x >= ox + 20 && event.y >= oy + 36 &&
+        event.x <= ox + 20 + win->zoom * ctx.glyphs[win->unicode].width &&
+        event.y <= oy + 36 + win->zoom * ctx.glyphs[win->unicode].height && event.y < win->h - 22) {
+            if(mousex != -1 && mousey != -1) ctrl_move(event.win, event.x, event.y);
+            posx = (event.x - ox - 20 - (win->zx < 0 ? win->zx : 0)) / win->zoom;
+            if(posx >= ctx.glyphs[win->unicode].width) posx = -1;
+            posy = (event.y - oy - 36 - (win->zy < 0 ? win->zy : 0)) / win->zoom;
+            if(posy >= ctx.glyphs[win->unicode].height) posy = -1;
     }
 }

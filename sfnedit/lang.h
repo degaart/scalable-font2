@@ -52,6 +52,7 @@ enum {
     STAT_VECTORIZE,
     STAT_COPY,
     /* copyright text */
+    HELP,
     HELPSTR,
     CPYRGT_0,
     CPYRGT_1,
@@ -73,6 +74,7 @@ enum {
     GTOOL_MEASURES,
     GTOOL_LAYERS,
     GTOOL_KERN,
+    GTOOL_COLOR,
     /* file operations */
     FILEOP_NAME,
     FILEOP_SIZE,
@@ -161,6 +163,19 @@ enum {
     KERN_DELETE,
     /* colors */
     COLORS_SET,
+    /* help strings */
+    WHELP_MWIN,
+    WHELP_GWIN,
+    MHELP_ABOUT,
+    MHELP_LOAD,
+    MHELP_SAVE,
+    MHELP_PROPS,
+    MHELP_RANGES,
+    MHELP_GLYPHS,
+    GHELP_MEASURES,
+    GHELP_LAYERS,
+    GHELP_KERN,
+    GHELP_COLOR,
     /* must be the last */
     NUMTEXTS
 };
