@@ -756,7 +756,7 @@ static int _ssfn__parse_zlib(_ssfn__zbuf *a)
    return 1;
 }
 
-static char *_ssfn_zlib_decode(const char *buffer)
+char *_ssfn_zlib_decode(const char *buffer)
 {
    _ssfn__zbuf a;
    char *p = (char *) SSFN_realloc(NULL, 8);
@@ -790,8 +790,7 @@ int ssfn_load(ssfn_t *ctx, const void *data)
     ssfn_font_t *fnt, *end;
     int family;
 #ifndef SSFN_MAXLINES
-    uint8_t c, *ptr = (uint8_t *)font;
-    int r;
+    uint8_t c, r, *ptr = (uint8_t *)font;
 #endif
     if(!ctx || !font)
         return SSFN_ERR_INVINP;
@@ -1134,7 +1133,7 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
                                     x >>= SSFN_PREC;
                                     if(ci) x += (h - b) / SSFN_ITALIC_DIV;
                                     if(cb && !o) {
-                                        if(ctx->g->data[B + x] == 0xFF) { o = -cb; A = cb; }
+                                        if(ctx->g->data[B + x] != color) { o = -cb; A = cb; }
                                         else { o = cb; A = -cb; }
                                     }
                                     for(k = 0; k < nr && x > r[k]; k++);
@@ -1152,7 +1151,7 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
                                 if(m > p) m = p;
                                 if(i > 0 && l < r[i - 1] + A) l = r[i - 1] + A;
                                 for(; l < m; l++)
-                                    ctx->g->data[B + l] = ctx->g->data[B + l] == 0xFF ? color : 0xFF;
+                                    ctx->g->data[B + l] = ctx->g->data[B + l] == color ? 0xFF : color;
                             }
                         }
                     }

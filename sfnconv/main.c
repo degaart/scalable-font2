@@ -31,12 +31,10 @@
 #include <string.h>
 #include <stdio.h>
 #include "libsfn.h"
-#include "ssfn.h"
-#if HAS_ZLIB
-# include <zlib.h>
-#endif
+#include "zlib.h"
 
 int zip = 1, ascii = 0, dump = 0, quiet = 0, lastpercent = 100;
+char *_ssfn_zlib_decode(const char *buffer);
 
 /**
  * Load a (compressed) file
@@ -44,41 +42,44 @@ int zip = 1, ascii = 0, dump = 0, quiet = 0, lastpercent = 100;
 ssfn_font_t *load_file(char *infile, int *size)
 {
     ssfn_font_t *data = NULL;
-    long int origsize = 0;
+    long int origsize = 0, fsize;
     FILE *f;
-#if HAS_ZLIB
-    unsigned char hdr[2];
-    gzFile g;
+#ifndef SSFN_MAXLINES
+    uint8_t c, r, *ptr;
 #endif
 
+    *size = 0;
     f = fopen(infile,"rb");
-    if(!f) { fprintf(stderr,"sfnconv: unable to load '%s'\n", infile); exit(3); }
-#if HAS_ZLIB
-    fread(&hdr, 2, 1, f);
-    if(hdr[0]==0x1f && hdr[1]==0x8b) {
-        fseek(f, -4L, SEEK_END);
-        fread(&origsize, 4, 1, f);
-    } else {
-        fseek(f, 0, SEEK_END);
-        origsize = ftell(f);
+    if(!f) {
+badfile: fprintf(stderr,"sfnconv: unable to load '%s'\n", infile); exit(3);
     }
-    fclose(f);
-    g = gzopen(infile,"r");
-#else
-    fseek(f, 0, SEEK_END);
-    origsize = ftell(f);
+    fseek(f, -4L, SEEK_END);
+    fread(&origsize, 4, 1, f);
+    fsize = ftell(f);
     fseek(f, 0, SEEK_SET);
-#endif
-    data = (ssfn_font_t*)malloc(origsize);
+    data = (ssfn_font_t*)malloc(fsize+1);
     if(!data) { fprintf(stderr,"sfnconv: memory allocation error\n"); exit(2); }
-#if HAS_ZLIB
-    gzread(g, data, origsize);
-    gzclose(g);
-#else
-    fread(data, origsize, 1, f);
+    fread(data, fsize, 1, f);
+    ((uint8_t*)data)[fsize] = 0;
     fclose(f);
+    if(((uint8_t *)data)[0] == 0x1f && ((uint8_t *)data)[1] == 0x8b) {
+#ifdef SSFN_MAXLINES
+        goto badfile;
+#else
+        ptr = (uint8_t*)data + 2;
+        data = (ssfn_font_t*)malloc(origsize);
+        if(!data) { fprintf(stderr,"sfnconv: memory allocation error\n"); exit(2); }
+        if(*ptr++ != 8) goto badfile;
+        c = *ptr++; ptr += 6;
+        if(c & 4) { r = *ptr++; r += (*ptr++ << 8); ptr += r; }
+        if(c & 8) { while(*ptr++ != 0); }
+        if(c & 16) { while(*ptr++ != 0); }
+        data = (ssfn_font_t*)_ssfn_zlib_decode((const char*)ptr);
+        if(!data) goto badfile;
+        *size = origsize;
 #endif
-    *size = origsize;
+    } else
+        *size = fsize;
     return data;
 }
 
@@ -88,24 +89,35 @@ ssfn_font_t *load_file(char *infile, int *size)
 void save_file(char *outfile, ssfn_font_t *font)
 {
     FILE *f;
-#if HAS_ZLIB
-    gzFile g;
-#endif
+    uint32_t crc;
+    z_stream stream;
+    unsigned char *buf = (unsigned char*)font;
+    unsigned long int size = font->size;
 
-#if HAS_ZLIB
     if(zip) {
-        g = gzopen(outfile, "wb");
-        if(!g) { fprintf(stderr, "sfnconv: unable to write '%s'\n", outfile); exit(4); }
-        gzwrite(g, font, font->size);
-        gzclose(g);
-    } else
-#endif
-    {
-        f = fopen(outfile, "wb");
-        if(!f) { fprintf(stderr, "sfnconv: unable to write '%s'\n", outfile); exit(4); }
-        fwrite(font, font->size, 1, f);
-        fclose(f);
+        stream.avail_out = compressBound(font->size) + 16;
+        buf = malloc(stream.avail_out);
+        if(!buf) { fprintf(stderr,"sfnconv: memory allocation error\n"); return; }
+        stream.zalloc = (alloc_func)0;
+        stream.zfree = (free_func)0;
+        stream.opaque = (voidpf)0;
+        if(deflateInit(&stream, 9) != Z_OK) { fprintf(stderr,"sfnconv: deflate error\n"); return; }
+        stream.next_out = (z_const Bytef *)buf + 8;
+        stream.avail_in = font->size;
+        stream.next_in = (z_const Bytef *)font;
+        crc = crc32(0, stream.next_in, stream.avail_in);
+        deflate(&stream, Z_FINISH);
+        memset(buf, 0, 10);
+        buf[0] = 0x1f; buf[1] = 0x8b; buf[2] = 0x8; buf[9] = 3;
+        memcpy(buf + 8 + stream.total_out, &crc, 4);
+        memcpy(buf + 12 + stream.total_out, &font->size, 4);
+        size = stream.total_out + 16;
     }
+    f = fopen(outfile, "wb");
+    if(!f) { fprintf(stderr, "sfnconv: unable to write '%s'\n", outfile); exit(4); }
+    fwrite(buf, size, 1, f);
+    fclose(f);
+    if(buf != (unsigned char*)font) free(buf);
 }
 
 /**
@@ -115,10 +127,7 @@ void usage()
 {
     printf("Scalable Screen Font 2.0 by bzt Copyright (C) 2020 MIT license\n"
            " https://gitlab.com/bztsrc/scalable-font2\n\n"
-           "./sfnconv [-c|-e|-d|-dd|-dd...|-D] [-C] "
-#if HAS_ZLIB
-            "[-U] "
-#endif
+           "./sfnconv [-c|-e|-d|-dd|-dd...|-D] [-C] [-U] "
            "[-A] [-R] [-B <size>|-V] [-g]\n   [-b <p>] [-u <+p>] [-a <+p>] [-o] [-q] [-S <U+xxx>] [-E] [-t [b][i]<0..4>]");
     printf("\n   [-n <name>] [-f <family>] [-s <subfamily>] [-v <ver>] [-m <manufacturer>] "
            "\n   [-l <license>] [-r <from> <to>] <in> [ [-r <from> <to>] <in> ...] <out>\n\n"
@@ -127,9 +136,7 @@ void usage()
            " -d:  dump font (-d = header, -dd = string table, -ddd = fragments etc.)\n"
            " -D:  dump all tables in the font\n"
            " -C:  UNICODE range coverage report\n"
-#if HAS_ZLIB
            " -U:  save uncompressed, non-gzipped output\n"
-#endif
            " -A:  output SSFN ASCII\n"
            " -R:  replace characters from new files\n");
     printf(" -B:  rasterize vector fonts to bitmaps\n"
@@ -161,19 +168,12 @@ void usage()
            ",PSF2,PCF,BDF,SFD,HEX,TGA,PNG"
 #endif
            "*\n"
-           " out: output SSFN/ASC filename"
-#if HAS_ZLIB
-           "**"
-#endif
-           "\n\n*  - input files can be gzip compressed"
+           " out: output SSFN/ASC filename**\n\n"
+           "*  - input files can be gzip compressed"
 #ifndef USE_NOFOREIGN
            ", like .psfu.gz, .bdf.gz or .hex.gz"
 #endif
-           "\n"
-#if HAS_ZLIB
-           "** - output file will be gzip compressed by default (use -U to avoid)\n"
-#endif
-           "\n"
+           "\n** - output file will be gzip compressed by default (use -U to avoid)\n\n"
         );
     exit(1);
 }
@@ -218,10 +218,8 @@ int main(int argc, char **argv)
         /* create collection */
         if(argc<5) usage();
         i = 2;
-#if HAS_ZLIB
         for(; i<argc && argv[i][0] == '-'; i++)
             if(argv[i][0] == '-' && argv[i][1] == 'U') zip = 0;
-#endif
         for(; i + 1 < argc; i++) {
             font = load_file(argv[i], &size);
             if(memcmp(font->magic, SSFN_MAGIC, 4)) {
@@ -244,10 +242,8 @@ int main(int argc, char **argv)
     if(argv[1][0] == '-' && argv[1][1] == 'e') {
         /* extract collection */
         i = 2; j = 0;
-#if HAS_ZLIB
         for(; i<argc && argv[i][0] == '-'; i++)
             if(argv[i][0] == '-' && argv[i][1] == 'U') zip = 0;
-#endif
         font = load_file(argv[i], &size);
         if(memcmp(font->magic, SSFN_COLLECTION, 4)) {
             fprintf(stderr, "sfnconv: not an SSFN font collection '%s'\n", argv[i]);

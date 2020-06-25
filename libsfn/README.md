@@ -9,13 +9,9 @@ for more details.
 Heavily stripped down versions of the required libraries are linked statically by default. These include:
 
 - potrace to convert bitmap fonts to scalable vector fonts
+- zlib for compressing fonts on-the-fly (uncompression is implemented in ssfn.h)
 - libimagequant to quantize truecolor pixel fonts
 - freetype2 to import TTF / OTF / WOFF / PS Type 1 / PS Type 42 etc.
-
-Other dependencies are linked dynamically, and are automatically detected by the build system.
-
-- zlib for compressing fonts on-the-fly (uncompression is working regardless)
-- libm both potrace and libimagequant depends on it (mostly for sqrt() and pow())
 
 Compilation
 -----------

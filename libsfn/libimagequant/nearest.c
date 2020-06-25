@@ -98,7 +98,7 @@ static vp_node *vp_create_node(mempoolptr *m, vp_sort_tmp indexes[], int num_ind
     *node = (vp_node){
         .vantage_point = items[ref_idx].acolor,
         .idx = ref_idx,
-        .radius = sqrtf(indexes[half_idx].distance_squared),
+        .radius = __builtin_sqrtf(indexes[half_idx].distance_squared),
     };
     node->near = vp_create_node(m, indexes, half_idx, items);
     node->far = vp_create_node(m, &indexes[half_idx], num_indexes - half_idx, items);
@@ -137,7 +137,7 @@ LIQ_PRIVATE struct nearest_map *nearest_init(const colormap *map) {
 
 static void vp_search_node(const vp_node *node, const f_pixel *const needle, vp_search_tmp *const best_candidate) {
     do {
-        const float distance = sqrtf(colordifference(node->vantage_point, *needle));
+        const float distance = __builtin_sqrtf(colordifference(node->vantage_point, *needle));
 
         if (distance < best_candidate->distance && best_candidate->exclude != node->idx) {
             best_candidate->distance = distance;
@@ -178,7 +178,7 @@ LIQ_PRIVATE unsigned int nearest_search(const struct nearest_map *handle, const 
     }
 
     vp_search_tmp best_candidate = {
-        .distance = sqrtf(guess_diff),
+        .distance = __builtin_sqrtf(guess_diff),
         .idx = likely_colormap_index,
         .exclude = -1,
     };

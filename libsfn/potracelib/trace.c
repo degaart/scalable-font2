@@ -115,20 +115,20 @@ static void pointslope(privpath_t *pp, int i, int j, dpoint_t *ctr, dpoint_t *di
   b = (xy-(double)x*y/k)/k;
   c = (y2-(double)y*y/k)/k;
   
-  lambda2 = (a+c+sqrt((a-c)*(a-c)+4*b*b))/2; /* larger e.value */
+  lambda2 = (a+c+(double)__builtin_sqrtf((a-c)*(a-c)+4*b*b))/2; /* larger e.value */
 
   /* now find e.vector for lambda2 */
   a -= lambda2;
   c -= lambda2;
 
   if (fabs(a) >= fabs(c)) {
-    l = sqrt(a*a+b*b);
+    l = (double)__builtin_sqrtf(a*a+b*b);
     if (l!=0) {
       dir->x = -b/l;
       dir->y = a/l;
     }
   } else {
-    l = sqrt(c*c+b*b);
+    l = (double)__builtin_sqrtf(c*c+b*b);
     if (l!=0) {
       dir->x = -c/l;
       dir->y = b/l;
@@ -207,7 +207,7 @@ static inline double iprod1(dpoint_t p0, dpoint_t p1, dpoint_t p2, dpoint_t p3) 
 
 /* calculate distance between two points */
 static inline double ddist(dpoint_t p, dpoint_t q) {
-  return sqrt(sq(p.x-q.x)+sq(p.y-q.y));
+  return (double)__builtin_sqrtf(sq(p.x-q.x)+sq(p.y-q.y));
 }
 
 /* calculate point of a bezier curve */
@@ -247,7 +247,7 @@ static double tangent(dpoint_t p0, dpoint_t p1, dpoint_t p2, dpoint_t p3, dpoint
     return -1.0;
   }
 
-  s = sqrt(d);
+  s = (double)__builtin_sqrtf(d);
 
   r1 = (-b + s) / (2 * a);
   r2 = (-b - s) / (2 * a);
@@ -521,7 +521,7 @@ static double penalty3(privpath_t *pp, int i, int j) {
   
   s = ex*ex*a + 2*ex*ey*b + ey*ey*c;
 
-  return sqrt(s);
+  return (double)__builtin_sqrtf(s);
 }
 
 /* find the optimal polygon. Fill in the m and po components. Return 1
@@ -991,7 +991,7 @@ static int opti_penalty(privpath_t *pp, int i, int j, opti_t *res, double opttol
   }
 
   R = area / A;	 /* relative area */
-  alpha = 2 - sqrt(4 - R / 0.3);  /* overall alpha for p0-o-p3 curve */
+  alpha = 2 - (double)__builtin_sqrtf(4 - R / 0.3);  /* overall alpha for p0-o-p3 curve */
 
   res->c[0] = interval(t * alpha, p0, p1);
   res->c[1] = interval(s * alpha, p3, p2);

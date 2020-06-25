@@ -3,9 +3,12 @@ libimagequant - Image Quantization Library
 
 This is a heavily stripped down version of libimagequant, because we don't need that bloated build system for
 C#, Rust, Java etc. I seriously don't understand why can't people organize their repositories to separate
-core libraries. Oh, and don't try to compile this code as ANSI C or with warnings or as pedantic...
+core libraries. Oh, and don't try to compile this code as ANSI C or with warnings or as pedantic for that matter...
 
-Minor modifications made to the header file only to make it ANSI C compliant, otherwise code is verbatim.
+Minor modifications made to the header file only to make it ANSI C compliant, and replaced sqrt with builtin_sqrtf and
+added a powf implementation from musl to avoid depending on libm, otherwise code is verbatim. I had to rename it to
+liqpowf, otherwise gcc would generate ZGVbN4vv_powf references in to_f_set_gamma in pam.c... I'm not sure why because
+powf in libimagequant.c works as expected. Anyway, liqpowf it is.
 
 You can also compile libsfn with dynamic libimagequant linkage by using `USE_DYNDEPS=1`.
 

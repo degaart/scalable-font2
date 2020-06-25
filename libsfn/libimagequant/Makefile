@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -I. -O3 -g
+CFLAGS = -I. -ffast-math -O3
 
 SRCS = $(wildcard *.c)
 OBJS = $(SRCS:.c=.o)

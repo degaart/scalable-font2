@@ -19,6 +19,8 @@
 #error "Ignore torrent of syntax errors that may follow. It's only because compiler is set to use too old C version."
 #endif
 
+float liqpowf(float x, float y);
+
 #ifdef _OPENMP
 #include <omp.h>
 #define LIQ_TEMP_ROW_WIDTH(img_width) (((img_width) | 15) + 1) /* keep alignment & leave space between rows to avoid cache line contention */
@@ -258,7 +260,7 @@ static double quality_to_mse(long quality)
     // curve fudged to be roughly similar to quality of libjpeg
     // except lowest 10 for really low number of colors
     const double extra_low_quality_fudge = MAX(0,0.016/(0.001+quality) - 0.001);
-    return extra_low_quality_fudge + 2.5/pow(210.0 + quality, 1.2) * (100.1-quality)/100.0;
+    return extra_low_quality_fudge + 2.5/(double)liqpowf(210.0 + quality, 1.2) * (100.1-quality)/100.0;
 }
 
 static unsigned int mse_to_quality(double mse)
@@ -1863,7 +1865,7 @@ static colormap *add_fixed_colors_to_palette(colormap *palette, const int max_co
 
 LIQ_NONNULL static void adjust_histogram_callback(hist_item *item, float diff)
 {
-    item->adjusted_weight = (item->perceptual_weight+item->adjusted_weight) * (sqrtf(1.f+diff));
+    item->adjusted_weight = (item->perceptual_weight+item->adjusted_weight) * (__builtin_sqrtf(1.f+diff));
 }
 
 /**
@@ -1877,7 +1879,7 @@ static colormap *find_best_palette(histogram *hist, const liq_attr *options, con
 
     // if output is posterized it doesn't make sense to aim for perfrect colors, so increase target_mse
     // at this point actual gamma is not set, so very conservative posterization estimate is used
-    const double target_mse = MIN(max_mse, MAX(options->target_mse, pow((1<<options->min_posterization_output)/1024.0, 2)));
+    const double target_mse = MIN(max_mse, MAX(options->target_mse, (double)liqpowf((1<<options->min_posterization_output)/1024.0, 2)));
     int feedback_loop_trials = options->feedback_loop_trials;
     if (hist->size > 5000) {feedback_loop_trials = (feedback_loop_trials*3 + 3)/4;}
     if (hist->size > 25000) {feedback_loop_trials = (feedback_loop_trials*3 + 3)/4;}

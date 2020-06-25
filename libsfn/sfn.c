@@ -32,9 +32,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "potracelib/potracelib.h"
-#if HAS_ZLIB
-#include <zlib.h>
-#endif
+#include "zlib.h"
 #include "stb_png.h"
 #define SSFN_IMPLEMENTATION
 #include <ssfn.h>
@@ -1430,23 +1428,23 @@ int sfn_load(char *filename, int dump)
  *
  * @param filename file to save to
  * @param ascii true if saving to ASC
- * @param compress true if file should be gzipped
+ * @param comp true if file should be gzipped
  * @return true on success
  */
-int sfn_save(char *filename, int ascii, int compress)
+int sfn_save(char *filename, int ascii, int comp)
 {
     char *fam[] = { "Serif", "Sans", "Decorative", "Monospace", "Handwriting", "?" }, *c;
     int unicode, i, j, k, l, o, x, y, h, nc = 0, mc = 0, ml = 0, fs = 0, cs = 0, ks = 0, ls = 0;
-    unsigned char *frg = NULL, *chr = NULL, *krn = NULL, *tmp, hint[32];
+    unsigned char *frg = NULL, *chr = NULL, *krn = NULL, *tmp, hint[32], *gz;
     unsigned short int lig[SSFN_LIG_LAST-SSFN_LIG_FIRST+1];
+    unsigned long int gzs;
     char *strs = NULL, *crd = NULL;
     sfnkgrp_t kgrp, *kgrpf = NULL;
     ssfn_font_t *hdr;
     sfncont_t *cont, *norm;
     FILE *f;
-#ifdef HAS_ZLIB
-    gzFile g;
-#endif
+    uint32_t crc;
+    z_stream stream;
 
     for(i = 0; i < 0x110000; i++) {
         ml += ctx.glyphs[i].numlayer;
@@ -2001,37 +1999,78 @@ int sfn_save(char *filename, int ascii, int compress)
 
         /* write out file */
         x = 0;
-#ifdef HAS_ZLIB
-        if(compress) {
-            g = gzopen(filename, "wb");
-            if(g) {
-                ctx.filename = filename;
-                if(pbar) (*pbar)(5, 5, 0, 5, PBAR_WRTFILE);
-                gzwrite(g, hdr, hdr->fragments_offs);
-                if(pbar) (*pbar)(5, 5, 1, 5, PBAR_WRTFILE);
-                if(fs) gzwrite(g, frg, fs);
-                if(pbar) (*pbar)(5, 5, 2, 5, PBAR_WRTFILE);
-                if(cs) gzwrite(g, chr, cs);
+        if(comp) {
+            gzs = hdr->fragments_offs + fs + cs + ls*2 + ks + ctx.numcpal*4 + 4;
+            stream.avail_out = compressBound(gzs) + 16;
+            gz = malloc(stream.avail_out);
+            if(!gz) { fprintf(stderr,"libsfn: memory allocation error\n"); return 0; }
+            stream.zalloc = (alloc_func)0;
+            stream.zfree = (free_func)0;
+            stream.opaque = (voidpf)0;
+
+            if(deflateInit(&stream, 9) != Z_OK) { fprintf(stderr,"libsfn: deflate error\n"); return 0; }
+
+            stream.next_out = (z_const Bytef *)gz + 8;
+
+            if(pbar) (*pbar)(5, 5, 0, 5, PBAR_WRTFILE);
+            stream.avail_in = hdr->fragments_offs;
+            stream.next_in = (z_const Bytef *)hdr;
+            crc = crc32(0, stream.next_in, stream.avail_in);
+            deflate(&stream, Z_NO_FLUSH);
+
+            if(pbar) (*pbar)(5, 5, 1, 5, PBAR_WRTFILE);
+            stream.avail_in = fs;
+            stream.next_in = (z_const Bytef *)frg;
+            crc = crc32(crc, stream.next_in, stream.avail_in);
+            deflate(&stream, Z_NO_FLUSH);
+
+            if(pbar) (*pbar)(5, 5, 2, 5, PBAR_WRTFILE);
+            stream.avail_in = cs;
+            stream.next_in = (z_const Bytef *)chr;
+            crc = crc32(crc, stream.next_in, stream.avail_in);
+            deflate(&stream, Z_NO_FLUSH);
+
+            if(ls) {
                 if(pbar) (*pbar)(5, 5, 3, 5, PBAR_WRTFILE);
-                if(ls) gzwrite(g, lig, ls*2);
+                stream.avail_in = ls*2;
+                stream.next_in = (z_const Bytef *)lig;
+                crc = crc32(crc, stream.next_in, stream.avail_in);
+                deflate(&stream, Z_NO_FLUSH);
+            }
+            if(ks) {
                 if(pbar) (*pbar)(5, 5, 4, 5, PBAR_WRTFILE);
-                if(ks) gzwrite(g, krn, ks);
+                stream.avail_in = ks;
+                stream.next_in = (z_const Bytef *)krn;
+                crc = crc32(crc, stream.next_in, stream.avail_in);
+                deflate(&stream, Z_NO_FLUSH);
+            }
+            if(ctx.numcpal) {
                 if(pbar) (*pbar)(5, 5, 5, 5, PBAR_WRTFILE);
-                if(ctx.numcpal) gzwrite(g, ctx.cpal, ctx.numcpal*4);
-                gzwrite(g, SSFN_ENDMAGIC, 4);
-                gzclose(g);
-                f = fopen(filename, "rb");
-                if(f) {
-                    fseek(f, 0, SEEK_END);
-                    x = (int)ftell(f);
-                    fclose(f);
-                }
+                stream.avail_in = ctx.numcpal*4;
+                stream.next_in = (z_const Bytef *)ctx.cpal;
+                crc = crc32(crc, stream.next_in, stream.avail_in);
+                deflate(&stream, Z_NO_FLUSH);
+            }
+            stream.avail_in = 4;
+            stream.next_in = (z_const Bytef *)SSFN_ENDMAGIC;
+            crc = crc32(crc, stream.next_in, stream.avail_in);
+            deflate(&stream, Z_FINISH);
+
+            memset(gz, 0, 10);
+            gz[0] = 0x1f; gz[1] = 0x8b; gz[2] = 0x8; gz[9] = 3;
+
+            f = fopen(filename, "wb");
+            if(f) {
+                ctx.filename = filename;
+                fwrite(gz, stream.total_out + 8, 1, f);
+                fwrite(&crc, 4, 1, f);
+                fwrite(&gzs, 4, 1, f);
+                x = stream.total_out + 16;
             } else {
                 fprintf(stderr, "libsfn: unable to write '%s'\n", filename);
             }
-        } else
-#endif
-        {
+            free(gz);
+        } else {
             f = fopen(filename, "wb");
             if(f) {
                 ctx.filename = filename;
@@ -2319,7 +2358,8 @@ int sfn_glyph(int size, int unicode, int layer, int postproc, sfngc_t *g)
                                 if(m > p) m = p;
                                 if(i > 0 && l < r[i - 1] + A) l = r[i - 1] + A;
                                 for(; l < m; l++)
-                                    g->data[B + l] = g->data[B + l] == 0xFF ? ctx.glyphs[unicode].layers[n].color : 0xFF;
+                                    g->data[B + l] = g->data[B + l] == ctx.glyphs[unicode].layers[n].color ?
+                                        0xFF : ctx.glyphs[unicode].layers[n].color;
                             }
                         }
                     }

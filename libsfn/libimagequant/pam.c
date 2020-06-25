@@ -279,8 +279,9 @@ LIQ_PRIVATE void pam_freecolormap(colormap *c)
 
 LIQ_PRIVATE void to_f_set_gamma(float gamma_lut[], const double gamma)
 {
+    float a, b;
     for(int i=0; i < 256; i++) {
-        gamma_lut[i] = pow((double)i/255.0, internal_gamma/gamma);
+        gamma_lut[i] = (double)liqpowf((float)(i/255.0), (float)(internal_gamma/gamma));
     }
 }
 

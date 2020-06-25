@@ -266,7 +266,7 @@ static int best_splittable_box(struct box bv[], unsigned int boxes, const double
 inline static double color_weight(f_pixel median, hist_item h)
 {
     float diff = colordifference(median, h.acolor);
-    return sqrt(diff) * (sqrt(1.0+h.adjusted_weight)-1.0);
+    return __builtin_sqrtf(diff) * (__builtin_sqrtf(1.0+h.adjusted_weight)-1.0);
 }
 
 static void set_colormap_from_boxes(colormap *map, struct box bv[], unsigned int boxes, hist_item *achv);

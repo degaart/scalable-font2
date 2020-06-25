@@ -16,6 +16,8 @@
 #ifndef PAM_H
 #define PAM_H
 
+float liqpowf(float x, float y);
+
 // accidental debug assertions make color search much slower,
 // so force assertions off if there's no explicit setting
 #if !defined(NDEBUG) && !defined(DEBUG)
@@ -129,9 +131,9 @@ inline static rgba_pixel f_to_rgb(const float gamma, const f_pixel px)
           b = px.b / px.a,
           a = px.a;
 
-    r = powf(r, gamma/internal_gamma);
-    g = powf(g, gamma/internal_gamma);
-    b = powf(b, gamma/internal_gamma);
+    r = liqpowf((float)r, (float)(gamma/internal_gamma));
+    g = liqpowf((float)g, (float)(gamma/internal_gamma));
+    b = liqpowf((float)b, (float)(gamma/internal_gamma));
 
     // 256, because numbers are in range 1..255.9999… rounded down
     r *= 256.f;

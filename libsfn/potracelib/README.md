@@ -4,8 +4,8 @@ POTRACE - transform bitmaps into vector graphics
 This is a heavily stripped down version of the brilliant, but increadibly bloated and badly organized
 [potrace](http://potrace.sourceforge.net/potrace.html) repository.
 
-I've removed all the bloat, leaving only the essential core functions. I've made very very small modifications
-(like including stdint.h), otherwise this code is verbatim.
+I've removed all the bloat, leaving only the essential core functions. I've made very very small modifications (like
+including stdint.h and replacing sqrt with builtin_sqrtf to avoid depending on libm), otherwise this code is verbatim.
 
 Compilation
 -----------
