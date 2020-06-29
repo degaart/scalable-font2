@@ -21,7 +21,7 @@ There's a small ANSI C utility and also a GUI editor to do that, which I provide
 [Windows](https://gitlab.com/bztsrc/scalable-font2/raw/master/ssfn_2.0.0-i686-win.zip),
 [MacOSX](https://gitlab.com/bztsrc/scalable-font2/raw/master/ssfn_2.0.0-intel-macosx.zip) and
 [Linux](https://gitlab.com/bztsrc/scalable-font2/raw/master/ssfn_2.0.0-amd64.deb). Just download the zip and extract to
-`C:\\Program Files` (Windows) or `/Applications` (MacOSX); no installation required. For Linux, use `dpkg -i ssfn_\*.deb`.
+`C:\Program Files (x86)` (Windows) or `/Applications` (MacOSX); no installation required. For Linux, use `dpkg -i ssfn_*.deb`.
 
 They support importing virtually all font formats:
 
