@@ -8,7 +8,7 @@ Icon=sfnedit
 Terminal=false
 StartupNotify=false
 Categories=Application;Graphics;Editor;
-MimeType=text/s-ssfont;font/x-ssfont;font/sfnt;application/vnd.ms-opentype;
+MimeType=text/x-ssfont;font/x-ssfont;font/sfnt;application/vnd.ms-opentype;
 Actions=Edit
 [Desktop Action Edit]
 Name=Edit with SFNEdit

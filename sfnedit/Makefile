@@ -14,7 +14,7 @@ ifeq ("$(USE_X11)","")
 ifneq ("$(wildcard path/to/your/uiheader.h)","")
 SRCS += ui_dummy.c
 CFLAGS += -Ipath/to/your/uiheader
-LIBS += -lyouuilib
+LIBS += -lyouruilib
 PLAT = x86_64-dummy
 DRIVER = dummy
 endif
@@ -38,7 +38,7 @@ ifneq ("$(wildcard $(MACSDL)/libSDL.a)","")
 SRCS += ui_sdl.c
 CFLAGS += -D__MACOSX__=1 -I$(MACSDL)/include
 EXTRA += $(MACSDL)/libSDL.a
-LIBS += -lm -framework Cocoa
+LIBS += -framework CoreVideo -framework Cocoa -framework Carbon -framework Metal -framework IOKit
 PLAT = intel-macosx
 DRIVER = sdl
 else
@@ -183,7 +183,7 @@ ifneq ("$(wildcard ../sfnconv/sfnconv)","")
 	@cp ../sfnconv/sfnconv SFNEdit.app/Contents/MacOS
 endif
 	@cp ../ssfn.h SFNEdit.app/Contents/Frameworks/SSFN.framework/Headers
-	@#cp -r $(MACSDL) SFNEdit.app/Contents/Frameworks
+	@cp -r $(MACSDL) SFNEdit.app/Contents/Frameworks
 	@cp misc/Info.plist SFNEdit.app/Contents
 	@cp misc/sfnedit.icns SFNEdit.app/Contents/Resources
 	@rm ../ssfn_2.0.0-$(PLAT).zip 2>/dev/null || true
@@ -203,12 +203,15 @@ endif
 endif
 
 deb: $(TARGET)
-	@mkdir DEBIAN usr usr/bin usr/include usr/share usr/share/applications usr/share/icons usr/share/icons/hicolor usr/share/icons/hicolor/16x16 usr/share/icons/hicolor/16x16/apps usr/share/icons/hicolor/32x32 usr/share/icons/hicolor/32x32/apps usr/share/icons/hicolor/64x64 usr/share/icons/hicolor/64x64/apps usr/share/icons/hicolor/128x128 usr/share/icons/hicolor/128x128/apps
+	@mkdir DEBIAN usr usr/bin usr/include usr/share usr/share/man usr/share/man/man1 usr/share/man/man3 usr/share/applications usr/share/icons usr/share/icons/hicolor usr/share/icons/hicolor/16x16 usr/share/icons/hicolor/16x16/apps usr/share/icons/hicolor/32x32 usr/share/icons/hicolor/32x32/apps usr/share/icons/hicolor/64x64 usr/share/icons/hicolor/64x64/apps usr/share/icons/hicolor/128x128 usr/share/icons/hicolor/128x128/apps
 	@cp $(TARGET) usr/bin
 ifneq ("$(wildcard ../sfnconv/sfnconv)","")
 	@cp ../sfnconv/sfnconv usr/bin
+	@cp misc/sfnconv.1.gz usr/share/man/man1
 endif
 	@cp ../ssfn.h usr/include
+	@cp misc/ssfn.h.3.gz usr/share/man/man3
+	@cp misc/sfnedit.1.gz usr/share/man/man1
 	@cp misc/sfnedit.desktop usr/share/applications
 	@cp misc/icon128.png usr/share/icons/hicolor/128x128/apps/sfnedit.png
 	@cp misc/icon64.png usr/share/icons/hicolor/64x64/apps/sfnedit.png

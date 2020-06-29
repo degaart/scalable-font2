@@ -677,7 +677,7 @@ sfnlayer_t *sfn_layeradd(int unicode, int t, int x, int y, int w, int h, int c, 
                 ctx.glyphs[unicode].adv_x = ctx.glyphs[unicode].width + 1 + adv;
             else {
                 for(y = l = 0; y < ctx.glyphs[unicode].height; y++)
-                    for(j = ctx.glyphs[unicode].width; j > l; j--)
+                    for(j = ctx.glyphs[unicode].width; (unsigned int)j > (unsigned int)l; j--)
                         if(lyr->data[y * ctx.glyphs[unicode].width + j]) l = j;
                 ctx.glyphs[unicode].adv_x = (iswhitespace(unicode) ? ctx.glyphs[unicode].width : l) + 1 + adv;
             }
@@ -1347,10 +1347,10 @@ int sfn_load(char *filename, int dump)
     fseek(f, 0, SEEK_END);
     size = (int)ftell(f);
     fseek(f, 0, SEEK_SET);
-    if(!size) return 0;
+    if(!size) { fclose(f); return 0; }
     data = (unsigned char*)malloc(size + 1);
-    if(!data) return 0;
-    fread(data, size, 1, f);
+    if(!data) { fclose(f); return 0; }
+    if(!fread(data, size, 1, f)) { free(data); fclose(f); return 0; }
     fclose(f);
     ctx.total += (long int)size;
     ctx.filename = filename;

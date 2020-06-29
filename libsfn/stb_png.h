@@ -1009,8 +1009,8 @@ static int stbi__expand_png_palette(stbi__png *a, unsigned char *palette, int le
 static int stbi__parse_png_file(stbi__png *z, int scan, int req_comp)
 {
    unsigned char palette[1024], pal_img_n=0;
-   unsigned char has_trans=0, tc[3];
-   stbi__uint16 tc16[3];
+   unsigned char has_trans=0, tc[3]={0,0,0};
+   stbi__uint16 tc16[3]={0,0,0};
    stbi__uint32 ioff=0, idata_limit=0, i, pal_len=0;
    int first=1,k,interlace=0, color=0;
    stbi__context *s = z->s;

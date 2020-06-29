@@ -44,7 +44,15 @@
 #include <winnls.h>
 #include <shlobj.h>
 #else
+#ifndef __wur
+#define __wur
+#endif
 extern char *realpath (const char *__restrict __name, char *__restrict __resolved) __THROW __wur;
+#endif
+#if defined(__MACOSX__) || __WORDSIZE == 32
+#define LL "ll"
+#else
+#define LL "l"
 #endif
 
 #ifndef PATH_MAX
@@ -181,7 +189,7 @@ void view_fileops(int save)
 #ifdef __WIN32__
             strcpy(fn, ctx.filename);
 #else
-            realpath(ctx.filename, fn);
+            s = realpath(ctx.filename, fn);
 #endif
         else {
 #ifdef __WIN32__
@@ -202,8 +210,7 @@ void view_fileops(int save)
             *s++ = DIRSEP;
             *s = 0;
 #else
-            getcwd(fn, sizeof(fn) - 3);
-            if((!fn[0] || !memcmp(fn, "/usr", 4)) && (s = getenv("HOME")) != NULL) strcpy(fn, s);
+            if((!getcwd(fn, sizeof(fn) - 3) || !fn[0] || !memcmp(fn, "/usr", 4)) && (s = getenv("HOME")) != NULL) strcpy(fn, s);
             strcat(fn, "/");
 #endif
             strcpy(filename, "noname.sfn");
@@ -279,7 +286,7 @@ void view_fileops(int save)
             ui_icon(win, 9, ssfn_dst.y, files[i].type ? ICON_FILE : ICON_FOLDER, 0);
             ssfn_dst.w = win->w - 284; if(ssfn_dst.w < 1) ssfn_dst.w = 1;
             ui_text(win, 30, ssfn_dst.y, files[i].name);
-            sprintf(tmp,"%13ld",files[i].size);
+            sprintf(tmp,"%13" LL "u",files[i].size);
             ssfn_dst.w = win->w - 168; if(ssfn_dst.w < 1) ssfn_dst.w = 1;
             ui_text(win, win->w - 280, ssfn_dst.y, tmp);
             ssfn_dst.w = win->w - 9; if(ssfn_dst.w < 1) ssfn_dst.w = 1;

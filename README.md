@@ -9,14 +9,21 @@ so donations and contributions would be much appreciated if it turns out to be u
  - [ssfn.h](https://gitlab.com/bztsrc/scalable-font2/blob/master/ssfn.h) the SSFN [renderer SDK](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/API.md)
  - [libsfn](https://gitlab.com/bztsrc/scalable-font2/tree/master/libsfn) the font [manipulator SDK](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/libsfn.md)
  - [sfnconv](https://gitlab.com/bztsrc/scalable-font2/tree/master/sfnconv) a command line SSFN converter tool
- - [sfnedit](https://gitlab.com/bztsrc/scalable-font2/tree/master/sfnedit) multiplatform SSFN font converter and editor with a GUI (WiP)
+ - [sfnedit](https://gitlab.com/bztsrc/scalable-font2/tree/master/sfnedit) multiplatform SSFN font converter and editor with a GUI
  - [sfntest](https://gitlab.com/bztsrc/scalable-font2/tree/master/sfntest) test applications and [API](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/API.md) usage examples
 
 <img alt="Scalable Screen Font Features" src="https://gitlab.com/bztsrc/scalable-font2/raw/master/features.png">
 
 SSFN renderer does not use existing font formats directly (because most formats are inefficient or just insane),
 so you first have to compress those into [SSFN](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/sfnconv.md).
-There's a small ANSI C utility and also a GUI editor to do that. They support importing
+
+There's a small ANSI C utility and also a GUI editor to do that, which I provide in a portable executable form for
+[Windows](https://gitlab.com/bztsrc/scalable-font2/raw/master/ssfn_2.0.0-i686-win.zip),
+[MacOSX](https://gitlab.com/bztsrc/scalable-font2/raw/master/ssfn_2.0.0-intel-macosx.zip) and
+[Linux](https://gitlab.com/bztsrc/scalable-font2/raw/master/ssfn_2.0.0-amd64.deb). Just download the zip and extract to
+`C:\\Program Files` (Windows) or `/Applications` (MacOSX); no installation required. For Linux, use `dpkg -i ssfn_\*.deb`.
+
+They support importing virtually all font formats:
 
  - OpenType (.otf, .ttf, .sfnt, .cff),
  - TrueType (.ttf),
@@ -26,12 +33,12 @@ There's a small ANSI C utility and also a GUI editor to do that. They support im
  - FontForge's SplineFontDB (.sfd, both vector and bitmap fonts),
  - X11 Bitmap Distribution Format (.bdf),
  - X11 Portable Compiled Font (.pcf),
- - Linux Console Fonts (.psf, .psfu),
+ - Linux Console PC Screen Fonts (.psf, .psfu),
  - Windows Console Fonts (.fon, .fnt),
  - GRUB's PFF2 Fonts (.pf2),
  - GNU unifont (.hex),
- - Portable Network Graphics and TARGA (.png, .tga),
- - ...and others! Vectorizing bitmap fonts and rasterizing vector fonts also possible.
+ - Portable Network Graphics and TARGA (.png, .tga, for pixel fonts),
+ - ...and others! Compressed variants (.gz) supported on-the-fly. Vectorizing bitmap fonts and rasterizing vector fonts also possible.
 
 Using SSFN means your fonts will require less space, and also the renderer can work a lot faster than other renderer
 libraries. Check out [comparition](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/compare.md) with other font
@@ -128,6 +135,16 @@ read the [API reference](https://gitlab.com/bztsrc/scalable-font2/blob/master/do
 As with the simple renderer, the header contains everything, no additional linking required! Gzip uncompressor
 also included in this 28k of code, no need to link with zlib!
 
+Font Editor
+-----------
+
+Besides of the [converter](https://gitlab.com/bztsrc/scalable-font2/tree/master/sfnconv) that can import various
+font formats, there's also a professional [SSFN font editor](https://gitlab.com/bztsrc/scalable-font2/tree/master/sfnedit)
+available, which is in par with FontForge as long as the feature set concerned, but unlike FontForge it is a portable
+executable (no installation nor third party DLLs required):
+
+<img alt="Scalable Screen Font Editor" src="https://gitlab.com/bztsrc/scalable-font2/raw/master/docs/sfnedit.png">
+
 License
 -------
 
@@ -149,13 +166,14 @@ but all dependencies are provided as built-ins by gcc or by libc:
  - `memcmp()` and `memset()` from libc (string.h)
 
 The scalable font converter is built on the **freetype2** library to read vector font files (compiled
-statically into libsfn by default). The bitmap font converter has no dependencies. Libsfn can be built
-optionally with **zlib** to write gzip deflate compressed files on-the-fly (read is supported without
-zlib). Font vectorization needs **libm** (for sqrt() and pow() calls in potrace).
+statically into libsfn by default). The bitmap font converter has no dependencies. Libsfn uses **zlib**
+to write gzip deflate compressed files on-the-fly (statically linked, read is supported without
+zlib). Font vectorization needs **potrace** (also a stripped down version statically linked).
 
-The editor uses SDL2 with an X11 fallback, and naturally depends on libsfn.
+The editor uses SDL2 with an X11 fallback, and naturally depends on libsfn. For SDL2, it can be compiled
+with both static and dynamic linkage (static requires that you manually compile SDL2).
 
-The test applications use SDL2 to create a window and display the rendered texts.
+The test applications also use SDL2 to create a window and display the rendered texts.
 
 Changes to SSFN 1.0
 -------------------
@@ -188,7 +206,7 @@ Nothing that I know of in the renderer. But no programmer can test their own cod
 through valgrind with many different font files with all the tests without problems. If you find a bug, please
 use the [Issue Tracker](https://gitlab.com/bztsrc/scalable-font2/issues) on gitlab and let me know.
 
-With the converter, there's the neverending issue with querying the advance offsets correctly from FreeType2. You might
+With the importers, there's the neverending issue with querying the advance offsets correctly from FreeType2. You might
 need to adjust some manually.
 
 Loading kerning information from SplineFontDB .sfd files is not implemented as of yet.

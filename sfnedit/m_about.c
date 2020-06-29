@@ -38,6 +38,11 @@
 #include <windows.h>
 #include <shellapi.h>
 #endif
+#ifdef __MACOSX__
+#define OPEN "open"
+#else
+#define OPEN "xdg-open"
+#endif
 
 extern ssfn_t logofnt;
 char repo_url[] = "https://gitlab.com/bztsrc/scalable-font2";
@@ -47,7 +52,7 @@ char repo_url[] = "https://gitlab.com/bztsrc/scalable-font2";
  */
 void about_open_repo()
 {
-# ifdef __WIN32__
+#ifdef __WIN32__
     ShellExecuteA(0, 0, repo_url, 0, 0, SW_SHOW);
 #else
     char cmd[256];
@@ -55,15 +60,8 @@ void about_open_repo()
         fclose(stdin);
         fclose(stdout);
         fclose(stderr);
-        sprintf(cmd,
-# ifdef __MACOSX__
-            "open %s"
-# else
-            "xdg-open %s"
-# endif
-            , repo_url);
-        system(cmd);
-        exit(0);
+        sprintf(cmd, OPEN " %s", repo_url);
+        exit(system(cmd));
     }
 #endif
     wins[0].field = -1;

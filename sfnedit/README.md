@@ -27,7 +27,7 @@ It saves in SSFN and ASC formats.
 Compilation
 -----------
 
-To compile sfnedit, use
+Naturally depends on `libsfn`. Compile that first, then to compile sfnedit, use
 ```sh
 $ make
 ```

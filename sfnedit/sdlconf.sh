@@ -68,13 +68,14 @@ EOF
 [ "`grep 'define SDL_VIDEO_DRIVER_COCOA 1' include/SDL_config.h`" != "" ] && cat >>Makefile <<EOF
 	src/core/unix/*.c \\
 	src/timer/unix/*.c \\
-	src/video/cocoa/*.c \\
+	src/file/cocoa/*.m \\
+	src/video/cocoa/*.m \\
 EOF
 
 # Makefile footer, common part
 cat >>Makefile <<EOF
 
-OBJECTS = \$(shell echo \$(SOURCES) | sed -e 's,\\.c,\\.o,g')
+OBJECTS = \$(shell echo \$(SOURCES) | sed -e 's,\\.c,\\.o,g' | sed -e 's,\\.m,\\.o,g')
 
 all: \$(TARGET)
 

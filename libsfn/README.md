@@ -28,7 +28,7 @@ $ USE_DYNDEPS=1 make libsfn.a
 I would recommend static dependencies under Windows, and dynamic under Linux (and other POSIX systems with
 decent package management for shared libraries).
 
-To exclude importing foreign font formats alltogether and support just SSFN and ASC (no need for libimagequant
+To exclude importing foreign font formats altogether and just support SSFN and ASC (no need for libimagequant
 nor freetype2), then use
 ```
 $ USE_NOFOREIGN=1 make libsfn.a

@@ -32,7 +32,6 @@
 
 #define SSFN_VERSION 0x0200
 
-
 #ifdef  __cplusplus
 extern "C" {
 # ifndef __THROW
@@ -43,14 +42,15 @@ extern "C" {
 #  define __THROW
 # endif
 #endif
-
 /* if stdint.h was not included before us */
 #ifndef _STDINT_H
 typedef unsigned char       uint8_t;
 typedef unsigned short int  uint16_t;
 typedef short int           int16_t;
 typedef unsigned int        uint32_t;
+#ifndef _UINT64_T
 typedef unsigned long int   uint64_t;
+#endif
 #endif
 
 /***** file format *****/
@@ -284,14 +284,18 @@ uint32_t ssfn_utf8(char **s)
 #  define inline __inline__
 # endif
 
-/* Clang does not have built-in versions of these but gcc has */
+#ifndef _STRING_H_
+extern int memcmp (const void *__s1, const void *__s2, size_t __n) __THROW;
+extern void *memset (void *__s, int __c, size_t __n) __THROW;
+#endif
+
+/* Clang does not have built-in versions but gcc has */
 # ifndef SSFN_memcmp
 #  ifdef __builtin_memcmp
 #   define SSFN_memcmp __builtin_memcmp
 #  else
 #   ifndef SSFN_MAXLINES
 #    define SSFN_memcmp memcmp
-     extern int memcmp (const void *__s1, const void *__s2, size_t __n) __THROW;
 #   else
 static int SSFN_memcmp(const void *__s1, const void *__s2, size_t __n)
 {   unsigned char *a = (unsigned char *)__s1, *b = (unsigned char *)__s2;
@@ -306,7 +310,6 @@ static int SSFN_memcmp(const void *__s1, const void *__s2, size_t __n)
 #  else
 #   ifndef SSFN_MAXLINES
 #    define SSFN_memset memset
-     extern void *memset (void *__s, int __c, size_t __n) __THROW;
 #   else
 static void *SSFN_memset(void *__s, int __c, size_t __n)
 { unsigned char *a = __s; if(__n > 0) { while(__n-- > 0) *a++ = __c; } return __s; }
@@ -416,7 +419,7 @@ static void _ssfn_b(ssfn_t *ctx, int p,int h, int x0,int y0, int x1,int y1, int 
 }
 
 #ifndef SSFN_MAXLINES
-/* free internal glyph cache */
+/* free internal cache */
 static void _ssfn_fc(ssfn_t *ctx)
 {
     int i, j, k;
@@ -1505,7 +1508,7 @@ ssfn_buf_t *ssfn_text(ssfn_t *ctx, const char *str, unsigned int fg)
 /*** special console bitmap font renderer (ca. 1.5k, no dependencies, no memory allocation and no error checking) ***/
 
 /**
- * public variables to configure the renderer
+ * public variables to configure
  */
 ssfn_font_t *ssfn_src;          /* font buffer with an inflated bitmap font */
 ssfn_buf_t ssfn_dst;            /* destination frame buffer */
@@ -1513,7 +1516,7 @@ ssfn_buf_t ssfn_dst;            /* destination frame buffer */
 /**
  * Minimal OS kernel console renderer
  *
- * @param unicode character to render
+ * @param unicode character
  * @return error code
  */
 int ssfn_putc(uint32_t unicode)
@@ -1635,6 +1638,4 @@ namespace SSFN {
 }
 #endif
 
-
 #endif /* _SSFN_H_ */
-

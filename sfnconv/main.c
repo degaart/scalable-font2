@@ -54,12 +54,12 @@ ssfn_font_t *load_file(char *infile, int *size)
 badfile: fprintf(stderr,"sfnconv: unable to load '%s'\n", infile); exit(3);
     }
     fseek(f, -4L, SEEK_END);
-    fread(&origsize, 4, 1, f);
+    if(!fread(&origsize, 4, 1, f)) { fclose(f); return NULL; }
     fsize = ftell(f);
     fseek(f, 0, SEEK_SET);
     data = (ssfn_font_t*)malloc(fsize+1);
     if(!data) { fprintf(stderr,"sfnconv: memory allocation error\n"); exit(2); }
-    fread(data, fsize, 1, f);
+    if(!fread(data, fsize, 1, f)) { free(data); fclose(f); return NULL; }
     ((uint8_t*)data)[fsize] = 0;
     fclose(f);
     if(((uint8_t *)data)[0] == 0x1f && ((uint8_t *)data)[1] == 0x8b) {

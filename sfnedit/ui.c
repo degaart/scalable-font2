@@ -81,8 +81,8 @@ void ui_gettheme(char *fn)
     f = fopen(fn, "r");
     if(f) {
         while(i < THEME_UNDEF && !feof(f)) {
-            line[0] = 0; fgets(line, 256, f);
-            if(!line[0] || line[0] == '\r' || line[0] == '\n' || line[0] == '#' ||
+            line[0] = 0;
+            if(!fgets(line, 256, f) || !line[0] || line[0] == '\r' || line[0] == '\n' || line[0] == '#' ||
                 !memcmp(line, "GIMP", 4) || !memcmp(line, "Name", 4)) continue;
             line[255] = 0; s = line;
             for(; *s && *s == ' '; s++);
@@ -565,6 +565,7 @@ void ui_main(char *fn)
     } else
         wins[0].tool = MAIN_TOOL_ABOUT;
     ui_cursorwin(&wins[0], CURSOR_PTR);
+    ui_refreshwin(0, 0, 0, wins[0].w, wins[0].h);
 
     /* main event loop */
     while(mainloop) {

@@ -599,7 +599,8 @@ void pcf(unsigned char *ptr, int size)
 void pixmap_parse(unsigned char *data, int w, int h)
 {
     unsigned char *data2;
-    int i, j, k, x, y, m, o, unicode;
+    unsigned int i, j, k, x, y, m, o;
+    int unicode;
 
     if(rs==0 && re==0x10FFFF)
         re = h > w ? h / w : w / h;
@@ -620,7 +621,7 @@ void pixmap_parse(unsigned char *data, int w, int h)
         data2 = (unsigned char*)malloc(m*h);
         if(!data2) { fprintf(stderr,"libsfn: memory allocation error\n"); return; }
         for(unicode=rs; unicode<=re; unicode++) {
-            for(y=o=k=0;y<h;y++) {
+            for(y=o=k=0;y<(unsigned int)h;y++) {
                 i = y*w + (unicode-rs)*m;
                 for(x=0;x<m;x++) {
                     if(data[i] < 0xFE && k < x) k = x;
