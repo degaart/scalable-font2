@@ -16,7 +16,12 @@ Has only optional arguments.
 <font file>     loads the font on application start
 ```
 
-THe font can be virtually in any font format out there (.ttf, otf, .pfa, .pfb, .sfd, .psf, .bdf, .pcf etc.)
+It uses the same [libsfn](https://gitlab.com/bztsrc/scalable-font2/tree/master/libsfn) as the converter tool, it can
+open [SSFN](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/sfn_format.md) (.sfn) and
+[ASC](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/asc_format.md) (.asc) fonts; but it's also able to import
+virtually all existing font formats out there: .sfd, .pfa, .pfb, .ttf, .otf, .woff, woff2, .bdf, .pcf, .psf, .fnt, .fon, .ft2 etc.
+
+It saves in SSFN and ASC formats.
 
 The editor is multilingual, and autodetects the language from the environment. If you want to use
 a different language than your OS' default, you can specify it in the LANG environment variable:
@@ -24,6 +29,9 @@ a different language than your OS' default, you can specify it in the LANG envir
 $ LANG=hu ./sfnedit
 ```
 Or use the `-l` flag.
+
+For Windows users: right-click on sfnedit.exe, and select "Create Shortcut". Then right-click on the newly created ".lnk" file,
+and select "Properties". On the "Shortcut" tab, in the "Target" field, you can add the command line flags.
 
 User Interface
 --------------

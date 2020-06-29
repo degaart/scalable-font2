@@ -3,27 +3,6 @@ Scalable Screen Font 2.0 Editor
 
 This is a GUI font editor. For further details, read the [documentation](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/sfnedit.md).
 
-```sh
-$ ./sfnedit [-l <lang>] [-t <themefile>] [fontfile]
-```
-
-- language is autodetected, but you can override that. The flag's argument is a two letter language code, eg. `-l hu`
-- theme can be loaded from GIMP Palette files, like `-t theme.gpl`. For the default theme see [theme.gpl](https://gitlab.com/bztsrc/scalable-font2/blob/master/sfnedit/misc/theme.gpl)
-- finally `fontfile` (if specified) will be loaded on execution
-
-For Windows users: right-click on sfnedit.exe, and select "Create Shortcut". Then right-click on the newly created ".lnk" file,
-and select "Properties". On the "Shortcut" tab, in the "Target" field, you can add the command line flags.
-
-Supported Formats
------------------
-
-It uses the same [libsfn](https://gitlab.com/bztsrc/scalable-font2/tree/master/libsfn) as the converter tool, it can
-open [SSFN](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/sfn_format.md) (.sfn) and
-[ASC](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/asc_format.md) (.asc) fonts; but it's also able to import
-virtually all existing font formats out there: .sfd, .pfa, .pfb, .ttf, .otf, .woff, woff2, .bdf, .pcf, .psf, .fnt, .fon, .ft2 etc.
-
-It saves in SSFN and ASC formats.
-
 Compilation
 -----------
 
@@ -77,7 +56,7 @@ On all platforms, you can also statically link SDL with sfnedit. For that, here 
 Porting to other OSes
 ---------------------
 
-This is pretty straight forward. You'll need to compile libsfn. As it contains all its dependendencies, all you need for that
+This is pretty straight forward. You'll need to compile libsfn. As it contains all its dependencies, all you need for that
 is an ANSI C compiler and a minimal libc. For sfnedit, you have three options (in descending order of complexity):
 1. if you have already ported X11, then simply compile with `USE_X11=yes make` (porting X11 *is* hard).
 2. if you have ported SDL, then simply link statically with that ported library (porting SDL is not easy, but not particularly hard either).

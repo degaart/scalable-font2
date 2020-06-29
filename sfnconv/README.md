@@ -56,7 +56,7 @@ $ make
 Porting to other OSes
 ---------------------
 
-This is pretty straight forward. You'll need to compile libsfn. As it contains all its dependendencies, all you need for that
+This is pretty straight forward. You'll need to compile libsfn. As it contains all its dependencies, all you need for that
 is an ANSI C compiler and a minimal libc. The sfnconv utility is just a simple command line parser and wrapper around that
 library, has no dependencies (stripped down version of zlib is already included in libsfn).
 
