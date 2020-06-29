@@ -43,6 +43,8 @@
 #include <windows.h>
 #include <winnls.h>
 #include <shlobj.h>
+#else
+extern char *realpath (const char *__restrict __name, char *__restrict __resolved) __THROW __wur;
 #endif
 
 #ifndef PATH_MAX
@@ -55,8 +57,6 @@
 #ifndef FILENAME_MAX
 # define FILENAME_MAX 256
 #endif
-
-extern char *realpath (const char *__restrict __name, char *__restrict __resolved) __THROW __wur;
 
 typedef struct {
     char *name;
@@ -128,7 +128,7 @@ void fileops_readdir(int save)
                 if(k < 5) continue;
                 if( memcmp(de->d_name + k - 4, ".sfn", 4) && memcmp(de->d_name + k - 4, ".asc", 4)
 #ifndef USE_NOFOREIGN
-                    && (save || (
+                    && (save || (memcmp(de->d_name + k - 4, ".pf2", 4) &&
                     memcmp(de->d_name + k - 4, ".pfa", 4) && memcmp(de->d_name + k - 4, ".pfb", 4) &&
                     memcmp(de->d_name + k - 5, ".woff",5) && memcmp(de->d_name + k - 5, "woff2",5) &&
                     memcmp(de->d_name + k - 4, ".ttf", 4) && memcmp(de->d_name + k - 4, ".ttc", 4) &&
@@ -178,7 +178,11 @@ void view_fileops(int save)
 
     if(!fn[0]) {
         if(ctx.filename)
+#ifdef __WIN32__
+            strcpy(fn, ctx.filename);
+#else
             realpath(ctx.filename, fn);
+#endif
         else {
 #ifdef __WIN32__
             if(SHGetFolderPathW(HWND_DESKTOP, CSIDL_DESKTOPDIRECTORY, NULL, 0, home))
@@ -221,98 +225,98 @@ void view_fileops(int save)
         ssfn_dst.x += 8;
     }
     pathX[i] = ssfn_dst.x - 8;
-
-    ssfn_dst.w = win->w - 8; if(ssfn_dst.w < 1) ssfn_dst.w = 1;
-    ssfn_dst.h = win->h;
-    ui_icon(win, win->w - 134 - 16, 30, ICON_SEARCH, 0);
-    ui_input(win, win->w - 132, 29, 120, fsearch, wins[0].field == 7, 255, 0);
-    ui_rect(win, 7, 51, win->w - 14, win->h - 102, theme[THEME_DARKER], theme[THEME_LIGHT]);
-    ui_box(win, 8, 52, 18, 20, theme[THEME_LIGHT], theme[THEME_BG], theme[THEME_DARKER]);
-    ssfn_dst.w = win->w - 284; if(ssfn_dst.w < 1) ssfn_dst.w = 1;
-    ui_box(win, 26, 52, win->w - 314, 20, theme[selfield == 1 ? THEME_DARKER : THEME_LIGHT], theme[THEME_BG],
-        theme[selfield == 1 ? THEME_LIGHT : THEME_DARKER]);
-    ssfn_dst.fg = theme[THEME_LIGHTER];
-    ui_text(win, 34, 53, lang[FILEOP_NAME]);
-    ssfn_dst.fg = theme[THEME_DARKER];
-    ui_text(win, 33, 52, lang[FILEOP_NAME]);
-    ssfn_dst.w = win->w - 168; if(ssfn_dst.w < 1) ssfn_dst.w = 1;
-    ui_box(win, win->w - 288, 52, 120, 20, theme[selfield == 2 ? THEME_DARKER : THEME_LIGHT], theme[THEME_BG],
-        theme[selfield == 2 ? THEME_LIGHT : THEME_DARKER]);
-    ssfn_dst.fg = theme[THEME_LIGHTER];
-    ui_text(win, win->w - 280, 53, lang[FILEOP_SIZE]);
-    ssfn_dst.fg = theme[THEME_DARKER];
-    ui_text(win, win->w - 281, 52, lang[FILEOP_SIZE]);
-    ssfn_dst.w = win->w - 9; if(ssfn_dst.w < 1) ssfn_dst.w = 1;
-    ui_box(win, win->w - 168, 52, 159, 20, theme[selfield == 3 ? THEME_DARKER : THEME_LIGHT], theme[THEME_BG],
-        theme[selfield == 3 ? THEME_LIGHT : THEME_DARKER]);
-    ssfn_dst.fg = theme[THEME_LIGHTER];
-    ui_text(win, win->w - 160, 53, lang[FILEOP_TIME]);
-    ssfn_dst.fg = theme[THEME_DARKER];
-    ui_text(win, win->w - 161, 52, lang[FILEOP_TIME]);
-    ssfn_dst.w = win->w;
-    ssfn_dst.fg = theme[THEME_FG];
-    j = win->w * 60;
-    switch(ordering >> 1) {
-        case 0: ui_tri(win, win->w - 300, 60, ordering & 1); break;
-        case 1: ui_tri(win, win->w - 180, 60, ordering & 1); break;
-        case 2: ui_tri(win, win->w - 20, 60, ordering & 1); break;
-    }
-
     if(!files || lastsave != save || input_refresh) fileops_readdir(save);
     lastsave = save;
     if(wins[0].field == 8 && selfiles == -1 && numfiles > 0)
         selfiles = 0;
-    ssfn_dst.y = 72;
     pagefiles = (win->h - 51 - 72) / 16; if(pagefiles < 2) pagefiles = 2;
     if(selfiles + 1 > scrollfiles + pagefiles - 1) scrollfiles = selfiles - pagefiles + 1;
     if(selfiles >= 0 && selfiles < scrollfiles) scrollfiles = selfiles;
-    ssfn_dst.h = win->h - 51;
-    for(i = scrollfiles; i < numfiles && ssfn_dst.y < ssfn_dst.h; i++, ssfn_dst.y += 16) {
-        if(i == selfiles) {
-            ui_box(win, 9, ssfn_dst.y, win->w - 18, 16, theme[THEME_SELBG], theme[THEME_SELBG], theme[THEME_SELBG]);
-            ssfn_dst.fg = theme[THEME_SELFG];
-        } else
-            ssfn_dst.fg = theme[THEME_FG];
-        ui_icon(win, 9, ssfn_dst.y, files[i].type ? ICON_FILE : ICON_FOLDER, 0);
+    if(wins[0].tool == MAIN_TOOL_LOAD || wins[0].tool == MAIN_TOOL_SAVE) {
+        ssfn_dst.w = win->w - 8; if(ssfn_dst.w < 1) ssfn_dst.w = 1;
+        ssfn_dst.h = win->h;
+        ui_icon(win, win->w - 134 - 16, 30, ICON_SEARCH, 0);
+        ui_input(win, win->w - 132, 29, 120, fsearch, wins[0].field == 7, 255, 0);
+        ui_rect(win, 7, 51, win->w - 14, win->h - 102, theme[THEME_DARKER], theme[THEME_LIGHT]);
+        ui_box(win, 8, 52, 18, 20, theme[THEME_LIGHT], theme[THEME_BG], theme[THEME_DARKER]);
         ssfn_dst.w = win->w - 284; if(ssfn_dst.w < 1) ssfn_dst.w = 1;
-        ui_text(win, 30, ssfn_dst.y, files[i].name);
-        sprintf(tmp,"%13ld",files[i].size);
+        ui_box(win, 26, 52, win->w - 314, 20, theme[selfield == 1 ? THEME_DARKER : THEME_LIGHT], theme[THEME_BG],
+            theme[selfield == 1 ? THEME_LIGHT : THEME_DARKER]);
+        ssfn_dst.fg = theme[THEME_LIGHTER];
+        ui_text(win, 34, 53, lang[FILEOP_NAME]);
+        ssfn_dst.fg = theme[THEME_DARKER];
+        ui_text(win, 33, 52, lang[FILEOP_NAME]);
         ssfn_dst.w = win->w - 168; if(ssfn_dst.w < 1) ssfn_dst.w = 1;
-        ui_text(win, win->w - 280, ssfn_dst.y, tmp);
+        ui_box(win, win->w - 288, 52, 120, 20, theme[selfield == 2 ? THEME_DARKER : THEME_LIGHT], theme[THEME_BG],
+            theme[selfield == 2 ? THEME_LIGHT : THEME_DARKER]);
+        ssfn_dst.fg = theme[THEME_LIGHTER];
+        ui_text(win, win->w - 280, 53, lang[FILEOP_SIZE]);
+        ssfn_dst.fg = theme[THEME_DARKER];
+        ui_text(win, win->w - 281, 52, lang[FILEOP_SIZE]);
         ssfn_dst.w = win->w - 9; if(ssfn_dst.w < 1) ssfn_dst.w = 1;
-        diff = now - files[i].time;
-        if(diff < 120) strcpy(tmp, lang[FILEOP_NOW]); else
-        if(diff < 3600) sprintf(tmp, lang[FILEOP_MSAGO], (int)(diff/60)); else
-        if(diff < 7200) sprintf(tmp, lang[FILEOP_HAGO], (int)(diff/60)); else
-        if(diff < 24*3600) sprintf(tmp, lang[FILEOP_HSAGO], (int)(diff/3600)); else
-        if(diff < 48*3600) strcpy(tmp, lang[FILEOP_YESTERDAY]); else {
-            lt = localtime(&files[i].time);
-            if(files[i].time < 7*24*3600) strcpy(tmp, lang[FILEOP_WDAY0 + lt->tm_wday]); else
-                sprintf(tmp, "%04d-%02d-%02d", lt->tm_year+1900, lt->tm_mon+1, lt->tm_mday);
+        ui_box(win, win->w - 168, 52, 159, 20, theme[selfield == 3 ? THEME_DARKER : THEME_LIGHT], theme[THEME_BG],
+            theme[selfield == 3 ? THEME_LIGHT : THEME_DARKER]);
+        ssfn_dst.fg = theme[THEME_LIGHTER];
+        ui_text(win, win->w - 160, 53, lang[FILEOP_TIME]);
+        ssfn_dst.fg = theme[THEME_DARKER];
+        ui_text(win, win->w - 161, 52, lang[FILEOP_TIME]);
+        ssfn_dst.w = win->w;
+        ssfn_dst.fg = theme[THEME_FG];
+        j = win->w * 60;
+        switch(ordering >> 1) {
+            case 0: ui_tri(win, win->w - 300, 60, ordering & 1); break;
+            case 1: ui_tri(win, win->w - 180, 60, ordering & 1); break;
+            case 2: ui_tri(win, win->w - 20, 60, ordering & 1); break;
         }
-        ui_text(win, win->w - 160, ssfn_dst.y, tmp);
-    }
-    ssfn_dst.fg = theme[THEME_FG];
-    ssfn_dst.w = win->w;
-    ssfn_dst.h = win->h;
-    j = win->w / 4;
-    if(!save) {
-        if(!strrs[0]) sprintf(strrs, "U+%X", rs);
-        if(!strre[0]) sprintf(strre, "U+%X", re);
-        ui_text(win, 8, win->h - 44, lang[FILEOP_RANGE]);
-        ui_input(win, 80, win->h - 44, 72, strrs, wins[0].field == 9, 15, 1);
-        ui_input(win, 164, win->h - 44, 72, strre, wins[0].field == 10, 15, 2);
-        ui_bool(win, 260, win->h - 44, lang[FILEOP_REPLACE], replace, wins[0].field == 11);
-        ui_button(win, win->w - 12 - j, win->h - 44, j, lang[FILEOP_IMPORT], selfield == 4 ? 1 : 0, wins[0].field == 12);
-    } else {
-        ui_bool(win, 8, win->h - 44, "ASC", ascii, wins[0].field == 9);
-        ui_bool(win, 64, win->h - 44, "gzip", zip, wins[0].field == 10);
-        s = strrchr(filename, '.');
-        if(s && !strcmp(s, ".gz")) { *s = 0; s = strrchr(filename, '.'); }
-        if(!s) s = filename + strlen(filename);
-        memcpy(s, ascii ? ".asc" : ".sfn", 5);
-        ui_input(win, 128, win->h - 44, win->w - j - 12 - 128 - 12, filename, wins[0].field == 11, 255, 0);
-        ui_button(win, win->w - 12 - j, win->h - 44, j, lang[FILEOP_SAVE], selfield == 4 ? 3 : 2, wins[0].field == 12);
+        ssfn_dst.y = 72;
+        ssfn_dst.h = win->h - 51;
+        for(i = scrollfiles; i < numfiles && ssfn_dst.y < ssfn_dst.h; i++, ssfn_dst.y += 16) {
+            if(i == selfiles) {
+                ui_box(win, 9, ssfn_dst.y, win->w - 18, 16, theme[THEME_SELBG], theme[THEME_SELBG], theme[THEME_SELBG]);
+                ssfn_dst.fg = theme[THEME_SELFG];
+            } else
+                ssfn_dst.fg = theme[THEME_FG];
+            ui_icon(win, 9, ssfn_dst.y, files[i].type ? ICON_FILE : ICON_FOLDER, 0);
+            ssfn_dst.w = win->w - 284; if(ssfn_dst.w < 1) ssfn_dst.w = 1;
+            ui_text(win, 30, ssfn_dst.y, files[i].name);
+            sprintf(tmp,"%13ld",files[i].size);
+            ssfn_dst.w = win->w - 168; if(ssfn_dst.w < 1) ssfn_dst.w = 1;
+            ui_text(win, win->w - 280, ssfn_dst.y, tmp);
+            ssfn_dst.w = win->w - 9; if(ssfn_dst.w < 1) ssfn_dst.w = 1;
+            diff = now - files[i].time;
+            if(diff < 120) strcpy(tmp, lang[FILEOP_NOW]); else
+            if(diff < 3600) sprintf(tmp, lang[FILEOP_MSAGO], (int)(diff/60)); else
+            if(diff < 7200) sprintf(tmp, lang[FILEOP_HAGO], (int)(diff/60)); else
+            if(diff < 24*3600) sprintf(tmp, lang[FILEOP_HSAGO], (int)(diff/3600)); else
+            if(diff < 48*3600) strcpy(tmp, lang[FILEOP_YESTERDAY]); else {
+                lt = localtime(&files[i].time);
+                if(files[i].time < 7*24*3600) strcpy(tmp, lang[FILEOP_WDAY0 + lt->tm_wday]); else
+                    sprintf(tmp, "%04d-%02d-%02d", lt->tm_year+1900, lt->tm_mon+1, lt->tm_mday);
+            }
+            ui_text(win, win->w - 160, ssfn_dst.y, tmp);
+        }
+        ssfn_dst.fg = theme[THEME_FG];
+        ssfn_dst.w = win->w;
+        ssfn_dst.h = win->h;
+        j = win->w / 4;
+        if(!save) {
+            if(!strrs[0]) sprintf(strrs, "U+%X", rs);
+            if(!strre[0]) sprintf(strre, "U+%X", re);
+            ui_text(win, 8, win->h - 44, lang[FILEOP_RANGE]);
+            ui_input(win, 80, win->h - 44, 72, strrs, wins[0].field == 9, 15, 1);
+            ui_input(win, 164, win->h - 44, 72, strre, wins[0].field == 10, 15, 2);
+            ui_bool(win, 260, win->h - 44, lang[FILEOP_REPLACE], replace, wins[0].field == 11);
+            ui_button(win, win->w - 12 - j, win->h - 44, j, lang[FILEOP_IMPORT], selfield == 4 ? 1 : 0, wins[0].field == 12);
+        } else {
+            ui_bool(win, 8, win->h - 44, "ASC", ascii, wins[0].field == 9);
+            ui_bool(win, 64, win->h - 44, "gzip", zip, wins[0].field == 10);
+            s = strrchr(filename, '.');
+            if(s && !strcmp(s, ".gz")) { *s = 0; s = strrchr(filename, '.'); }
+            if(!s) s = filename + strlen(filename);
+            if(s != filename) memcpy(s, ascii ? ".asc" : ".sfn", 5);
+            ui_input(win, 128, win->h - 44, win->w - j - 12 - 128 - 12, filename, wins[0].field == 11, 255, 0);
+            ui_button(win, win->w - 12 - j, win->h - 44, j, lang[FILEOP_SAVE], selfield == 4 ? 3 : 2, wins[0].field == 12);
+        }
     }
 }
 
@@ -341,8 +345,8 @@ void ctrl_fileops_onenter(int save)
                     strcat(fn, path[i]);
                 strcat(fn, files[selfiles].name);
                 if(files[selfiles].type) {
-                    ui_button(&wins[0], wins[0].w - 12 - j, wins[0].h - 44, j, lang[FILEOP_IMPORT], 0, -1);
                     ui_cursorwin(&wins[0], CURSOR_LOADING);
+                    ui_button(&wins[0], wins[0].w - 12 - j, wins[0].h - 44, j, lang[FILEOP_IMPORT], 0, -1);
                     ui_flushwin(&wins[0], wins[0].w - 12 - j, wins[0].h - 44, j, 32);
                     if(sfn_load(fn, 0)) {
                         sfn_sanitize(-1);
@@ -368,39 +372,35 @@ void ctrl_fileops_onenter(int save)
         if(wins[0].field == 9) { ascii ^= 1; if(ascii) zip = 0; }
         if(wins[0].field == 10) { zip ^= 1; if(zip) ascii = 0; }
         if(wins[0].field == 8 || wins[0].field == 12) {
-            if(selfiles >= 0 && selfiles < numfiles) {
-                for(fn[0] = 0, i = 0; i < pathlen; i++)
-                    strcat(fn, path[i]);
-                if(files[selfiles].type || wins[0].field == 12) {
-                    if(wins[0].field == 8) strcpy(filename, files[selfiles].name);
-                    s = strrchr(filename, '.');
-                    if(s && !strcmp(s, ".gz")) { *s = 0; s = strrchr(filename, '.'); }
-                    if(!s) s = filename + strlen(filename);
-                    memcpy(s, ascii ? ".asc" : ".sfn", 5);
-                    strcat(fn, filename);
+            for(fn[0] = 0, i = 0; i < pathlen; i++)
+                strcat(fn, path[i]);
+            if(wins[0].field == 12 || (selfiles >= 0 && selfiles < numfiles && files[selfiles].type)) {
+                if(wins[0].field == 8) strcpy(filename, files[selfiles].name);
+                s = strrchr(filename, '.');
+                if(s && !strcmp(s, ".gz")) { *s = 0; s = strrchr(filename, '.'); }
+                if(!s) s = filename + strlen(filename);
+                if(s != filename) memcpy(s, ascii ? ".asc" : ".sfn", 5);
+                strcat(fn, filename);
+                ui_cursorwin(&wins[0], CURSOR_LOADING);
+                if(wins[0].tool == MAIN_TOOL_SAVE) {
                     ui_input(&wins[0], 128, wins[0].h - 44, wins[0].w - j - 12 - 128 - 12, filename, 0, 255, 0);
                     ui_button(&wins[0], wins[0].w - 12 - j, wins[0].h - 44, j, lang[FILEOP_SAVE], 2, -1);
-                    ui_cursorwin(&wins[0], CURSOR_LOADING);
                     ui_flushwin(&wins[0], 0, wins[0].h - 44, wins[0].w, 32);
-                    sfn_sanitize(-1);
-printf("save '%s'\n",fn);
-sleep(1);
-/*
-                    if(sfn_save(fn, ascii, zip)) ui_updatetitle(0); else
-*/
-                    {
-                        sprintf(fstatus, "libsfn: %s", lang[ERR_SAVE]);
-                        errstatus = fstatus;
-                    }
-                    ui_cursorwin(&wins[0], CURSOR_PTR);
-                } else {
-                    strcat(path[pathlen++], files[selfiles].name);
-                    strcat(fn, files[selfiles].name);
-                    strcat(fn, DIRSEPS);
-                    fileops_readdir(save);
-                    selfiles = 0;
-                    wins[0].field = 8;
                 }
+                sfn_sanitize(-1);
+                if(sfn_save(fn, ascii, zip)) ui_updatetitle(0); else
+                {
+                    sprintf(fstatus, "libsfn: %s", lang[ERR_SAVE]);
+                    errstatus = fstatus;
+                }
+                ui_cursorwin(&wins[0], CURSOR_PTR);
+            } else {
+                strcat(path[pathlen++], files[selfiles].name);
+                strcat(fn, files[selfiles].name);
+                strcat(fn, DIRSEPS);
+                fileops_readdir(save);
+                selfiles = 0;
+                wins[0].field = 8;
             }
         }
     }
@@ -574,7 +574,7 @@ void ctrl_dosave_onenter()
 {
     if(wins[0].field != 7) {
         wins[0].tool = MAIN_TOOL_SAVE;
-        wins[0].field = 12; selfield = -1;
+        wins[0].field = 11; selfield = -1;
         ui_resizewin(&wins[0], wins[0].w, wins[0].h);
         ui_refreshwin(0, 0, 0, wins[0].w, wins[0].h);
         ctrl_fileops_onenter(1);

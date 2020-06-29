@@ -26,15 +26,16 @@ There's a small ANSI C utility and also a GUI editor to do that. They support im
  - FontForge's SplineFontDB (.sfd, both vector and bitmap fonts),
  - X11 Bitmap Distribution Format (.bdf),
  - X11 Portable Compiled Font (.pcf),
- - Linux Console fonts (.psf, .psfu),
+ - Linux Console Fonts (.psf, .psfu),
  - Windows Console Fonts (.fon, .fnt),
+ - GRUB's PFF2 Fonts (.pf2),
  - GNU unifont (.hex),
  - Portable Network Graphics and TARGA (.png, .tga),
  - ...and others! Vectorizing bitmap fonts and rasterizing vector fonts also possible.
 
 Using SSFN means your fonts will require less space, and also the renderer can work a lot faster than other renderer
 libraries. Check out [comparition](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/compare.md) with other font
-formats (measurements for the feature demo above can be found at the bottom of that page).
+formats (performance measurements for the feature demo above can be found at the bottom of that page).
 
 Support the Development by Donation
 -----------------------------------
@@ -125,7 +126,7 @@ bounding box for example, and `ssfn_text` will render entire strings into newly 
 read the [API reference](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/API.md).
 
 As with the simple renderer, the header contains everything, no additional linking required! Gzip uncompressor
-also included, no need to link with zlib!
+also included in this 28k of code, no need to link with zlib!
 
 License
 -------

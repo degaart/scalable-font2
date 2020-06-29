@@ -31,6 +31,7 @@ void hex(char *ptr, int size);          /* GNU unifont */
 void bdf(char *ptr, int size);          /* X11 Bitmap Distribution Format or FontForge's SplineFontDB with bitmap font*/
 void pcf(unsigned char *ptr, int size); /* X11 Portable Compiled Font */
 void psf(unsigned char *ptr, int size); /* PC Screen Font (Linux Console) */
+void pff(unsigned char *ptr, int size); /* GRUB's Font */
 void fnt(unsigned char *ptr, int size); /* Windows Font */
 void png(unsigned char *ptr, int size); /* PNG Pixmap */
 void tga(unsigned char *ptr, int size); /* TGA Pixmap */

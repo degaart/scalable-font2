@@ -43,6 +43,7 @@ char **lang = NULL;
  */
 #ifdef __WIN32__
 #include <windows.h>
+#include <SDL.h>
 
 static void UnEscapeQuotes(char *arg)
 {
@@ -127,14 +128,12 @@ static int ParseCommandLine(char *cmdline, char **argv)
 int APIENTRY WinMain(__attribute__((unused)) HINSTANCE hInstance, __attribute__((unused)) HINSTANCE hPrevInstance,
     __attribute__((unused)) LPSTR lpCmdLine, __attribute__((unused)) int nCmdShow)
 {
-    OPENFILENAME  ofn;
-    char *cmdline = GetCommandLine();
-    int ret, argc = ParseCommandLineA(cmdline, NULL);
+    char *cmdline = GetCommandLineA();
+    int ret, argc = ParseCommandLine(cmdline, NULL);
     char **argv = (char**)calloc(argc+2, sizeof(char*));
-    char fn[1024];
     int lid = 0;
 
-    ParseCommandLineA(cmdline, argv);
+    ParseCommandLine(cmdline, argv);
     lid = GetUserDefaultLangID(); /* GetUserDefaultUILanguage(); */
     /* see https://docs.microsoft.com/en-us/windows/win32/intl/language-identifier-constants-and-strings */
     switch(lid & 0xFF) {

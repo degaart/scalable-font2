@@ -4,21 +4,21 @@ Scalable Screen Font 2.0 Comparitions
 Feature Comparition to Other Font Formats
 -----------------------------------------
 
-| Feature                | SSFN | ASC  | TTF  | OTF  | PST1 | PSF2 | BDF  | PNG  |
-| ---------------------- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- |
-| Binary file            | ✔Yes | ✗No  | ✔Yes | ✔Yes | ✗No  | ✔Yes | ✗No  | ✔Yes |
-| Varying width glyphs   | ✔Yes | ✔Yes | ✔Yes | ✔Yes | ✔Yes | ✗No  | ✔Yes | ✗No  |
-| Bitmap fonts           | ✔Yes | ✔Yes | ✗No  | ✔Yes | ✗No  | ✔Yes | ✔Yes | ✗No  |
-| Pixmap fonts           | ✔Yes | ✔Yes | ✗No  | ✗No  | ✗No  | ✗No  | ✗No  | ✔Yes |
-| Scalable fonts         | ✔Yes | ✔Yes | ✔Yes | ✔Yes | ✔Yes | ✗No  | ✗No  | ✗No  |
-| Quadratic curves       | ✔Yes | ✔Yes | ✔Yes | ✗No  | ✗No  | ✗No  | ✗No  | ✗No  |
-| Cubic Bezier curves    | ✔Yes | ✔Yes | ✗No  | ✔Yes | ✔Yes | ✗No  | ✗No  | ✗No  |
-| Kerning information    | ✔Yes | ✔Yes | ✔Yes | ✔Yes | ✔Yes | ✗No  | ✗No  | ✗No  |
-| Kerning groups         | ✔Yes | ✗No  | ✗No  | ✔Yes | ✗No  | ✗No  | ✗No  | ✗No  |
-| Glyph Compression      | ✔Yes | ✗No  | ✗No  | ✗No  | ✗No  | ✗No  | ✗No  | ✔Yes |
-| CLI converter          | ✔Yes | ✔Yes | ✗No  | ✗No  | ✔Yes | ✔Yes | ✔Yes | ✔Yes |
-| Requires SO library(1) | ✗No  | ✗No  | ✔Yes | ✔Yes | ✔Yes | ✗No  | ✗No  | ✗No  |
-| Codepage nightmare(2)  | ✗No  | ✗No  | ✔Yes | ✔Yes | ✔Yes | ✔Yes | ✔Yes | ✗No  |
+| Feature                | SSFN | ASC  | SFD  | TTF  | OTF  | PST1 | PSF2 | BDF  | PNG  |
+| ---------------------- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- |
+| Binary file            | ✔Yes | ✗No  | ✗No  | ✔Yes | ✔Yes | ✗No  | ✔Yes | ✗No  | ✔Yes |
+| Varying width glyphs   | ✔Yes | ✔Yes | ✔Yes | ✔Yes | ✔Yes | ✔Yes | ✗No  | ✔Yes | ✗No  |
+| Bitmap fonts           | ✔Yes | ✔Yes | ✔Yes | ✗No  | ✔Yes | ✗No  | ✔Yes | ✔Yes | ✗No  |
+| Pixmap fonts           | ✔Yes | ✔Yes | ✗No  | ✗No  | ✗No  | ✗No  | ✗No  | ✗No  | ✔Yes |
+| Scalable fonts         | ✔Yes | ✔Yes | ✔Yes | ✔Yes | ✔Yes | ✔Yes | ✗No  | ✗No  | ✗No  |
+| Quadratic curves       | ✔Yes | ✔Yes | ✗No  | ✔Yes | ✗No  | ✗No  | ✗No  | ✗No  | ✗No  |
+| Cubic Bezier curves    | ✔Yes | ✔Yes | ✔Yes | ✗No  | ✔Yes | ✔Yes | ✗No  | ✗No  | ✗No  |
+| Kerning information    | ✔Yes | ✔Yes | ✔Yes | ✔Yes | ✔Yes | ✔Yes | ✗No  | ✗No  | ✗No  |
+| Kerning groups         | ✔Yes | ✗No  | ✔Yes | ✗No  | ✔Yes | ✗No  | ✗No  | ✗No  | ✗No  |
+| Glyph Compression      | ✔Yes | ✗No  | ✗No  | ✗No  | ✗No  | ✗No  | ✗No  | ✗No  | ✔Yes |
+| CLI converter          | ✔Yes | ✔Yes | ✗No  | ✗No  | ✗No  | ✔Yes | ✔Yes | ✔Yes | ✔Yes |
+| Requires SO library(1) | ✗No  | ✗No  | ✔Yes | ✔Yes | ✔Yes | ✔Yes | ✗No  | ✗No  | ✗No  |
+| Codepage nightmare(2)  | ✗No  | ✗No  | ✗No  | ✔Yes | ✔Yes | ✔Yes | ✔Yes | ✔Yes | ✗No  |
 
 Note(1): SSFN has a very small, simple to use renderer in an ANSI C header file. Others need the
 freetype2 library, but PSF2 and BDF are simple enough to parse them manually.
@@ -29,6 +29,7 @@ usually encoded with UTF-8).
 Legend:
  - SSFN: [Scalable Screen Font Binary Format](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/sfn_format.md)
  - ASC: [Scalable Screen Font ASCII Format](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/asc_format.md)
+ - SFD: FontForge's SplineFontDB
  - TTF: TrueType Font
  - OTF: OpenType Font
  - PST1: PostScript Type 1
@@ -78,10 +79,15 @@ if you have many similar glyphs as SSFN uses an effective deduplication algorith
 | unifont16.sfn.gz  |  526K |  46.71% | SSFN+zlib |
 | unifont.sfn*      | 1325K | 110.75% | SSFN      |
 | unifont.sfn.gz    |  554K |  46.31% | SSFN+zlib |
+| unicode.pf2\*\*   | 2398K | 100.00% | GRUB's    |
+| unicode.sfn       | 1945K |  81.11% | SSFN      |
+| unicode.sfn.gz    |  848K |  35.39% | SSFN+zlib |
 
 * - PSF2 contains either the 8x16 or the 16x16 glyphs, because it simply can't handle different glyph widths
 of GNU unifont. SSFN contains per glyph metrics, so without zlib it requires about 10% more storage space than
 PSF2, but it can store both 8x16 and 16x16 glyphs in a single font file.
+
+\*\* - GRUB's PFF2 contains per glyph metrics. The test file is included in every standard GRUB installation.
 
 (Also note that in the "fonts" directory you can find an unifont.sfn.gz which was converted from the BDF with
 more meta information, and therefore is 817k in size.)

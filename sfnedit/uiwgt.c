@@ -71,10 +71,10 @@ void ui_toolbox(int idx)
         for(i = 0; i < 3; i++)
             ui_icon(win, 4 + i * 24, 4, ICON_MEASURES + i, 0);
         if(wins[idx].unicode >= SSFN_LIG_FIRST && wins[idx].unicode <= SSFN_LIG_LAST) {
-            ui_input(win, 6 + 3 * 24, 2, 56, ctx.ligatures[wins[idx].unicode - SSFN_LIG_FIRST], wins[idx].field == 3, 15,
+            ui_input(win, 6 + 3 * 24, 2, 54, ctx.ligatures[wins[idx].unicode - SSFN_LIG_FIRST], wins[idx].field == 3, 15,
                 1024 + wins[idx].unicode - SSFN_LIG_FIRST);
         } else {
-            ui_box(win, 6 + 3 * 24, 2, 56, 18, theme[THEME_BG], theme[THEME_BG], theme[THEME_BG]);
+            ui_box(win, 6 + 3 * 24, 2, 54, 18, theme[THEME_BG], theme[THEME_BG], theme[THEME_BG]);
             ui_text(win, 8 + 3 * 24, 4, utf8(wins[idx].unicode));
         }
         ssfn_dst.w = w;
@@ -171,13 +171,31 @@ void ui_grid(ui_win_t *win, int w, int h)
         }
     }
     if(ox < ssfn_dst.w) ui_number(win, ox + 7, 27, px / win->zoom, g);
+    if(win->tool == GLYPH_TOOL_COORD) {
+        i = ox + 7 + ctx.glyphs[win->unicode].ovl_x * win->zoom - px; if(i > tw + 7) i = tw + 7; if(i < 0) i = 0;
+        if(ctx.glyphs[win->unicode].ovl_x && i < ssfn_dst.w) ui_number(win, i, 27, ctx.glyphs[win->unicode].ovl_x,
+        theme[THEME_OVL]);
+    }
+    if(win->tool != GLYPH_TOOL_LAYER) {
+        i = ox + 7 + (ctx.glyphs[win->unicode].rtl ? ctx.glyphs[win->unicode].width - ctx.glyphs[win->unicode].adv_x :
+            ctx.glyphs[win->unicode].adv_x) * win->zoom - px; if(i > tw + 7) i = tw + 7; if(i < 0) i = 0;
+        if(!ctx.glyphs[win->unicode].adv_y && i < ssfn_dst.w) ui_number(win, i, 27, ctx.glyphs[win->unicode].adv_x,
+            theme[THEME_ADV]);
+    }
     i = ox + 7 + sw - px; if(i > tw + 7) i = tw + 7;
     if(i >= 20 && i < ssfn_dst.w) ui_number(win, i, 27, (px + i - ox - 7) / win->zoom, g);
     ssfn_dst.h += 4;
     i = oy + 33 - py + ctx.baseline * win->zoom; if(i > th + 33) i = th + 33;
     if(i >= 33 && i < ssfn_dst.h - 6) ui_number(win, 0, i, ctx.baseline, theme[THEME_BASE]);
-    i = oy + 33 - py + ctx.underline * win->zoom; if(i > th + 33) i = th + 33;
-    if(i >= 33 && i < ssfn_dst.h - 6) ui_number(win, 0, i, ctx.underline, theme[THEME_UNDER]);
+    if(win->tool == GLYPH_TOOL_COORD) {
+        i = oy + 33 - py + ctx.underline * win->zoom; if(i > th + 33) i = th + 33;
+        if(i >= 33 && i < ssfn_dst.h - 6) ui_number(win, 0, i, ctx.underline, theme[THEME_UNDER]);
+    }
+    if(win->tool != GLYPH_TOOL_LAYER) {
+        i = oy + 33 - py + ctx.glyphs[win->unicode].adv_y * win->zoom; if(i > th + 33) i = th + 33;
+        if(!ctx.glyphs[win->unicode].adv_x && i >= 33 && i < ssfn_dst.h - 6) ui_number(win, 0, i, ctx.glyphs[win->unicode].adv_y,
+            theme[THEME_ADV]);
+    }
     if(oy + 34 < ssfn_dst.h - 6) ui_number(win, 0, oy + 34, py / win->zoom, g);
     i = oy + 33 + sh - py; if(i > th + 33) i = th + 33;
     if(i >= 33 && i < ssfn_dst.h - 6) ui_number(win, 0, i, (py + i - oy - 33) / win->zoom, g);
@@ -187,28 +205,58 @@ void ui_grid(ui_win_t *win, int w, int h)
 /**
  * Display grid background
  */
-void ui_gridbg(ui_win_t *win, int x, int y, int w, int h, int z, int a, int p, uint32_t *d)
+void ui_gridbg(ui_win_t *win, int x, int y, int w, int h, int a, uint32_t *d, int gx, int gy)
 {
-    int i, j, k, px, py, l = y * p + x;
+    int i, j, px, py, l = y * win->p + x;
     uint32_t g = theme[THEME_GRID] & 0xFFFFFF, b = theme[THEME_DARKER] & 0xFFFFFF;
 
     if(x + w < 0 || y + h < 0 || x >= ssfn_dst.w || y >= ssfn_dst.h || w < 1 || h < 1) return;
     if(!ctx.glyphs[win->unicode].adv_x && !ctx.glyphs[win->unicode].adv_y) a = 0;
-    px = (win->zx < 0 && a ? -win->zx : 0);
-    py = (win->zy < 0 && a ? -win->zy : 0);
-    for(j=0; j + py <= h && y + j < ssfn_dst.h; j++, l += p)
-        if(y + j >= 36)
-            for(i=0; i + px <= w && x + i < ssfn_dst.w; i++)
-                if(x + i >= 20) {
-                    k = (j + py) / z;
-                    if(a && ((!((j + py) % z) && !ctx.glyphs[win->unicode].adv_x && ctx.glyphs[win->unicode].adv_y == k)
-                        || (!((i + px) % z) && !ctx.glyphs[win->unicode].adv_y && (ctx.glyphs[win->unicode].rtl ?
-                        ctx.glyphs[win->unicode].width - ctx.glyphs[win->unicode].adv_x : ctx.glyphs[win->unicode].adv_x) ==
-                        (i + px) / z))) d[l + i] = theme[THEME_ADV];
-                    else if(j + py < h && i + px < w)
-                        d[l + i] = !((j + py) % z) ? (k == ctx.baseline ? theme[THEME_BASE] :
-                            (k == ctx.underline ? theme[THEME_UNDER] : g)) : (!((i + px) % z) ? g : b);
-                }
+    px = (win->zx < 0 ? -win->zx : 0);
+    py = (win->zy < 0 ? -win->zy : 0);
+    for(j=(y < 36 ? 36 - y : 0); j + py < h && y + j < ssfn_dst.h; j++, l += win->p)
+        for(i=(x < 20 ? 20 - x : 0); i + px < w && x + i < ssfn_dst.w; i++)
+            d[l + i] = !((j + py) % win->zoom) ? ((j + py) / win->zoom == ctx.baseline ? theme[THEME_BASE] : g) :
+                (!((i + px) % win->zoom) ? g : b);
+    if(gx != -1) {
+        i = x - px + gx * win->zoom;
+        if(i >= 20 && i < ssfn_dst.w) {
+            l = y * win->p + i;
+            for(j=(y < 36 ? 36 - y : 0); j + py <= h && y + j < ssfn_dst.h; j++, l+=win->p) d[l] = theme[THEME_GUIDE];
+        }
+    }
+    if(gy != -1) {
+        j = y - py + gy * win->zoom;
+        if(j >= 36 && j < ssfn_dst.h) {
+            l = j * win->p + x;
+            for(i=(x < 20 ? 20 - x : 0); i + px <= w && x + i < ssfn_dst.w; i++) d[l + i] = theme[THEME_GUIDE];
+        }
+    }
+    if(win->tool == GLYPH_TOOL_COORD) {
+        j = y - py + ctx.underline * win->zoom;
+        if(j >= 36 && j < ssfn_dst.h) {
+            l = j * win->p + x;
+            for(i=(x < 20 ? 20 - x : 0); i + px <= w && x + i < ssfn_dst.w; i++) d[l + i] = theme[THEME_UNDER];
+        }
+        i = x - px + ctx.glyphs[win->unicode].ovl_x * win->zoom;
+        if(ctx.glyphs[win->unicode].ovl_x && i >= 20 && i < ssfn_dst.w) {
+            l = y * win->p + i;
+            for(j=(y < 36 ? 36 - y : 0); j + py <= h && y + j < ssfn_dst.h; j++, l+=win->p) d[l] = theme[THEME_OVL];
+        }
+    }
+    if(win->tool != GLYPH_TOOL_LAYER && a) {
+        j = y - py + ctx.glyphs[win->unicode].adv_y * win->zoom;
+        if(!ctx.glyphs[win->unicode].adv_x && j >= 36 && j < ssfn_dst.h) {
+            l = j * win->p + x;
+            for(i=(x < 20 ? 20 - x : 0); i + px <= w && x + i < ssfn_dst.w; i++) d[l + i] = theme[THEME_ADV];
+        }
+        i = x - px + (ctx.glyphs[win->unicode].rtl ? ctx.glyphs[win->unicode].width - ctx.glyphs[win->unicode].adv_x :
+        ctx.glyphs[win->unicode].adv_x) * win->zoom;
+        if(!ctx.glyphs[win->unicode].adv_y && i >= 20 && i < ssfn_dst.w) {
+            l = y * win->p + i;
+            for(j=(y < 36 ? 36 - y : 0); j + py <= h && y + j < ssfn_dst.h; j++, l+=win->p) d[l] = theme[THEME_ADV];
+        }
+    }
 }
 
 /**
@@ -228,7 +276,9 @@ void ui_icon(ui_win_t *win, int x, int y, int icon, int inactive)
             if(tools[m + (i<<2)+3]) {
                 a = (uint8_t*)&win->data[k+i];
                 b = (uint8_t*)&tools[m + (i<<2)];
-                if(inactive) {
+                if(inactive < 0) {
+                    win->data[k+i] = theme[inactive == -1 ? THEME_BG : THEME_CURSOR];
+                } else if(inactive) {
                     n = (b[3]>>(inactive - 1));
                     a[0] = a[1] = a[2] = ((int)(b[0] + b[1] + b[2])*n/6 + (256 - n)*a[2]) >> 8;
                 } else {

@@ -29,6 +29,8 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "libsfn.h"
 #include "ui.h"
 #include "lang.h"
@@ -49,7 +51,9 @@ void view_coords(int idx)
     ssfn_dst.h = win->h - 24;
     ui_grid(win, ctx.glyphs[win->unicode].width, ctx.glyphs[win->unicode].height);
     ui_gridbg(win, 20 + (win->zx > 0 ? win->zx : 0), 36 + (win->zy > 0 ? win->zy : 0),
-        win->zoom * ctx.glyphs[win->unicode].width, win->zoom * ctx.glyphs[win->unicode].height, win->zoom, 1, win->p, win->data);
+        win->zoom * ctx.glyphs[win->unicode].width, win->zoom * ctx.glyphs[win->unicode].height, 1, win->data, -1, -1);
+    ui_edit(win, 20 + win->zx, 36 + win->zy, win->unicode, -1);
+
     ssfn_dst.w = win->w - 1;
     ssfn_dst.h = win->h - 20;
 
@@ -159,7 +163,7 @@ void ctrl_zoom_in(int idx, int mx, int my)
         win->zy = my - 36 - posy * win->zoom - win->zoom / 2;
     }
     ui_resizewin(win, win->w, win->h);
-    ui_refreshwin(event.win, 0, 0, win->w, win->h);
+    ui_refreshwin(idx, 0, 0, win->w, win->h);
 }
 
 /**
@@ -176,7 +180,7 @@ void ctrl_zoom_out(int idx, int mx, int my)
         win->zy = my - 36 - posy * win->zoom - win->zoom / 2;
     }
     ui_resizewin(win, win->w, win->h);
-    ui_refreshwin(event.win, 0, 0, win->w, win->h);
+    ui_refreshwin(idx, 0, 0, win->w, win->h);
 }
 
 /**
@@ -199,24 +203,205 @@ void ctrl_move(int idx, int mx, int my)
 void ctrl_setsize(int idx, int dw, int dh)
 {
     ui_win_t *win = &wins[idx];
-    int w = ctx.glyphs[win->unicode].width, h = ctx.glyphs[win->unicode].height;
+    sfncont_t *cont;
+    unsigned char *data;
+    int i, j, k, l, n, w = ctx.glyphs[win->unicode].width, h = ctx.glyphs[win->unicode].height;
     if(ctx.glyphs[win->unicode].width + dw >= 0 && ctx.glyphs[win->unicode].width + dw <= 254)
         ctx.glyphs[win->unicode].width += dw;
     if(ctx.glyphs[win->unicode].height + dh >= 0 && ctx.glyphs[win->unicode].height + dh <= 254)
         ctx.glyphs[win->unicode].height += dh;
     if(ctx.glyphs[win->unicode].width != w || ctx.glyphs[win->unicode].height != h) {
+        for(n = 0; n < ctx.glyphs[win->unicode].numlayer; n++)
+            switch(ctx.glyphs[win->unicode].layers[n].type) {
+                case SSFN_FRAG_CONTOUR:
+                    for(i = 0, cont = (sfncont_t*)ctx.glyphs[win->unicode].layers[n].data;
+                        i < ctx.glyphs[win->unicode].layers[n].len; i++, cont++) {
+                            if(cont->px >= ctx.glyphs[win->unicode].width) cont->px = ctx.glyphs[win->unicode].width - 1;
+                            if(cont->py >= ctx.glyphs[win->unicode].height) cont->py = ctx.glyphs[win->unicode].height - 1;
+                            if(cont->type >= SSFN_CONTOUR_QUAD) {
+                                if(cont->c1x >= ctx.glyphs[win->unicode].width) cont->c1x = ctx.glyphs[win->unicode].width - 1;
+                                if(cont->c1y >= ctx.glyphs[win->unicode].height) cont->c1y = ctx.glyphs[win->unicode].height - 1;
+                                if(cont->type == SSFN_CONTOUR_CUBIC) {
+                                    if(cont->c2x >= ctx.glyphs[win->unicode].width) cont->c2x = ctx.glyphs[win->unicode].width - 1;
+                                    if(cont->c2y >= ctx.glyphs[win->unicode].height) cont->c2y = ctx.glyphs[win->unicode].height - 1;
+                                }
+                            }
+                        }
+                break;
+                case SSFN_FRAG_BITMAP:
+                case SSFN_FRAG_PIXMAP:
+                    if(!dw) {
+                        ctx.glyphs[win->unicode].layers[n].data = realloc(ctx.glyphs[win->unicode].layers[n].data,
+                            w * ctx.glyphs[win->unicode].height);
+                        if(!ctx.glyphs[win->unicode].layers[n].data) ui_error("coords", ERR_MEM);
+                        if(dh > 0) memset(ctx.glyphs[win->unicode].layers[n].data + w * h, 0xFF, w);
+                    } else {
+                        data = malloc(ctx.glyphs[win->unicode].width * h);
+                        if(!data) ui_error("coords", ERR_MEM);
+                        for(j = k = l = 0; j < h; j++) {
+                            for(i = 0; i < w + (dw < 0 ? dw : 0); i++)
+                                data[k++] = ctx.glyphs[win->unicode].layers[n].data[l++];
+                            if(dw < 0) l++; else data[k++] = 0xFF;
+                        }
+                        free(ctx.glyphs[win->unicode].layers[n].data);
+                        ctx.glyphs[win->unicode].layers[n].data = data;
+                    }
+                break;
+            }
     }
-    win->rc = 1;
-    ui_resizewin(win, win->w, win->h);
-    ui_refreshwin(event.win, 0, 0, win->w, win->h - 24);
+    ctx.width = ctx.height = 0;
+    for(i = 0; i < 0x110000; i++) {
+        if(ctx.glyphs[i].width > ctx.width) ctx.width = ctx.glyphs[i].width;
+        if(ctx.glyphs[i].height > ctx.height) ctx.height = ctx.glyphs[i].height;
+    }
+    win->rc = 1; win->zoom = 0;
+    modified++;
+}
+
+/**
+ * Set glyph's baseline
+ */
+void ctrl_setbase(int idx, int d)
+{
+    (void)idx;
+    if(d > 0 && ctx.baseline < 254) { ctx.baseline++; modified++; }
+    if(d < 0 && ctx.baseline > 0) { ctx.baseline--; modified++; }
+}
+
+/**
+ * Set glyph's underlineline
+ */
+void ctrl_setunder(int idx, int d)
+{
+    (void)idx;
+    if(d > 0 && ctx.underline < 254) { ctx.underline++; modified++; }
+    if(d < 0 && ctx.underline > 0) { ctx.underline--; modified++; }
+}
+
+/**
+ * Set glyph's overlap x
+ */
+void ctrl_setox(int idx, int d)
+{
+    ui_win_t *win = &wins[idx];
+    if(d > 0 && ctx.glyphs[win->unicode].ovl_x < 63) { ctx.glyphs[win->unicode].ovl_x++; modified++; }
+    if(d < 0 && ctx.glyphs[win->unicode].ovl_x > 0) { ctx.glyphs[win->unicode].ovl_x--; modified++; }
+}
+
+/**
+ * Set glyph's advance x
+ */
+void ctrl_setax(int idx, int d)
+{
+    ui_win_t *win = &wins[idx];
+    ctx.glyphs[win->unicode].adv_y = 0;
+    if(d > 0 && ctx.glyphs[win->unicode].adv_x < 254) { ctx.glyphs[win->unicode].adv_x++; modified++; }
+    if(d < 0 && ctx.glyphs[win->unicode].adv_x > 0) { ctx.glyphs[win->unicode].adv_x--; modified++; }
+}
+
+/**
+ * Set glyph's advance y
+ */
+void ctrl_setay(int idx, int d)
+{
+    ui_win_t *win = &wins[idx];
+    ctx.glyphs[win->unicode].adv_x = 0;
+    if(d > 0 && ctx.glyphs[win->unicode].adv_y < 254) { ctx.glyphs[win->unicode].adv_y++; modified++; }
+    if(d < 0 && ctx.glyphs[win->unicode].adv_y > 0) { ctx.glyphs[win->unicode].adv_y--; modified++; }
+}
+
+/**
+ * Set glyph's advance direction
+ */
+void ctrl_setadv(int idx, int d)
+{
+    ui_win_t *win = &wins[idx];
+    switch(d) {
+        case 0:
+            ctx.glyphs[win->unicode].rtl = 1;
+            ctx.glyphs[win->unicode].adv_y = 0;
+            if(ctx.glyphs[win->unicode].adv_x < 1) ctx.glyphs[win->unicode].adv_x = ctx.glyphs[win->unicode].width;
+        break;
+        case 1:
+            ctx.glyphs[win->unicode].rtl = 0;
+            ctx.glyphs[win->unicode].adv_x = 0;
+            if(ctx.glyphs[win->unicode].adv_y < 1) ctx.glyphs[win->unicode].adv_y = ctx.glyphs[win->unicode].height;
+        break;
+        case 2:
+            ctx.glyphs[win->unicode].rtl = 0;
+            ctx.glyphs[win->unicode].adv_y = 0;
+            if(ctx.glyphs[win->unicode].adv_x < 1) ctx.glyphs[win->unicode].adv_x = ctx.glyphs[win->unicode].width;
+        break;
+    }
+    modified++;
 }
 
 /**
  * Position glyph
  */
-void ctrl_pos(int idx, int dx, int dy)
+void ctrl_pos(int idx, int layer, int dx, int dy)
 {
     ui_win_t *win = &wins[idx];
+    sfncont_t *cont;
+    unsigned char *data;
+    int i, n, w = ctx.glyphs[win->unicode].width, h = ctx.glyphs[win->unicode].height, s, e;
+    if(layer < 0 || layer >= ctx.glyphs[win->unicode].numlayer) {
+        s = 0; e = ctx.glyphs[win->unicode].numlayer;
+    } else {
+        s = layer; e = layer + 1;
+    }
+    for(n = s; n < e; n++)
+        switch(ctx.glyphs[win->unicode].layers[n].type) {
+            case SSFN_FRAG_CONTOUR:
+                for(i = 0, cont = (sfncont_t*)ctx.glyphs[win->unicode].layers[n].data;
+                    i < ctx.glyphs[win->unicode].layers[n].len; i++, cont++) {
+                        if(dx < 0 && cont->px > 0) cont->px--;
+                        if(dx > 0 && cont->px < w - 1) cont->px++;
+                        if(dy < 0 && cont->py > 0) cont->py--;
+                        if(dy > 0 && cont->py < h - 1) cont->py++;
+                        if(cont->type >= SSFN_CONTOUR_QUAD) {
+                            if(dx < 0 && cont->c1x > 0) cont->c1x--;
+                            if(dx > 0 && cont->c1x < w - 1) cont->c1x++;
+                            if(dy < 0 && cont->c1y > 0) cont->c1y--;
+                            if(dy > 0 && cont->c1y < h - 1) cont->c1y++;
+                            if(cont->type == SSFN_CONTOUR_CUBIC) {
+                                if(dx < 0 && cont->c2x > 0) cont->c2x--;
+                                if(dx > 0 && cont->c2x < w - 1) cont->c2x++;
+                                if(dy < 0 && cont->c2y > 0) cont->c2y--;
+                                if(dy > 0 && cont->c2y < h - 1) cont->c2y++;
+                            }
+                        }
+                    }
+            break;
+            case SSFN_FRAG_BITMAP:
+            case SSFN_FRAG_PIXMAP:
+                data = malloc(w * h);
+                if(!data) ui_error("coords", ERR_MEM);
+                memcpy(data, ctx.glyphs[win->unicode].layers[n].data, w * h);
+                if(dy < 0) {
+                    memcpy(ctx.glyphs[win->unicode].layers[n].data, data + w, w * (h - 1));
+                    memcpy(ctx.glyphs[win->unicode].layers[n].data + w * (h - 1), data, w);
+                } else
+                if(dy > 0) {
+                    memcpy(ctx.glyphs[win->unicode].layers[n].data + w, data, w * (h - 1));
+                    memcpy(ctx.glyphs[win->unicode].layers[n].data, data + w * (h - 1), w);
+                }
+                if(dx < 0) {
+                    for(i = 0; i < h; i++) {
+                        memcpy(ctx.glyphs[win->unicode].layers[n].data + i * w, data + i * w + 1, w - 1);
+                        ctx.glyphs[win->unicode].layers[n].data[i * w + w - 1] = data[i * w];
+                    }
+                } else
+                if(dx > 0) {
+                    for(i = 0; i < h; i++) {
+                        memcpy(ctx.glyphs[win->unicode].layers[n].data + i * w + 1, data + i * w, w - 1);
+                        ctx.glyphs[win->unicode].layers[n].data[i * w] = data[i * w + w - 1];
+                    }
+                }
+                free(data);
+            break;
+        }
+    modified++;
 }
 
 /**
@@ -225,7 +410,55 @@ void ctrl_pos(int idx, int dx, int dy)
 void ctrl_italize(int idx)
 {
     ui_win_t *win = &wins[idx];
+    sfncont_t *cont;
+    unsigned char *data;
+    int i, n, mx, w = ctx.glyphs[win->unicode].width, h = ctx.glyphs[win->unicode].height;
+    int s = h / SSFN_ITALIC_DIV;
+    ctx.glyphs[win->unicode].width += s;
+    mx = ctx.glyphs[win->unicode].width;
+    for(n = 0; n < ctx.glyphs[win->unicode].numlayer; n++)
+        switch(ctx.glyphs[win->unicode].layers[n].type) {
+            case SSFN_FRAG_CONTOUR:
+                for(i = 0, cont = (sfncont_t*)ctx.glyphs[win->unicode].layers[n].data;
+                    i < ctx.glyphs[win->unicode].layers[n].len; i++, cont++) {
+                        cont->px += s * (h - cont->py) / h;
+                        if(cont->px < mx) mx = cont->px;
+                        if(cont->type >= SSFN_CONTOUR_QUAD) {
+                            cont->c1x += s * (h - cont->c1y) / h;
+                            if(cont->c1x < mx) mx = cont->c1x;
+                            if(cont->type == SSFN_CONTOUR_CUBIC) {
+                                cont->c2x += s * (h - cont->c2y) / h;
+                                if(cont->c2x < mx) mx = cont->c2x;
+                            }
+                        }
+                    }
+            break;
+            case SSFN_FRAG_BITMAP:
+            case SSFN_FRAG_PIXMAP:
+                data = malloc(ctx.glyphs[win->unicode].width * h);
+                if(!data) ui_error("coords", ERR_MEM);
+                memset(data, 0xFF, ctx.glyphs[win->unicode].width * h);
+                for(i = 0; i < h; i++)
+                    memcpy(data + i * ctx.glyphs[win->unicode].width + s * (h - i) / h,
+                        ctx.glyphs[win->unicode].layers[n].data + i * w, w);
+                free(ctx.glyphs[win->unicode].layers[n].data);
+                ctx.glyphs[win->unicode].layers[n].data = data;
+            break;
+        }
+    for(n = 0; n < ctx.glyphs[win->unicode].numlayer; n++)
+        if(ctx.glyphs[win->unicode].layers[n].type == SSFN_FRAG_CONTOUR)
+            for(i = 0, cont = (sfncont_t*)ctx.glyphs[win->unicode].layers[n].data;
+                i < ctx.glyphs[win->unicode].layers[n].len; i++, cont++) {
+                    cont->px -= mx;
+                    if(cont->type >= SSFN_CONTOUR_QUAD) {
+                        cont->c1x -= mx;
+                        if(cont->type == SSFN_CONTOUR_CUBIC)
+                            cont->c2x -= mx;
+                    }
+                }
+    sfn_sanitize(win->unicode);
     win->rc = 1;
+    modified++;
 }
 
 /**
@@ -234,23 +467,131 @@ void ctrl_italize(int idx)
 void ctrl_deitalize(int idx)
 {
     ui_win_t *win = &wins[idx];
+    sfncont_t *cont;
+    unsigned char *data;
+    int i, n, mx = 0, w = ctx.glyphs[win->unicode].width, h = ctx.glyphs[win->unicode].height;
+    int s = h / SSFN_ITALIC_DIV;
+    ctx.glyphs[win->unicode].width -= s;
+    for(n = 0; n < ctx.glyphs[win->unicode].numlayer; n++)
+        switch(ctx.glyphs[win->unicode].layers[n].type) {
+            case SSFN_FRAG_CONTOUR:
+                for(i = 0, cont = (sfncont_t*)ctx.glyphs[win->unicode].layers[n].data;
+                    i < ctx.glyphs[win->unicode].layers[n].len; i++, cont++) {
+                        if(mx > cont->px - s * (h - cont->py) / h) mx = cont->px - s * (h - cont->py) / h;
+                        if(cont->type >= SSFN_CONTOUR_QUAD) {
+                            if(mx > cont->c1x - s * (h - cont->c1y) / h) mx = cont->c1x - s * (h - cont->c1y) / h;
+                            if(cont->type == SSFN_CONTOUR_CUBIC &&
+                               mx > cont->c2x - s * (h - cont->c2y) / h) mx = cont->c2x - s * (h - cont->c2y) / h;
+                        }
+                    }
+            break;
+            case SSFN_FRAG_BITMAP:
+            case SSFN_FRAG_PIXMAP:
+                data = malloc(ctx.glyphs[win->unicode].width * h);
+                if(!data) ui_error("coords", ERR_MEM);
+                for(i = 0; i < h; i++)
+                    memcpy(data + i * ctx.glyphs[win->unicode].width,
+                        ctx.glyphs[win->unicode].layers[n].data + i * w + s * (h - i) / h, w);
+                free(ctx.glyphs[win->unicode].layers[n].data);
+                ctx.glyphs[win->unicode].layers[n].data = data;
+            break;
+        }
+    for(n = 0; n < ctx.glyphs[win->unicode].numlayer; n++)
+        if(ctx.glyphs[win->unicode].layers[n].type == SSFN_FRAG_CONTOUR)
+                for(i = 0, cont = (sfncont_t*)ctx.glyphs[win->unicode].layers[n].data;
+                    i < ctx.glyphs[win->unicode].layers[n].len; i++, cont++) {
+                        cont->px = cont->px - mx - s * (h - cont->py) / h;
+                        if(cont->type >= SSFN_CONTOUR_QUAD) {
+                            cont->c1x = cont->c1x - mx - s * (h - cont->c1y) / h;
+                            if(cont->type == SSFN_CONTOUR_CUBIC)
+                                cont->c2x = cont->c2x - mx - s * (h - cont->c2y) / h;
+                        }
+                    }
+    sfn_sanitize(win->unicode);
     win->rc = 1;
+    modified++;
 }
 
 /**
  * Flip glyph horizontally
  */
-void ctrl_fliph(int idx)
+void ctrl_fliph(int idx, int layer)
 {
     ui_win_t *win = &wins[idx];
+    sfncont_t *cont;
+    unsigned char d, *data;
+    int i, j, k, n, w = ctx.glyphs[win->unicode].width, h = ctx.glyphs[win->unicode].height, s, e;
+    if(layer < 0 || layer >= ctx.glyphs[win->unicode].numlayer) {
+        s = 0; e = ctx.glyphs[win->unicode].numlayer;
+    } else {
+        s = layer; e = layer + 1;
+    }
+    for(n = s; n < e; n++)
+        switch(ctx.glyphs[win->unicode].layers[n].type) {
+            case SSFN_FRAG_CONTOUR:
+                for(i = 0, cont = (sfncont_t*)ctx.glyphs[win->unicode].layers[n].data;
+                    i < ctx.glyphs[win->unicode].layers[n].len; i++, cont++) {
+                        cont->px = w - 1 - cont->px;
+                        if(cont->type >= SSFN_CONTOUR_QUAD) {
+                            cont->c1x = w - 1 - cont->c1x;
+                            if(cont->type == SSFN_CONTOUR_CUBIC)
+                                cont->c2x = w - 1 - cont->c2x;
+                        }
+                    }
+            break;
+            case SSFN_FRAG_BITMAP:
+            case SSFN_FRAG_PIXMAP:
+                data = ctx.glyphs[win->unicode].layers[n].data;
+                for(j = k = 0; j < h; j++, k += w)
+                    for(i = 0; i < w/2; i++) {
+                        d = data[k + i];
+                        data[k + i] = data[k + w - 1 - i];
+                        data[k + w - 1 - i] = d;
+                    }
+            break;
+        }
+    modified++;
 }
 
 /**
  * Flip glyph vertically
  */
-void ctrl_flipv(int idx)
+void ctrl_flipv(int idx, int layer)
 {
     ui_win_t *win = &wins[idx];
+    sfncont_t *cont;
+    unsigned char d, *data;
+    int i, j, n, w = ctx.glyphs[win->unicode].width, h = ctx.glyphs[win->unicode].height, s, e;
+    if(layer < 0 || layer >= ctx.glyphs[win->unicode].numlayer) {
+        s = 0; e = ctx.glyphs[win->unicode].numlayer;
+    } else {
+        s = layer; e = layer + 1;
+    }
+    for(n = s; n < e; n++)
+        switch(ctx.glyphs[win->unicode].layers[n].type) {
+            case SSFN_FRAG_CONTOUR:
+                for(i = 0, cont = (sfncont_t*)ctx.glyphs[win->unicode].layers[n].data;
+                    i < ctx.glyphs[win->unicode].layers[n].len; i++, cont++) {
+                        cont->py = h - 1 - cont->py;
+                        if(cont->type >= SSFN_CONTOUR_QUAD) {
+                            cont->c1y = h - 1 - cont->c1y;
+                            if(cont->type == SSFN_CONTOUR_CUBIC)
+                                cont->c2y = h - 1 - cont->c2y;
+                        }
+                    }
+            break;
+            case SSFN_FRAG_BITMAP:
+            case SSFN_FRAG_PIXMAP:
+                data = ctx.glyphs[win->unicode].layers[n].data;
+                for(j = 0; j < h/2; j++)
+                    for(i = 0; i < w; i++) {
+                        d = data[j*w + i];
+                        data[j*w + i] = data[(h-1-j)*w + i];
+                        data[(h-1-j)*w + i] = d;
+                    }
+            break;
+        }
+    modified++;
 }
 
 /**
@@ -260,6 +601,19 @@ void ctrl_coords_onenter(int idx)
 {
     ui_win_t *win = &wins[idx];
     switch(win->field) {
+        case 11: ctrl_setadv(idx, 0); break;
+        case 12: ctrl_setadv(idx, 1); break;
+        case 13: ctrl_setadv(idx, 2); break;
+        case 14: ctrl_pos(idx,-1, 0,-1); break;
+        case 15: ctrl_pos(idx,-1,-1, 0); break;
+        case 16: ctrl_pos(idx,-1, 1, 0); break;
+        case 17: ctrl_pos(idx,-1, 0, 1); break;
+        case 18: ctrl_italize(idx); break;
+        case 19: ctrl_fliph(idx, -1); break;
+        case 20: sfn_sanitize(win->unicode); win->rc = 1; modified++; break;
+        case 21: ctrl_deitalize(idx); break;
+        case 22: ctrl_flipv(idx, -1); break;
+        case 23: sfn_chardel(win->unicode); win->rc = 1; modified++; break;
     }
 }
 
@@ -269,6 +623,38 @@ void ctrl_coords_onenter(int idx)
 void ctrl_coords_onkey(int idx)
 {
     ui_win_t *win = &wins[idx];
+    switch(event.x) {
+        case K_UP:
+            switch(win->field) {
+                case 4: ctrl_setsize(idx, 1, 0); break;
+                case 5: ctrl_setsize(idx, 0, 1); break;
+                case 6: ctrl_setbase(idx, 1); break;
+                case 7: ctrl_setunder(idx, 1); break;
+                case 8: ctrl_setox(idx, 1); break;
+                case 9: ctrl_setax(idx, 1); break;
+                case 10: ctrl_setay(idx, 1); break;
+                default: ctrl_pos(idx,-1, 0, -1); break;
+            }
+        break;
+        case K_LEFT: ctrl_pos(idx,-1, -1, 0); break;
+        case K_DOWN:
+            switch(win->field) {
+                case 4: ctrl_setsize(idx, -1, 0); break;
+                case 5: ctrl_setsize(idx, 0, -1); break;
+                case 6: ctrl_setbase(idx, -1); break;
+                case 7: ctrl_setunder(idx, -1); break;
+                case 8: ctrl_setox(idx, -1); break;
+                case 9: ctrl_setax(idx, -1); break;
+                case 10: ctrl_setay(idx, -1); break;
+                default: ctrl_pos(idx,-1, 0, 1); break;
+            }
+        break;
+        case K_RIGHT: ctrl_pos(idx,-1, 1, 0); break;
+        case 'h': case 'H': ctrl_fliph(idx, -1); break;
+        case 'v': case 'V': ctrl_flipv(idx, -1); break;
+    }
+    ui_resizewin(win, win->w, win->h);
+    ui_refreshwin(event.win, 0, 0, win->w, win->h - 24);
 }
 
 /**
@@ -279,42 +665,42 @@ void ctrl_coords_onbtnpress(int idx)
     ui_win_t *win = &wins[idx];
     int x = win->w - 74, ox = win->zx > 0 ? win->zx : 0, oy = win->zy > 0 ? win->zy : 0;
     if(x < 0) x = 0;
-    selfield = mousex = mousey = -1;
+    selfield = win->field = mousex = mousey = -1;
     if(event.x > x) {
         if(event.y > 26 && event.y < 48) {
             if(event.w & (1 << 3)) ctrl_setsize(idx, 1, 0); else
             if(event.w & (1 << 4)) ctrl_setsize(idx,-1, 0); else
-            if(event.x >= x + 58) selfield = 0 + (event.y - 26 > 12 ? 1 : 0);
+            if(event.x >= x + 58) selfield = 0 + (event.y - 26 > 12 ? 1 : 0); else win->field = 4;
         } else
         if(event.y > 52 && event.y < 70) {
             if(event.w & (1 << 3)) ctrl_setsize(idx, 0, 1); else
             if(event.w & (1 << 4)) ctrl_setsize(idx, 0,-1); else
-            if(event.x >= x + 58) selfield = 2 + (event.y - 52 > 9 ? 1 : 0);
+            if(event.x >= x + 58) selfield = 2 + (event.y - 52 > 9 ? 1 : 0); else win->field = 5;
         } else
         if(event.y > 74 && event.y < 92) {
-            if(event.w & (1 << 3)) { if(ctx.baseline < 254) ctx.baseline++; } else
-            if(event.w & (1 << 4)) { if(ctx.baseline > 0) ctx.baseline--; } else
-            if(event.x >= x + 58) selfield = 4 + (event.y - 74 > 9 ? 1 : 0);
+            if(event.w & (1 << 3)) ctrl_setbase(idx, 1); else
+            if(event.w & (1 << 4)) ctrl_setbase(idx,-1); else
+            if(event.x >= x + 58) selfield = 4 + (event.y - 74 > 9 ? 1 : 0); else win->field = 6;
         } else
         if(event.y > 96 && event.y < 114) {
-            if(event.w & (1 << 3)) { if(ctx.underline < 254) ctx.underline++; } else
-            if(event.w & (1 << 4)) { if(ctx.underline > 0) ctx.underline--; } else
-            if(event.x >= x + 58) selfield = 6 + (event.y - 96 > 9 ? 1 : 0);
+            if(event.w & (1 << 3)) ctrl_setunder(idx, 1); else
+            if(event.w & (1 << 4)) ctrl_setunder(idx,-1); else
+            if(event.x >= x + 58) selfield = 6 + (event.y - 96 > 9 ? 1 : 0); else win->field = 7;
         } else
         if(event.y > 140 && event.y < 158) {
-            if(event.w & (1 << 3)) { if(ctx.glyphs[win->unicode].ovl_x < 63) ctx.glyphs[win->unicode].ovl_x++; } else
-            if(event.w & (1 << 4)) { if(ctx.glyphs[win->unicode].ovl_x > 0) ctx.glyphs[win->unicode].ovl_x--; } else
-            if(event.x >= x + 58) selfield = 8 + (event.y - 140 > 9 ? 1 : 0);
+            if(event.w & (1 << 3)) ctrl_setox(idx, 1); else
+            if(event.w & (1 << 4)) ctrl_setox(idx,-1); else
+            if(event.x >= x + 58) selfield = 8 + (event.y - 140 > 9 ? 1 : 0); else win->field = 8;
         } else
         if(event.y > 162 && event.y < 180) {
-            if(event.w & (1 << 3)) { if(ctx.glyphs[win->unicode].adv_x < 254) ctx.glyphs[win->unicode].adv_x++; } else
-            if(event.w & (1 << 4)) { if(ctx.glyphs[win->unicode].adv_x > 0) ctx.glyphs[win->unicode].adv_x--; } else
-            if(event.x >= x + 58) selfield = 10 + (event.y - 162 > 9 ? 1 : 0);
+            if(event.w & (1 << 3)) ctrl_setax(idx, 1); else
+            if(event.w & (1 << 4)) ctrl_setax(idx,-1); else
+            if(event.x >= x + 58) selfield = 10 + (event.y - 162 > 9 ? 1 : 0); else win->field = 9;
         } else
         if(event.y > 184 && event.y < 204) {
-            if(event.w & (1 << 3)) { if(ctx.glyphs[win->unicode].adv_y < 254) ctx.glyphs[win->unicode].adv_y++; } else
-            if(event.w & (1 << 4)) { if(ctx.glyphs[win->unicode].adv_y > 0) ctx.glyphs[win->unicode].adv_y--; } else
-            if(event.x >= x + 58) selfield = 12 + (event.y - 184 > 9 ? 1 : 0);
+            if(event.w & (1 << 3)) ctrl_setay(idx, 1); else
+            if(event.w & (1 << 4)) ctrl_setay(idx,-1); else
+            if(event.x >= x + 58) selfield = 12 + (event.y - 184 > 9 ? 1 : 0); else win->field = 10;
         } else
         if(event.y > 206 && event.y < 228) {
             if(event.x > x && event.x < x + 24) selfield = 14; else
@@ -337,6 +723,8 @@ void ctrl_coords_onbtnpress(int idx)
             if(event.x > x + 24 && event.x < x + 48) selfield = 25; else
             if(event.x > x + 48 && event.x < x + 72) selfield = 26;
         }
+        ui_resizewin(win, win->w, win->h);
+        ui_refreshwin(event.win, 0, 0, win->w, win->h - 24);
     } else
     if(event.y < win->h - 22) {
         if(event.w & (1 << 3)) ctrl_zoom_in(event.win, event.x, event.y); else
@@ -367,58 +755,45 @@ void ctrl_coords_onclick(int idx)
             if(selfield == 3) ctrl_setsize(idx, 0,-1);
         } else
         if(event.y > 74 && event.y < 92 && event.x >= x + 58) {
-            if(selfield == 4) { if(ctx.baseline < 254) ctx.baseline++; } else
-            if(selfield == 5) { if(ctx.baseline > 0) ctx.baseline--; }
+            if(selfield == 4) ctrl_setbase(idx, 1); else
+            if(selfield == 5) ctrl_setbase(idx,-1);
         } else
         if(event.y > 96 && event.y < 114 && event.x >= x + 58) {
-            if(selfield == 6) { if(ctx.underline < 254) ctx.underline++; } else
-            if(selfield == 7) { if(ctx.underline > 0) ctx.underline--; }
+            if(selfield == 6) ctrl_setunder(idx, 1); else
+            if(selfield == 7) ctrl_setunder(idx,-1);
         } else
         if(event.y > 140 && event.y < 158 && event.x >= x + 58) {
-            if(selfield == 8) { if(ctx.glyphs[win->unicode].ovl_x < 63) ctx.glyphs[win->unicode].ovl_x++; } else
-            if(selfield == 9) { if(ctx.glyphs[win->unicode].ovl_x > 0) ctx.glyphs[win->unicode].ovl_x--; }
+            if(selfield == 8) ctrl_setox(idx, 1); else
+            if(selfield == 9) ctrl_setox(idx,-1);
         } else
         if(event.y > 162 && event.y < 180 && event.x >= x + 58) {
-            if(selfield == 10) { if(ctx.glyphs[win->unicode].adv_x < 254) ctx.glyphs[win->unicode].adv_x++; } else
-            if(selfield == 11) { if(ctx.glyphs[win->unicode].adv_x > 0) ctx.glyphs[win->unicode].adv_x--; }
-            ctx.glyphs[win->unicode].adv_y = 0;
+            if(selfield == 10) ctrl_setax(idx, 1); else
+            if(selfield == 11) ctrl_setax(idx,-1);
         } else
         if(event.y > 184 && event.y < 204 && event.x >= x + 58) {
-            if(selfield == 12) { if(ctx.glyphs[win->unicode].adv_y < 254) ctx.glyphs[win->unicode].adv_y++; } else
-            if(selfield == 13) { if(ctx.glyphs[win->unicode].adv_y > 0) ctx.glyphs[win->unicode].adv_y--; }
-            ctx.glyphs[win->unicode].adv_x = 0;
+            if(selfield == 12) ctrl_setay(idx, 1); else
+            if(selfield == 13) ctrl_setay(idx,-1);
         } else
         if(event.y > 206 && event.y < 228) {
-            if(event.x > x && event.x < x + 24 && selfield == 14) {
-                ctx.glyphs[win->unicode].rtl = 1;
-                ctx.glyphs[win->unicode].adv_y = 0;
-                if(ctx.glyphs[win->unicode].adv_x < 1) ctx.glyphs[win->unicode].adv_x = ctx.glyphs[win->unicode].width;
-            } else
-            if(event.x > x + 24 && event.x < x + 48 && selfield == 15) {
-                ctx.glyphs[win->unicode].adv_x = 0;
-                if(ctx.glyphs[win->unicode].adv_y < 1) ctx.glyphs[win->unicode].adv_y = ctx.glyphs[win->unicode].height;
-            } else
-            if(event.x > x + 48 && event.x < x + 72 && selfield == 16) {
-                ctx.glyphs[win->unicode].rtl = 0;
-                ctx.glyphs[win->unicode].adv_y = 0;
-                if(ctx.glyphs[win->unicode].adv_x < 1) ctx.glyphs[win->unicode].adv_x = ctx.glyphs[win->unicode].width;
-            }
+            if(event.x > x && event.x < x + 24 && selfield == 14) ctrl_setadv(idx, 0); else
+            if(event.x > x + 24 && event.x < x + 48 && selfield == 15) ctrl_setadv(idx, 1); else
+            if(event.x > x + 48 && event.x < x + 72 && selfield == 16) ctrl_setadv(idx, 2);
         } else
-        if(event.y > 250 && event.y < 272 && event.x > x + 24 && event.x < x + 48 && selfield == 17) ctrl_pos(idx, 0, -1); else
+        if(event.y > 250 && event.y < 272 && event.x > x + 24 && event.x < x + 48 && selfield == 17) ctrl_pos(idx,-1, 0, -1); else
         if(event.y > 274 && event.y < 296) {
-            if(event.x > x && event.x < x + 24 && selfield == 18) ctrl_pos(idx, -1, 0); else
-            if(event.x > x + 48 && event.x < x + 72 && selfield == 19) ctrl_pos(idx, 1, 0);
+            if(event.x > x && event.x < x + 24 && selfield == 18) ctrl_pos(idx,-1, -1, 0); else
+            if(event.x > x + 48 && event.x < x + 72 && selfield == 19) ctrl_pos(idx,-1, 1, 0);
         } else
-        if(event.y > 298 && event.y < 340 && event.x > x + 24 && event.x < x + 48 && selfield == 20) ctrl_pos(idx, 0, 1); else
+        if(event.y > 298 && event.y < 340 && event.x > x + 24 && event.x < x + 48 && selfield == 20) ctrl_pos(idx,-1, 0, 1); else
         if(event.y > 342 && event.y < 364) {
             if(event.x > x && event.x < x + 24 && selfield == 21) ctrl_italize(idx); else
-            if(event.x > x + 24 && event.x < x + 48 && selfield == 22) ctrl_fliph(idx); else
-            if(event.x > x + 48 && event.x < x + 72 && selfield == 23) { sfn_sanitize(win->unicode); win->rc = 1; }
+            if(event.x > x + 24 && event.x < x + 48 && selfield == 22) ctrl_fliph(idx, -1); else
+            if(event.x > x + 48 && event.x < x + 72 && selfield == 23) { sfn_sanitize(win->unicode); win->rc = 1; modified++; }
         } else
         if(event.y > 366 && event.y < 388) {
             if(event.x > x && event.x < x + 24 && selfield == 24) ctrl_deitalize(idx); else
-            if(event.x > x + 24 && event.x < x + 48 && selfield == 25) ctrl_flipv(idx); else
-            if(event.x > x + 48 && event.x < x + 72 && selfield == 26) { sfn_chardel(win->unicode); win->rc = 1; }
+            if(event.x > x + 24 && event.x < x + 48 && selfield == 25) ctrl_flipv(idx, -1); else
+            if(event.x > x + 48 && event.x < x + 72 && selfield == 26) { sfn_chardel(win->unicode); win->rc = 1; modified++; }
         }
     }
     cursor = CURSOR_PTR;
@@ -444,7 +819,7 @@ void ctrl_coords_onmove(int idx)
         if(event.y > 184 && event.y < 204) status = lang[COORDS_VADV]; else
         if(event.y > 206 && event.y < 228) {
             if(event.x > x && event.x < x + 24) status = lang[COORDS_RTL]; else
-            if(event.x > x + 24 && event.x < x + 48) status = lang[COORDS_HORIZ]; else
+            if(event.x > x + 24 && event.x < x + 48) status = lang[COORDS_UTD]; else
             if(event.x > x + 48 && event.x < x + 72) status = lang[COORDS_LTR];
         } else
         if(event.y > 250 && event.y < 320) status = lang[COORDS_REPOS]; else
@@ -462,10 +837,10 @@ void ctrl_coords_onmove(int idx)
     if(event.x >= ox + 20 && event.y >= oy + 36 &&
         event.x <= ox + 20 + win->zoom * ctx.glyphs[win->unicode].width &&
         event.y <= oy + 36 + win->zoom * ctx.glyphs[win->unicode].height && event.y < win->h - 22) {
-            if(mousex != -1 && mousey != -1) ctrl_move(event.win, event.x, event.y);
             posx = (event.x - ox - 20 - (win->zx < 0 ? win->zx : 0)) / win->zoom;
             if(posx >= ctx.glyphs[win->unicode].width) posx = -1;
             posy = (event.y - oy - 36 - (win->zy < 0 ? win->zy : 0)) / win->zoom;
             if(posy >= ctx.glyphs[win->unicode].height) posy = -1;
+            if(mousex != -1 && mousey != -1) ctrl_move(event.win, event.x, event.y);
     }
 }

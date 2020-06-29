@@ -1,6 +1,6 @@
 # --- set these according to your configuration ---
-LINUXSDL = /usr/include/SDL2
-MINGWSDL = ../..
+LINUXSDL = ../../SDL2-master
+MINGWSDL = ../../SDL2-mingw
 MACSDL = /Library/Frameworks/SDL2.framework
 # -------------------------------------------------
 
@@ -9,10 +9,40 @@ include ../libsfn/Makefile.env
 
 SRCS = $(filter-out $(wildcard ui_*.c),$(wildcard *.c))
 
-# SDL driver
+# DUMMY driver for a hobby OS
 ifeq ("$(USE_X11)","")
+ifneq ("$(wildcard path/to/your/uiheader.h)","")
+SRCS += ui_dummy.c
+CFLAGS += -Ipath/to/your/uiheader
+LIBS += -lyouuilib
+PLAT = x86_64-dummy
+DRIVER = dummy
+endif
+endif
+
+# OS/Z driver
+ifeq ("$(USE_X11)$(DRIVER)","")
+ifneq ("$(wildcard ../../include/osZ/osZ.h)","")
+SRCS += ui_osZ.c
+CFLAGS += -I../../include
+LIBS += -lui
+PLAT = x86_64-osZ
+DRIVER = osZ
+endif
+endif
+
+# SDL driver
+ifeq ("$(USE_X11)$(DRIVER)","")
 # MacOSX
-ifneq ("$(wildcard $(MACSDL))","")
+ifneq ("$(wildcard $(MACSDL)/libSDL.a)","")
+SRCS += ui_sdl.c
+CFLAGS += -D__MACOSX__=1 -I$(MACSDL)/include
+EXTRA += $(MACSDL)/libSDL.a
+LIBS += -lm -framework Cocoa
+PLAT = intel-macosx
+DRIVER = sdl
+else
+ifneq ("$(wildcard $(MACSDL)/Headers)","")
 SRCS += ui_sdl.c
 CFLAGS += -D__MACOSX__=1 -I$(MACSDL)/Headers -I$(MACSDL)/Versions/A/Headers
 LIBDIRS = -F$(MACSDL:/SDL2.framework=)
@@ -21,6 +51,17 @@ PLAT = intel-macosx
 DRIVER = sdl
 else
 # Linux
+ifneq ("$(wildcard $(LINUXSDL)/libSDL.a)","")
+SRCS += ui_sdl.c
+CFLAGS += -I$(LINUXSDL)/include
+EXTRA += $(LINUXSDL)/libSDL.a
+ifneq ("$(shell grep 'define SDL_VIDEO_DRIVER_WAYLAND 1' $(LINUXSDL)/include/SDL_config.h)","")
+LIBS += -lm -lwayland
+else
+LIBS += -lm -lX11 -lXcursor -lXext
+endif
+DRIVER = sdl
+else
 ifneq ("$(wildcard /usr/local/include/SDL2/SDL.h)","")
 SRCS += ui_sdl.c
 CFLAGS += -I/usr/local/include/SDL2
@@ -34,6 +75,15 @@ LIBS += -lSDL2
 DRIVER = sdl
 else
 # Windows MinGW
+ifneq ("$(wildcard $(MINGWSDL)/libSDL.a)","")
+SRCS += ui_sdl.c
+CFLAGS += -I$(MINGWSDL)/include
+EXTRA += $(MINGWSDL)/libSDL.a resource.o
+LIBDIRS = -mwindows -static-libgcc
+LIBS += -Wl,--nxcompat -lole32 -loleaut32 -lwinmm -limm32 -luuid -lversion
+PLAT = i686-win
+DRIVER = sdl
+else
 ifneq ("$(wildcard $(MINGWSDL)/i686-w64-mingw32/include/SDL2/SDL.h)","")
 SRCS += ui_sdl.c
 CFLAGS += -I$(MINGWSDL)/i686-w64-mingw32/include/SDL2
@@ -47,19 +97,11 @@ endif
 endif
 endif
 endif
-
-# OS/Z driver
-ifeq ("$(DRIVER)","")
-ifneq ("$(wildcard ../../include/osZ/osZ.h)","")
-SRCS += ui_osz.c
-CFLAGS += -I../../include
-LIBS += -lui
-PLAT = x86_64-osz
-DRIVER = osz
+endif
 endif
 endif
 
-# fallback X11 driver
+# fallback native X11 driver
 ifeq ("$(DRIVER)","")
 ifneq ("$(wildcard /opt/local/include/X11/Xlib.h)","")
 SRCS += ui_x11.c
@@ -94,6 +136,9 @@ endif
 endif
 endif
 endif
+ifeq ("$(PLAT)","")
+PLAT = x86_64-linux
+endif
 
 OBJS = $(SRCS:.c=.o)
 
@@ -112,22 +157,21 @@ resource.o: misc/resource.rc
 	$(CC) $(CFLAGS) $< -c $@
 
 # include libsfn .o files directly so that we don't rely on 'ar' under mingw
-$(TARGET): $(OBJS)
+$(TARGET): $(OBJS) $(EXTRA)
 ifeq ($(wildcard ../libsfn/*.o),)
 	@make -C ../libsfn all
 endif
-	$(CC) ../libsfn/*.o ../libsfn/potracelib/*.o $(EXTRA) $(OBJS) -o $(TARGET) $(LIBDIRS) $(LIBS)
+	$(CC) $(OBJS) ../libsfn/*.o ../libsfn/potracelib/*.o $(EXTRA) -o $(TARGET) $(LIBDIRS) $(LIBS)
 
 ### packaging stuff ###
 zip: $(TARGET)
 ifeq ("$(PLAT)","i686-win")
 	@mkdir SSFN
 	@cp ../ssfn.h SSFN
-	@cp $(TARGET) SSFN
-ifneq ("$(wildcard ../sfnconv/sfnconv)","")
-	@cp ../sfnconv/sfnconv SSFN
+	@cp $(TARGET).exe SSFN
+ifneq ("$(wildcard ../sfnconv/sfnconv.exe)","")
+	@cp ../sfnconv/sfnconv.exe SSFN
 endif
-	@cp $(MINGWSDL)/i686-w64-mingw32/bin/SDL2.dll SSFN/SDL2.dll
 	@rm ../ssfn_2.0.0-$(PLAT).zip 2>/dev/null || true
 	zip -r -9 ../ssfn_2.0.0-$(PLAT).zip SSFN
 	@rm -rf SSFN
@@ -139,7 +183,7 @@ ifneq ("$(wildcard ../sfnconv/sfnconv)","")
 	@cp ../sfnconv/sfnconv SFNEdit.app/Contents/MacOS
 endif
 	@cp ../ssfn.h SFNEdit.app/Contents/Frameworks/SSFN.framework/Headers
-	@cp -r $(MACSDL) SFNEdit.app/Contents/Frameworks
+	@#cp -r $(MACSDL) SFNEdit.app/Contents/Frameworks
 	@cp misc/Info.plist SFNEdit.app/Contents
 	@cp misc/sfnedit.icns SFNEdit.app/Contents/Resources
 	@rm ../ssfn_2.0.0-$(PLAT).zip 2>/dev/null || true

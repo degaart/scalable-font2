@@ -35,6 +35,9 @@
 #include "ui.h"
 #include "lang.h"
 
+/**
+ * Help window
+ */
 void view_help(int idx)
 {
     int i, c;
@@ -69,10 +72,13 @@ void view_help(int idx)
     ssfn_dst.fg = theme[THEME_FG];
     ui_text(win, 8, 32, wt);
     ssfn_dst.x = 8;
-    ssfn_dst.y = 48;
-    while(*s && ssfn_dst.x < win->w) {
+    ssfn_dst.y = 52;
+    while(*s) {
         c = ssfn_utf8(&s);
-        if(c == '\n') { ssfn_dst.x = 8; ssfn_dst.y += 16; }
+        if(c == '[') { ssfn_dst.fg = theme[THEME_BG]; ssfn_dst.bg = theme[THEME_FG]; ssfn_putc(' '); } else
+        if(c == ']') { ssfn_putc(' '); ssfn_dst.fg = theme[THEME_FG]; ssfn_dst.bg = theme[THEME_BG]; } else
+        if(c == '\t') { ssfn_dst.x = 8 + 20*8; } else
+        if(c == '\n' || ssfn_dst.x + 8 >= win->w) { ssfn_dst.x = 8; ssfn_dst.y += 18; }
         else ssfn_putc(c);
     }
 }

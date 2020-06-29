@@ -61,16 +61,12 @@ unsigned char selection[8] = { 0 };
  */
 void ui_copy(char *s)
 {
-    if(s && *s) {
 #ifdef HAS_XMU
-        memcpy(selection, s, sizeof(selection));
-        XSetSelectionOwner(display, XA_CLIPBOARD(display), (Window)wins[0].winid, CurrentTime);
-    } else
-        selection[0] = 0;
+    memcpy(selection, s, sizeof(selection));
+    XSetSelectionOwner(display, XA_CLIPBOARD(display), (Window)wins[0].winid, CurrentTime);
 #else
-        /* in lack of Xmu and XA_CLIPBOARD, we just print it to console */
-        printf("UTF8: %s\n", s);
-    }
+    /* in lack of Xmu and XA_CLIPBOARD, we just print it to console */
+    printf("UTF8: %s\n", s);
 #endif
 }
 

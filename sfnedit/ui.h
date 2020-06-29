@@ -30,6 +30,77 @@
 #include <stdint.h>
 #include "hist.h"
 
+/*** used by UI drivers too ***/
+enum {
+    CURSOR_LOADING,         /* cursor to indicate that sfnedit is working */
+    CURSOR_PTR,             /* the default normal cursor pointer */
+    CURSOR_CROSS,           /* a cross-hair, used when selecting pixels and contour points */
+    CURSOR_MOVE,            /* used when user drags the layers and moves it around */
+    CURSOR_GRAB             /* used for links and the color picker */
+};
+
+#define E_NONE          0   /* no event */
+#define E_CLOSE         1   /* window close button clicked */
+#define E_RESIZE        2   /* window is resized */
+#define E_REFRESH       3   /* window has to be updated (expose) */
+#define E_KEY           4   /* key press event */
+#define E_MOUSEMOVE     5   /* mouse pointer is moving */
+#define E_BTNPRESS      6   /* mouse button is pressed */
+#define E_BTNRELEASE    7   /* mouse button is released */
+
+#define K_DOWN          1   /* cursor down arrow */
+#define K_UP            2   /* cursor up arrow */
+#define K_LEFT          3   /* cursor left arrow */
+#define	K_RIGHT         4   /* cursor right arrow */
+#define K_PGDN          5   /* page down key */
+#define	K_PGUP          6   /* page up key */
+#define K_DEL           7   /* delete key */
+#define K_BACKSPC       8   /* backspace key */
+#define K_TAB           9   /* tab key */
+#define	K_HOME          11  /* home key */
+#define	K_END           12  /* end key */
+#define K_ENTER         13  /* enter or return key */
+#define K_F1            14  /* function one (help) key */
+#define K_ESC           27  /* escape key */
+
+typedef struct {
+    int win;                /* internal numerical window id where the event happened. 0 is the main window */
+    int type;               /* one of E_x defines */
+    long x;                 /* for key press, K_x define or UTF-8 character sequence */
+    int y;
+    int w;                  /* for button events, bit 0: left button, 1: middle, 2: right, 3: wheel up, 4: wheel down */
+    int h;                  /* for key and button events, bit 0: shift, 1: ctrl, 2: alt/meta */
+} ui_event_t;
+
+typedef struct {
+    /* available for drivers */
+    void *winid;            /* transparent, driver specific window id */
+    void *surface;          /* available to driver (SDL_Surface or XImage for example) */
+    uint32_t *data;         /* backstore pixel buffer */
+    int w, h, p;            /* window width, height, pitch (number of bytes in a line) */
+    /* don't care, internal window state */
+    uint32_t unicode;
+    char *uniname;
+    int field, tool, help;
+    int zoom, zx, zy, rc;
+    int histmin, histmax;
+    hist_t *hist;
+} ui_win_t;
+
+/* driver specific, these are the functions that must be implemented in every UI driver, see ui_dummy.c */
+void ui_copy(char *s);
+void *ui_createwin(int w, int h);
+void ui_titlewin(ui_win_t *win, char *title);
+void ui_resizewin(ui_win_t *win, int w, int h);
+void ui_flushwin(ui_win_t *win, int x, int y, int w, int h);
+void ui_destroywin(ui_win_t *win);
+void ui_focuswin(ui_win_t *win);
+void ui_cursorwin(ui_win_t *win, int cursor);
+void ui_init();
+void ui_fini();
+void ui_getevent();
+
+/*** common definitions and prototypes for ui ***/
 #ifdef __WIN32__
 # define DIRSEP '\\'
 # define DIRSEPS "\\"
@@ -37,6 +108,11 @@
 # define DIRSEP '/'
 # define DIRSEPS "/"
 #endif
+
+#define MAIN_W          800
+#define MAIN_H          600
+
+#define WINTYPE_MAIN    -1U
 
 enum {
     THEME_BG,
@@ -71,19 +147,12 @@ enum {
     THEME_OVL,
     THEME_ADV,
     THEME_HINT,
+    THEME_POINT,
+    THEME_CPOINT,
+    THEME_CURVE,
+    THEME_GUIDE,
 
     THEME_LAST
-};
-
-#define MAIN_W          800
-#define MAIN_H          600
-
-enum {
-    CURSOR_LOADING,
-    CURSOR_PTR,
-    CURSOR_CROSS,
-    CURSOR_MOVE,
-    CURSOR_GRAB
 };
 
 enum {
@@ -121,34 +190,8 @@ enum {
     ICON_VECTOR,
     ICON_BITMAP,
     ICON_PIXMAP,
-    ICON_ERASE
+    ICON_PICKER
 };
-
-#define WINTYPE_MAIN  -1U
-
-#define E_NONE          0
-#define E_CLOSE         1
-#define E_RESIZE        2
-#define E_REFRESH       3
-#define E_KEY           4
-#define E_MOUSEMOVE     5
-#define E_BTNPRESS      6
-#define E_BTNRELEASE    7
-
-#define K_DOWN          1
-#define K_UP            2
-#define K_LEFT          3
-#define	K_RIGHT         4
-#define K_PGDN          5
-#define	K_PGUP          6
-#define K_DEL           7
-#define K_BACKSPC       8
-#define K_TAB           9
-#define	K_HOME          11
-#define	K_END           12
-#define K_ENTER         13
-#define K_F1            14
-#define K_ESC           27
 
 enum {
     MAIN_TOOL_ABOUT,
@@ -168,28 +211,6 @@ enum {
     GLYPH_TOOL_COLOR
 };
 
-typedef struct {
-    void *winid;
-    void *surface;
-    uint32_t *data;
-    uint32_t unicode;
-    char *uniname;
-    int w, h, p;
-    int field, tool, help;
-    int zoom, zx, zy, rc;
-    int histmin, histmax;
-    hist_t *hist;
-} ui_win_t;
-
-typedef struct {
-    int win;
-    int type;
-    long x;
-    int y;
-    int w;
-    int h;
-} ui_event_t;
-
 extern char verstr[], ws[], *status, *errstatus;
 extern uint32_t theme[];
 extern int numwin, cursor, zip, ascii, selfield, rs, re, modified, posx, posy;
@@ -208,25 +229,12 @@ void copypaste_fini();
 /* history functions */
 void hist_free(ui_win_t *win);
 
-/* driver specific */
-void ui_copy(char *s);
-void *ui_createwin(int w, int h);
-void ui_titlewin(ui_win_t *win, char *title);
-void ui_resizewin(ui_win_t *win, int w, int h);
-void ui_flushwin(ui_win_t *win, int x, int y, int w, int h);
-void ui_destroywin(ui_win_t *win);
-void ui_focuswin(ui_win_t *win);
-void ui_cursorwin(ui_win_t *win, int cursor);
-void ui_init();
-void ui_fini();
-void ui_getevent();
-
 /* ui widgets */
 void ui_toolbox(int idx);
 void ui_rect(ui_win_t *win, int x, int y, int w, int h, uint32_t l, uint32_t d);
 void ui_box(ui_win_t *win, int x, int y, int w, int h, uint32_t l, uint32_t b, uint32_t d);
 void ui_grid(ui_win_t *win, int w, int h);
-void ui_gridbg(ui_win_t *win, int x, int y, int w, int h, int z, int a, int p, uint32_t *d);
+void ui_gridbg(ui_win_t *win, int x, int y, int w, int h, int a, uint32_t *d, int gx, int gy);
 void ui_icon(ui_win_t *win, int x, int y, int icon, int inactive);
 int ui_textwidth(char *str);
 void ui_text(ui_win_t *win, int x, int y, char *str);
@@ -238,8 +246,8 @@ void ui_num(ui_win_t *win, int x, int y, int num, int active, int sel);
 void ui_number(ui_win_t *win, int x, int y, int n, uint32_t c);
 void ui_hex(ui_win_t *win, char c);
 void ui_argb(ui_win_t *win, int x, int y, int w, int h, uint32_t c);
-void ui_glyph(ui_win_t *win, int x, int y, int size, int unicode, int layer);
-void ui_edit(ui_win_t *win, int x, int y, int w, int h, int layer, int p, uint32_t *d);
+void ui_glyph(ui_win_t *win, int x, int y, int size, uint32_t unicode, int layer);
+void ui_edit(ui_win_t *win, int x, int y, uint32_t unicode, int layer);
 
 /* common */
 void ui_gettheme(char *fn);

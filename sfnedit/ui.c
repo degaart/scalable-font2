@@ -42,15 +42,16 @@
 #include "libsfn.h"
 
 char verstr[8];
+extern char filename[FILENAME_MAX+64];
 
 uint8_t *icon32, *icon64, *tools, *bga;
 
 uint32_t theme[] = { 0xFF454545, 0xFFBEBEBE, 0xFF5C5C5C, 0xFF343434, 0xFF606060, 0xFF303030, 0xFF3C3C3C,
     0xFF101010, 0xFF686868, 0xFF515151, 0xFF484848, 0xFF404040,
                 0xFF744C4C, 0xFF5D3535, 0xFF542C2C, 0xFF4C2424,
-    0xFF5C5C5C, 0xFFF0F0F0, 0xFF909090, 0xFF4E4E4E,
+    0xFF606060, 0xFFF0F0F0, 0xFF909090, 0xFF4E4E4E,
     0xFF101010, 0xFF343434, 0xFFB0B0B0,
-    0xFF800000, 0xFF004040, 0xFF00FFFF, 0xFFFF0000, 0xFF007F7F };
+    0xFF800000, 0xFF004040, 0xFF005050, 0xFFFF0000, 0xFF007F7F, 0xFF0000B0, 0xFF00B000, 0xFF007F00, 0xFF005050 };
 
 int gw = 36+16+512, gh = 24+8+512, gotevt = 0, quiet = 0, lastpercent = 100, mainloop = 1, modified = 0, posx = 0, posy = 0;
 char ws[0x110000], *status, *errstatus = NULL;
@@ -212,13 +213,13 @@ void ui_openwin(uint32_t unicode)
     wins[j].winid = ui_createwin(w, h);
     wins[j].field = -1;
     wins[j].rc = 1;
-    if(unicode == WINTYPE_MAIN) wins[j].zoom = 4;
+    if(unicode == WINTYPE_MAIN) { wins[j].zoom = 4; wins[j].tool = -1; }
     input_maxlen = 0;
     input_str = input_cur = NULL;
     ui_updatetitle(j);
     ui_resizewin(&wins[j], w, h);
-    ui_focuswin(&wins[j]);
     ui_refreshwin(j, 0, 0, w, h);
+    ui_focuswin(&wins[j]);
 }
 
 /**
@@ -317,7 +318,7 @@ static void ui_loadrc()
     if(c & 4) { w = *ptr++; w += (*ptr++ << 8); ptr += w; }
     if(c & 8) { while(*ptr++ != 0); }
     if(c & 16) { while(*ptr++ != 0); }
-    f = sizeof(unifont_gz) - ((uint64_t)ptr - (uint64_t)unifont_gz);
+    f = sizeof(unifont_gz) - (size_t)(ptr - unifont_gz);
     w = 0;
     ssfn_src = (ssfn_font_t*)stbi_zlib_decode_malloc_guesssize_headerflag((const char*)ptr, f, 4096, (int*)&w, 0);
     if(!ssfn_src) ui_error("ui_loadrc", ERR_MEM);
@@ -413,10 +414,13 @@ void ui_refreshwin(int idx, int wx, int wy, int ww, int wh)
 {
     ui_win_t *win = &wins[idx];
     int i, j, k, m, p, q;
-    uint8_t *b = (uint8_t*)&theme[THEME_BG], *c = (uint8_t*)&theme[THEME_LIGHT];
+    uint32_t lc = theme[THEME_BG] + 0x060606;
+    uint8_t *b = (uint8_t*)&theme[THEME_BG], *c = (uint8_t*)&lc;
     char st[32];
 
     if(idx < 0 || idx >= numwin || win->w < 8 || win->h < 8 || wx+ww < 32 || wy+wh < 32) return;
+    ssfn_dst.w = win->w;
+    ssfn_dst.h = win->h;
     ssfn_dst.fg = theme[THEME_FG];
     ssfn_dst.bg = 0;
     input_maxlen = 0;
@@ -456,8 +460,8 @@ void ui_refreshwin(int idx, int wx, int wy, int ww, int wh)
                 case GLYPH_TOOL_COLOR: view_color(idx); break;
             }
         }
-        ssfn_dst.w = wins[event.win].w;
-        ssfn_dst.h = wins[event.win].h;
+        ssfn_dst.w = win->w;
+        ssfn_dst.h = win->h;
         ssfn_dst.fg = theme[THEME_FG];
         ssfn_dst.bg = 0;
         if(errstatus) {
@@ -490,6 +494,7 @@ void ui_refreshall()
                     ui_closewin(i);
             else {
                 hist_free(&wins[i]);
+                if(i) { wins[i].zoom = 0; wins[i].rc = 1; }
                 ui_resizewin(&wins[i], wins[i].w, wins[i].h);
                 ui_refreshwin(i, 0, 0, wins[i].w, wins[i].h);
             }
@@ -546,11 +551,12 @@ void ui_main(char *fn)
     ui_init();
     /* if specified a file on command line, load it */
     ui_openwin(WINTYPE_MAIN);
-    sfn_init(ui_pb);
     ui_cursorwin(&wins[0], CURSOR_LOADING);
-    ui_refreshwin(0, 0, 0, wins[0].w, wins[0].h);
-    wins[0].tool = -1;
+    sfn_init(ui_pb);
     if(fn && sfn_load(fn, 0)) {
+        s = strrchr(fn, DIRSEP);
+        if(s) s++; else s = fn;
+        strcpy(filename, s);
         sfn_sanitize(-1);
         wins[0].tool = MAIN_TOOL_GLYPHS;
         ui_updatetitle(0);
@@ -560,7 +566,6 @@ void ui_main(char *fn)
         wins[0].tool = MAIN_TOOL_ABOUT;
     ui_cursorwin(&wins[0], CURSOR_PTR);
 
-    ui_openwin(0x30);
     /* main event loop */
     while(mainloop) {
         ui_getevent();
@@ -580,6 +585,34 @@ void ui_main(char *fn)
                     ui_resizewin(&wins[event.win], wins[event.win].w, wins[event.win].h);
                     ui_refreshwin(event.win, 0, 0, wins[event.win].w, wins[event.win].h);
                 break;
+            }
+            continue;
+        }
+        if(event.type == E_KEY && (event.h & (3 << 1)) && (event.x == 's' || event.x == 'S')) {
+            if(modified || 1) {
+                wins[0].field = -1;
+                view_fileops(1);
+                if((event.h & 1) || !filename[0]) {
+                    wins[0].field = 11;
+                    wins[0].tool = MAIN_TOOL_SAVE;
+                    ui_resizewin(&wins[0], wins[0].w, wins[0].h);
+                    ui_refreshwin(0, 0, 0, wins[0].w, wins[0].h);
+                    ui_focuswin(&wins[0]);
+                    ctrl_dosave_onenter();
+                } else {
+                    wins[0].field = 12;
+                    ctrl_fileops_onenter(1);
+                    wins[0].field = -1;
+                    if(wins[0].tool == MAIN_TOOL_SAVE) ui_refreshwin(0, 0, 0, wins[0].w, wins[0].h);
+                    if(errstatus) {
+                        ui_box(&wins[event.win], 0, wins[event.win].h - 18, wins[event.win].w, 18,
+                        theme[THEME_BTN1D], theme[THEME_BTN1D], theme[THEME_BTN1D]);
+                        ssfn_dst.bg = theme[THEME_BTN1D];
+                        ui_text(&wins[event.win], 0, wins[event.win].h - 18, errstatus);
+                        ui_flushwin(&wins[event.win], 0, wins[event.win].h - 18, wins[event.win].w, 18);
+                    }
+                    modified = 0;
+                }
             }
             continue;
         }
@@ -646,7 +679,8 @@ void ui_main(char *fn)
                 ui_inputfinish();
                 if(event.win && wins[event.win].tool == GLYPH_TOOL_COORD && event.y < 24 && event.x >= 144 &&
                     wins[event.win].unicode > 0) {
-                    ui_copy(utf8(wins[event.win].unicode));
+                    s = utf8(wins[event.win].unicode);
+                    if(s && *s) ui_copy(s);
                     ssfn_dst.w = wins[event.win].w;
                     ssfn_dst.h = wins[event.win].h;
                     ssfn_dst.fg = theme[THEME_FG];
@@ -663,6 +697,10 @@ void ui_main(char *fn)
                         seltool = i;
                         ui_refreshwin(event.win, 0, 0, wins[event.win].w, wins[event.win].h);
                     }
+                    if(wins[event.win].unicode >= SSFN_LIG_FIRST && wins[event.win].unicode <= SSFN_LIG_LAST &&
+                        event.x >= 6 + 3 * 24 && event.x <= 6 + 3 * 24 + 54) {
+                            wins[event.win].field = 3;
+                        }
                 } else {
                     if(!event.win)
                         switch(wins[0].tool) {
@@ -724,7 +762,7 @@ void ui_main(char *fn)
                 switch(event.x) {
                     case K_ESC: ui_closewin(event.win); break;
                     case K_F1:
-                        if(event.win || wins[0].tool <= MTOOL_GLYPHS) {
+                        if(event.win || wins[0].tool <= MAIN_TOOL_GLYPHS) {
                             wins[event.win].help = 1;
                             ui_resizewin(&wins[event.win], wins[event.win].w, wins[event.win].h);
                             ui_refreshwin(event.win, 0, 0, wins[event.win].w, wins[event.win].h);
@@ -782,7 +820,7 @@ void ui_main(char *fn)
                                 else
                                     switch(wins[event.win].tool) {
                                         case GLYPH_TOOL_COORD: ctrl_coords_onenter(event.win); break;
-                                        case GLYPH_TOOL_LAYER: ctrl_coords_onenter(event.win); break;
+                                        case GLYPH_TOOL_LAYER: ctrl_layers_onenter(event.win); break;
                                         case GLYPH_TOOL_KERN: ctrl_kern_onenter(event.win); break;
                                         case GLYPH_TOOL_COLOR: ctrl_colors_onenter(event.win); break;
                                     }
@@ -840,8 +878,8 @@ void ui_main(char *fn)
                             ui_refreshwin(event.win, 0, 0, wins[event.win].w, wins[event.win].h);
                             input_refresh = 0;
                         } else {
-                            if(!event.win) {
-                                switch(wins[0].tool)
+                            if(!event.win)
+                                switch(wins[0].tool) {
                                     case MAIN_TOOL_LOAD:
                                     case MAIN_TOOL_SAVE: ctrl_fileops_onkey(); break;
                                     case MAIN_TOOL_PROPS: ctrl_props_onkey(); break;
@@ -852,7 +890,7 @@ void ui_main(char *fn)
                             else
                                 switch(wins[event.win].tool) {
                                     case GLYPH_TOOL_COORD: ctrl_coords_onkey(event.win); break;
-                                    case GLYPH_TOOL_LAYER: ctrl_coords_onkey(event.win); break;
+                                    case GLYPH_TOOL_LAYER: ctrl_layers_onkey(event.win); break;
                                     case GLYPH_TOOL_KERN: ctrl_kern_onkey(event.win); break;
                                 }
                         }

@@ -31,7 +31,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "libsfn.h"
-
 #ifdef __WIN32__
 #include <windows.h>
 #endif
@@ -67,11 +66,12 @@ char *copypaste_fn = NULL;
  */
 int copypaste_init()
 {
-    char *home;
 #ifdef __WIN32__
     char *s;
     wchar_t tmp[MAX_PATH];
     DWORD i, l;
+#else
+    char *home;
 #endif
     if(!copypaste_fn) {
 #ifdef __WIN32__
@@ -196,7 +196,7 @@ void copypaste_paste(int tounicode, int oneunicode)
 {
     CPFILE f;
     char tmp;
-    unsigned char c[4], *data = NULL;
+    unsigned char c[72], *data = NULL;
     int unicode = 0, minunicode = 0, last = -1, i, j, l = 0, t = 0, w = 0, h = 0;
     sfnlayer_t *lyr;
 
@@ -211,26 +211,35 @@ void copypaste_paste(int tounicode, int oneunicode)
                 switch(tmp) {
                     case 'C':   /* character chunk */
                         CPREAD(&unicode, sizeof(int), f); if(tounicode) { unicode -= minunicode; unicode += tounicode; }
-                        sfn_chardel(unicode);
-                        CPREAD(&ctx.glyphs[unicode].width, 1, f);
-                        CPREAD(&ctx.glyphs[unicode].height, 1, f);
-                        CPREAD(&ctx.glyphs[unicode].ovl_x, 1, f);
-                        CPREAD(&ctx.glyphs[unicode].adv_x, 1, f);
-                        CPREAD(&ctx.glyphs[unicode].adv_y, 1, f);
-                        CPREAD(&ctx.glyphs[unicode].rtl, 1, f);
-                        CPREAD(&ctx.glyphs[unicode].hintv, 33, f);
-                        CPREAD(&ctx.glyphs[unicode].hinth, 33, f);
-                        CPREAD(&ctx.glyphs[unicode].numkern, sizeof(int), f);
-                        if(ctx.glyphs[unicode].numkern) {
-                            ctx.glyphs[unicode].kern = (sfnkern_t*)malloc(sizeof(sfnkern_t) * ctx.glyphs[unicode].numkern);
-                            if(ctx.glyphs[unicode].kern)
-                                CPREAD(ctx.glyphs[unicode].kern, sizeof(sfnkern_t) * ctx.glyphs[unicode].numkern, f);
+                        if(oneunicode) {
+                            unicode = tounicode;
+                            CPREAD(&c, 72, f);
+                            CPREAD(&i, sizeof(int), f);
+                            for(; i > 0; i--)
+                                CPREAD(&c, sizeof(sfnkern_t), f);
+                        } else {
+                            sfn_chardel(unicode);
+                            CPREAD(&ctx.glyphs[unicode].width, 1, f);
+                            CPREAD(&ctx.glyphs[unicode].height, 1, f);
+                            CPREAD(&ctx.glyphs[unicode].ovl_x, 1, f);
+                            CPREAD(&ctx.glyphs[unicode].adv_x, 1, f);
+                            CPREAD(&ctx.glyphs[unicode].adv_y, 1, f);
+                            CPREAD(&ctx.glyphs[unicode].rtl, 1, f);
+                            CPREAD(&ctx.glyphs[unicode].hintv, 33, f);
+                            CPREAD(&ctx.glyphs[unicode].hinth, 33, f);
+                            CPREAD(&ctx.glyphs[unicode].numkern, sizeof(int), f);
+                            if(ctx.glyphs[unicode].numkern) {
+                                ctx.glyphs[unicode].kern = (sfnkern_t*)malloc(sizeof(sfnkern_t) * ctx.glyphs[unicode].numkern);
+                                if(ctx.glyphs[unicode].kern)
+                                    CPREAD(ctx.glyphs[unicode].kern, sizeof(sfnkern_t) * ctx.glyphs[unicode].numkern, f);
+                            }
                         }
                     break;
                     case 'L':   /* glyph layer chunk */
                         CPREAD(&unicode, sizeof(int), f);  if(tounicode) { unicode -= minunicode; unicode += tounicode; }
                         if(last == -1) last = unicode;
                         else if(oneunicode && last != unicode) { CPCLOSE(f); return; }
+                        if(oneunicode) unicode = tounicode;
                         CPREAD(&t, 1, f);
                         CPREAD(&c, 4, f); i = !c[3] && c[0] == 0xFE ? 0xFE : (!c[3] && c[0] == 0xFF ? 0xFF :
                             sfn_cpaladd(c[2], c[1], c[0], c[3]));

@@ -34,35 +34,45 @@
 #include "libsfn.h"
 #include "ui.h"
 #include "lang.h"
+#ifdef __WIN32__
+#include <windows.h>
+#include <shellapi.h>
+#endif
 
 extern ssfn_t logofnt;
 char repo_url[] = "https://gitlab.com/bztsrc/scalable-font2";
 
+/**
+ * Open the repository in the default browser
+ */
 void about_open_repo()
 {
+# ifdef __WIN32__
+    ShellExecuteA(0, 0, repo_url, 0, 0, SW_SHOW);
+#else
     char cmd[256];
     if(!fork()) {
         fclose(stdin);
         fclose(stdout);
         fclose(stderr);
         sprintf(cmd,
-#ifdef __MACOSX__
+# ifdef __MACOSX__
             "open %s"
-#else
-# ifdef __WIN32__
-            "start %s"
 # else
             "xdg-open %s"
 # endif
-#endif
             , repo_url);
         system(cmd);
         exit(0);
     }
+#endif
     wins[0].field = -1;
     ui_refreshwin(0, 0, 0, wins[0].w, wins[0].h);
 }
 
+/**
+ * The about window
+ */
 void view_about()
 {
     int i, j, m, p;
@@ -121,6 +131,9 @@ void view_about()
     ssfn_dst.fg = theme[THEME_FG];
 }
 
+/**
+ * On mouse move handler
+ */
 void ctrl_about_onmove()
 {
     int p = (wins[0].w - 320) / 2;
@@ -128,6 +141,9 @@ void ctrl_about_onmove()
         cursor = CURSOR_GRAB;
 }
 
+/**
+ * On click (button release) handler
+ */
 void ctrl_about_onclick()
 {
     int p = (wins[0].w - 320) / 2;
@@ -135,6 +151,9 @@ void ctrl_about_onclick()
         about_open_repo();
 }
 
+/**
+ * On enter handler
+ */
 void ctrl_about_onenter()
 {
     if(wins[0].field == 6)

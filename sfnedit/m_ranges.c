@@ -199,4 +199,11 @@ void ctrl_ranges_onbtnpress()
  */
 void ctrl_ranges_onmove()
 {
+    int i;
+    if(event.y > 73 && event.y < wins[0].h - 26) {
+        i = (event.y - 73) / 16 + scrollranges;
+        if(i >= numranges) i = numranges - 1;
+        sprintf(rstat, "U+%06X .. U+%06X", ublocks[rres[i]].start, ublocks[rres[i]].end);
+        status = rstat;
+    }
 }

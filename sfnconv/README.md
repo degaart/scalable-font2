@@ -44,3 +44,11 @@ Scalable Screen Font 2.0 by bzt Copyright (C) 2020 MIT license
 *  - input files can be gzip compressed, like .psfu.gz, .bdf.gz or .hex.gz
 ** - output file will be gzip compressed by default (use -U to avoid)
 ```
+
+Porting to other OSes
+---------------------
+
+This is pretty straight forward. You'll need to compile libsfn. As it contains all its dependendencies, all you need for that
+is an ANSI C compiler and a minimal libc. The sfnconv utility is just a simple command line parser and wrapper around that
+library, has no dependencies (stripped down version of zlib is included in libsfn).
+

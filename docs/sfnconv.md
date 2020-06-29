@@ -9,12 +9,13 @@ Supported Font Formats
 
 ### Converting Vector Fonts
 
-The `sfnconv` tool uses the [freetype2](http://www.freetype.org) library so it can convert anything
-that freetype2 can read. This includes all the common formats, TrueType (.ttf) and OpenType (.otf).
+The `sfnconv` tool has a native importer for FontForge's SplineFontDB format. Otherwise it uses the
+[freetype2](http://www.freetype.org) library so it can convert anything that freetype2 can read. This
+includes all the common formats, TrueType (.ttf), OpenType (.otf), Web Fonts (.woff, .woff2) etc.
 
 SSFN uses a data-loss compression. See the [comparition](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/compare.md)
 table on how this influences the resulting file sizes. Storing a font in SSFN usually requires half the
-file size.
+file size of an OTF without noticable loss of typeface details.
 
 ### Converting Bitmap Fonts
 
@@ -22,8 +23,8 @@ Reading bitmap font has no library dependencies, and the tool can read the most 
 formats: [PC Screen Font](https://www.win.tue.nl/~aeb/linux/kbd/font-formats-1.html) (.psfu,
 Linux Console's format), [X11 Bitmap Distribution Format](https://www.x.org/docs/BDF/bdf.pdf) (.bdf) and
 [X11 Portable Compiled Font](http://ftp.x.org/pub/R6.4/xc/lib/font/bitmap/) (.pcf),
-[GNU unifont](http://unifoundry.com/unifont/index.html) (.hex). Other bitmap formats, like Windows FNT/FON (.fnt)
-are supported through freetype2.
+[GNU unifont](http://unifoundry.com/unifont/index.html) (.hex), Windows FNT/FON (.fnt) and GRUB's PFF2 (.pf2).
+Other bitmap formats, like bitmap sfnt are supported through freetype2.
 
 Bitmap fonts are also compressed, but with a loss-less deduplication algorithm.
 

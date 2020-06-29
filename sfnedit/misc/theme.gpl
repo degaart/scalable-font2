@@ -16,7 +16,7 @@ Name: SSFN Editor default theme
  93  53  53 #5d3535	button 2 border lighter
  84  44  44 #542c2c	button 2 border darker
  76  36  36 #4c2424	button 2 darker
- 92  92  92 #5c5c5c	selection background
+ 96  96  96 #606060	selection background
 240 240 240 #f0f0f0	selection foreground
 144 144 144 #909090	selection border
  78  78  78 #4e4e4e	undefined glyph background
@@ -25,6 +25,10 @@ Name: SSFN Editor default theme
 186 186 186 #B0B0B0	dimensions marker
 128   0   0 #800000	baseline
   0  64  64 #004040	underline
-  0 255 255 #00FFFF	overlap
+  0  80  80 #005050	overlap
 255   0   0 #FF0000	advance
   0 127 127 #007F7F	hinting grid
+  0   0 186 #0000B0	on curve point
+  0 186   0 #00B000	control point
+  0 127   0 #007F00	curve line
+  0  80  80 #005050	guide line

@@ -697,9 +697,10 @@ void sfn_layerdel(int unicode, int idx)
 {
     if(unicode < 0 || unicode > 0x10FFFF || ctx.glyphs[unicode].numlayer < 1 || idx >= ctx.glyphs[unicode].numlayer) return;
     if(ctx.glyphs[unicode].layers[idx].data) free(ctx.glyphs[unicode].layers[idx].data);
+    ctx.glyphs[unicode].layers[idx].data = NULL;
     ctx.glyphs[unicode].numlayer--;
     memcpy(&ctx.glyphs[unicode].layers[idx], &ctx.glyphs[unicode].layers[idx+1],
-        (ctx.glyphs[unicode].numlayer - idx) * sizeof(sfnlayer_t*));
+        (ctx.glyphs[unicode].numlayer - idx) * sizeof(sfnlayer_t));
 }
 
 /**
@@ -753,7 +754,7 @@ int sfn_contadd(sfnlayer_t *lyr, int t, int px, int py, int c1x, int c1y, int c2
         }
     }
     cont = &((sfncont_t *)(lyr->data))[lyr->len++];
-    cont->type = t;
+    cont->type = t & 0xFF;
     cont->px = px; if(px + 1 > ctx.glyphs[unicode].width) ctx.glyphs[unicode].width = px + 1;
     cont->py = py; if(py + 1 > ctx.glyphs[unicode].height) ctx.glyphs[unicode].height = py + 1;
     cont->c1x = c1x; if(c1x + 1 > ctx.glyphs[unicode].width) ctx.glyphs[unicode].width = c1x + 1;
@@ -790,8 +791,8 @@ int sfn_kernadd(int unicode, int next, int x, int y)
                     sizeof(sfnkern_t));
                 ctx.glyphs[unicode].numkern--;
             } else {
-                if(x) ctx.glyphs[unicode].kern[i].x = x;
-                if(y) ctx.glyphs[unicode].kern[i].y = y;
+                ctx.glyphs[unicode].kern[i].x = x;
+                ctx.glyphs[unicode].kern[i].y = y;
             }
             return 1;
         }
@@ -803,6 +804,12 @@ int sfn_kernadd(int unicode, int next, int x, int y)
     i = ctx.glyphs[unicode].numkern++;
     ctx.glyphs[unicode].kern = (sfnkern_t*)realloc(ctx.glyphs[unicode].kern, ctx.glyphs[unicode].numkern * sizeof(sfnkern_t));
     if(!ctx.glyphs[unicode].kern) { ctx.glyphs[unicode].numkern = 0; return 0; }
+    while(i > 0 && ctx.glyphs[unicode].kern[i-1].n > next) {
+        ctx.glyphs[unicode].kern[i].n = ctx.glyphs[unicode].kern[i-1].n;
+        ctx.glyphs[unicode].kern[i].x = ctx.glyphs[unicode].kern[i-1].x;
+        ctx.glyphs[unicode].kern[i].y = ctx.glyphs[unicode].kern[i-1].y;
+        i--;
+    }
     ctx.glyphs[unicode].kern[i].n = next;
     ctx.glyphs[unicode].kern[i].x = x;
     ctx.glyphs[unicode].kern[i].y = y;
@@ -1124,7 +1131,7 @@ int sfn_dump(ssfn_font_t *font, int size, int dump)
                 while(ptr < ptr2) {
                     fo = (int*)realloc(fo, (fn+1)*sizeof(int));
                     fo[fn++] = (int)(ptr - (unsigned char *)font);
-                    if(dump != 4) printf("\n%06lx: %02x ", ((uint64_t)ptr-(uint64_t)font), ptr[0]);
+                    if(dump != 4) printf("\n%06x: %02x ", (uint32_t)((uint8_t*)ptr-(uint8_t*)font), ptr[0]);
                     if(!(ptr[0] & 0x80)) {
                         j = (ptr[0] & 0x3F);
                         if(ptr[0] & 0x40) {
@@ -1383,6 +1390,9 @@ int sfn_load(char *filename, int dump)
     } else if(data[0]==0x72 && data[1]==0xB5 && data[2]==0x4A && data[3]==0x86) {
         printf("Loaded '%s' (PSF2, %X - %X)\n", filename, rs, re);
         psf(data, size);
+    } else if(data[8]=='P' && data[9]=='F' && data[10]=='F' && data[11]=='2') {
+        printf("Loaded '%s' (PFF2, %X - %X)\n", filename, rs, re);
+        pff(data, size);
     } else if((data[0]=='M' && data[1]=='Z') || (!data[0] && (data[1] == 2 || data[1] == 3) && !data[5] && (data[6] > ' ' &&
         data[6] < 127))) {
         printf("Loaded '%s' (WinFNT, %X - %X)\n", filename, rs, re);
@@ -2268,7 +2278,7 @@ static void _sfn_b(int p,int h, int x0,int y0, int x1,int y1, int x2,int y2, int
         m5x = ((m4x-m3x)/2) + m3x;  m5y = ((m4y-m3y)/2) + m3y;
         _sfn_b(p,h, x0,y0, m0x,m0y, m3x,m3y, m5x,m5y, l+1);
         _sfn_b(p,h, m5x,m5y, m4x,m4y, m2x,m2y, x3,y3, l+1);
-    }
+    } else
     if(l) _sfn_l(p,h, x3, y3);
 }
 
@@ -2289,7 +2299,7 @@ int sfn_glyph(int size, int unicode, int layer, int postproc, sfngc_t *g)
     sfncont_t *cont;
 
     if(unicode < 0 || unicode > 0x10FFFF || !ctx.glyphs[unicode].numlayer || layer >= ctx.glyphs[unicode].numlayer ||
-        ctx.height < 8) return 0;
+        ctx.height < 1) return 0;
     h = (size > ctx.height ? (size + 4) & ~3 : ctx.height);
     w = ctx.glyphs[unicode].width * h / ctx.height;
     p = w + (ci ? h / SSFN_ITALIC_DIV : 0) + cb;
@@ -2314,7 +2324,7 @@ int sfn_glyph(int size, int unicode, int layer, int postproc, sfngc_t *g)
                                 a = (cont->c1x << SSFN_PREC) * h / ctx.height;
                                 A = (cont->c1y << SSFN_PREC) * h / ctx.height;
                                 _sfn_b(p << SSFN_PREC,h << SSFN_PREC, ctx.lx,ctx.ly, ((a-ctx.lx)/2)+ctx.lx,
-                                    ((A-ctx.ly)/2)+ctx.ly, ((k-a)/2)+a,((A-m)/2)+m, k,m, 0);
+                                    ((A-ctx.ly)/2)+ctx.ly, ((k-a)/2)+a,((m-A)/2)+A, k,m, 0);
                             break;
                             case SSFN_CONTOUR_CUBIC:
                                 a = (cont->c1x << SSFN_PREC) * h / ctx.height;

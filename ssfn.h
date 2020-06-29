@@ -32,15 +32,20 @@
 
 #define SSFN_VERSION 0x0200
 
+
 #ifdef  __cplusplus
 extern "C" {
 # ifndef __THROW
 #  define __THROW throw()
 # endif
+#else
+# ifndef __THROW
+#  define __THROW
+# endif
 #endif
 
 /* if stdint.h was not included before us */
-#ifndef uint8_t
+#ifndef _STDINT_H
 typedef unsigned char       uint8_t;
 typedef unsigned short int  uint16_t;
 typedef short int           int16_t;
@@ -1502,7 +1507,7 @@ ssfn_buf_t *ssfn_text(ssfn_t *ctx, const char *str, unsigned int fg)
 /**
  * public variables to configure the renderer
  */
-ssfn_font_t *ssfn_src;          /* font buffer */
+ssfn_font_t *ssfn_src;          /* font buffer with an inflated bitmap font */
 ssfn_buf_t ssfn_dst;            /* destination frame buffer */
 
 /**
@@ -1513,18 +1518,18 @@ ssfn_buf_t ssfn_dst;            /* destination frame buffer */
  */
 int ssfn_putc(uint32_t unicode)
 {
-    uint8_t *ptr, *chr = NULL, *frg;
-    uint64_t o, p;
-    int i, j, k, l, m, y = 0, w;
 # ifdef SSFN_CONSOLEBITMAP_PALETTE
-#  define SSFN_PIXEL  1
+#  define SSFN_PIXEL  uint8_t
 # else
 #  ifdef SSFN_CONSOLEBITMAP_HICOLOR
-#   define SSFN_PIXEL 2
+#   define SSFN_PIXEL uint16_t
 #  else
-#   define SSFN_PIXEL 4
+#   define SSFN_PIXEL uint32_t
 #  endif
 # endif
+    register SSFN_PIXEL *o, *p;
+    register uint8_t *ptr, *chr = NULL, *frg;
+    register int i, j, k, l, m, y = 0, w, s = ssfn_dst.p / sizeof(SSFN_PIXEL);
 
     if(!ssfn_src || ssfn_src->magic[0] != 'S' || ssfn_src->magic[1] != 'F' || ssfn_src->magic[2] != 'N' ||
         ssfn_src->magic[3] != '2' || !ssfn_dst.ptr || !ssfn_dst.p) return SSFN_ERR_INVINP;
@@ -1536,67 +1541,35 @@ int ssfn_putc(uint32_t unicode)
         else { if((uint32_t)i == unicode) { chr = ptr; break; } ptr += 6 + ptr[1] * (ptr[0] & 0x40 ? 6 : 5); }
     }
     if(!chr) return SSFN_ERR_NOGLYPH;
-    ptr = chr + 6; o = (uint64_t)ssfn_dst.ptr + ssfn_dst.y * ssfn_dst.p + ssfn_dst.x * SSFN_PIXEL;
+    ptr = chr + 6; o = (SSFN_PIXEL*)((uint8_t*)ssfn_dst.ptr + ssfn_dst.y * ssfn_dst.p + ssfn_dst.x * sizeof(SSFN_PIXEL));
     for(i = 0; i < chr[1]; i++, ptr += chr[0] & 0x40 ? 6 : 5) {
         if(ptr[0] == 255 && ptr[1] == 255) continue;
         frg = (uint8_t*)ssfn_src + (chr[0] & 0x40 ? ((ptr[5] << 24) | (ptr[4] << 16) | (ptr[3] << 8) | ptr[2]) :
             ((ptr[4] << 16) | (ptr[3] << 8) | ptr[2]));
         if((frg[0] & 0xE0) != 0x80) continue;
         if(ssfn_dst.bg) {
-            for(; y < ptr[1] && (!ssfn_dst.h || ssfn_dst.y + y < ssfn_dst.h); y++, o += ssfn_dst.p) {
-                for(p = o, j = 0; j < chr[2] && (!w || ssfn_dst.x + j < w); j++, p += SSFN_PIXEL)
-# ifdef SSFN_CONSOLEBITMAP_PALETTE
-                    *((uint8_t*)p) = (uint8_t)ssfn_dst.bg;
-# else
-#  ifdef SSFN_CONSOLEBITMAP_HICOLOR
-                    *((uint16_t*)p) = (uint16_t)ssfn_dst.bg;
-#  else
-                    *((uint32_t*)p) = (uint32_t)ssfn_dst.bg;
-#  endif
-# endif
+            for(; y < ptr[1] && (!ssfn_dst.h || ssfn_dst.y + y < ssfn_dst.h); y++, o += s) {
+                for(p = o, j = 0; j < chr[2] && (!w || ssfn_dst.x + j < w); j++, p++)
+                    *p = ssfn_dst.bg;
             }
-        } else { o += (int)(ptr[1] - y) * ssfn_dst.p; y = ptr[1]; }
+        } else { o += (int)(ptr[1] - y) * s; y = ptr[1]; }
         k = ((frg[0] & 0x1F) + 1) << 3; j = frg[1] + 1; frg += 2;
-        for(m = 1; j && (!ssfn_dst.h || ssfn_dst.y + y < ssfn_dst.h); j--, y++, o += ssfn_dst.p)
-            for(p = o, l = 0; l < k; l++, p += SSFN_PIXEL, m <<= 1) {
+        for(m = 1; j && (!ssfn_dst.h || ssfn_dst.y + y < ssfn_dst.h); j--, y++, o += s)
+            for(p = o, l = 0; l < k; l++, p++, m <<= 1) {
                 if(m > 0x80) { frg++; m = 1; }
                 if(ssfn_dst.x + l >= 0 && (!w || ssfn_dst.x + l < w)) {
                     if(*frg & m) {
-# ifdef SSFN_CONSOLEBITMAP_PALETTE
-                        *((uint8_t*)p) = (uint8_t)ssfn_dst.fg;
-# else
-#  ifdef SSFN_CONSOLEBITMAP_HICOLOR
-                        *((uint16_t*)p) = (uint16_t)ssfn_dst.fg;
-#  else
-                        *((uint32_t*)p) = (uint32_t)ssfn_dst.fg;
-#  endif
-# endif
+                        *p = ssfn_dst.fg;
                     } else if(ssfn_dst.bg) {
-# ifdef SSFN_CONSOLEBITMAP_PALETTE
-                        *((uint8_t*)p) = (uint8_t)ssfn_dst.bg;
-# else
-#  ifdef SSFN_CONSOLEBITMAP_HICOLOR
-                        *((uint16_t*)p) = (uint16_t)ssfn_dst.bg;
-#  else
-                        *((uint32_t*)p) = (uint32_t)ssfn_dst.bg;
-#  endif
-# endif
+                        *p = ssfn_dst.bg;
                     }
                 }
             }
     }
     if(ssfn_dst.bg)
-        for(; y < chr[3] && (!ssfn_dst.h || ssfn_dst.y + y < ssfn_dst.h); y++, o += ssfn_dst.p) {
-            for(p = o, j = 0; j < chr[2] && (!w || ssfn_dst.x + j < w); j++, p += SSFN_PIXEL)
-# ifdef SSFN_CONSOLEBITMAP_PALETTE
-                *((uint8_t*)p) = (uint8_t)ssfn_dst.bg;
-# else
-#  ifdef SSFN_CONSOLEBITMAP_HICOLOR
-                *((uint16_t*)p) = (uint16_t)ssfn_dst.bg;
-#  else
-                *((uint32_t*)p) = (uint32_t)ssfn_dst.bg;
-#  endif
-# endif
+        for(; y < chr[3] && (!ssfn_dst.h || ssfn_dst.y + y < ssfn_dst.h); y++, o += s) {
+            for(p = o, j = 0; j < chr[2] && (!w || ssfn_dst.x + j < w); j++, p++)
+                *p = ssfn_dst.bg;
         }
     ssfn_dst.x += chr[4]; ssfn_dst.y += chr[5];
     return SSFN_OK;
@@ -1661,6 +1634,7 @@ namespace SSFN {
 #endif
 }
 #endif
+
 
 #endif /* _SSFN_H_ */
 

@@ -116,6 +116,86 @@ void psf(unsigned char *ptr, int size)
 }
 
 /**
+ * Parse GRUB's PFF2 font (binary)
+ * yet another messy, resource wasteful, extremely badly documented format...
+ */
+void pff(unsigned char *ptr, int size)
+{
+    uint32_t len = 0, unicode, nc = 0, numchars = 0;
+    int16_t w = 0, h = 0, p, n, a /*, x, y, mix, miy, max, may*/;
+    int i, j, k, m;
+    unsigned char *end = ptr + size, *section, *data = ptr, *bitmap;
+
+    ptr += 12;
+    while(ptr < end && len < (uint32_t)size) {
+        len = (ptr[4] << 24) | (ptr[5] << 16) | (ptr[6] << 8) | ptr[7];
+        section = ptr + 8;
+        if(!memcmp(ptr, "NAME", 4)) sfn_setstr(&ctx.name, (char*)section, len); else
+        if(!memcmp(ptr, "FAMI", 4)) sfn_setstr(&ctx.familyname, (char*)section, len); else
+        if(!memcmp(ptr, "WEIG", 4) && section[0]=='b') ctx.style |= SSFN_STYLE_BOLD; else
+        if(!memcmp(ptr, "SLAN", 4) && section[0]=='i') ctx.style |= SSFN_STYLE_ITALIC; else
+        if(!memcmp(ptr, "MAXW", 4)) w = (section[0] << 8) | section[1]; else
+        if(!memcmp(ptr, "MAXH", 4)) h = (section[0] << 8) | section[1]; else
+        if(!memcmp(ptr, "ASCE", 4)) ctx.baseline = (section[0] << 8) | section[1]; else
+        if(!memcmp(ptr, "CHIX", 4)) {
+            /*mix = miy = max = may = 0;*/
+            for(end = section + len, ptr = section; ptr < end; ptr += 9) {
+                if(!ptr[4]) {
+                    n = (data[((ptr[5] << 24) | (ptr[6] << 16) | (ptr[7] << 8) | ptr[8]) + 0] << 8) |
+                        data[((ptr[5] << 24) | (ptr[6] << 16) | (ptr[7] << 8) | ptr[8]) + 1];
+                    if(n > w) w = n;
+                    n = (data[((ptr[5] << 24) | (ptr[6] << 16) | (ptr[7] << 8) | ptr[8]) + 2] << 8) |
+                        data[((ptr[5] << 24) | (ptr[6] << 16) | (ptr[7] << 8) | ptr[8]) + 3];
+                    if(n > h) h = n;
+/*
+                    n = (data[((ptr[5] << 24) | (ptr[6] << 16) | (ptr[7] << 8) | ptr[8]) + 4] << 8) |
+                        data[((ptr[5] << 24) | (ptr[6] << 16) | (ptr[7] << 8) | ptr[8]) + 5];
+                    if(n < mix) { mix = n; } if(n > max) max = n;
+                    n = (data[((ptr[5] << 24) | (ptr[6] << 16) | (ptr[7] << 8) | ptr[8]) + 6] << 8) |
+                        data[((ptr[5] << 24) | (ptr[6] << 16) | (ptr[7] << 8) | ptr[8]) + 7];
+                    if(n < miy) { miy = n; } if(n > may) may = n;
+*/
+                    numchars++;
+                }
+            }
+            ctx.width = w/* - mix + max*/;
+            ctx.height = h/* - miy + may*/;
+/*            ctx.baseline -= miy; */
+            printf("\r  Name '%s' num_glyphs: %d, ascender: %d, width: %d, height: %d\n", ctx.name, numchars, ctx.baseline,
+                ctx.width, ctx.height);
+            n = ctx.width * ctx.height;
+            bitmap = (unsigned char*)malloc(n);
+            if(!bitmap) { fprintf(stderr,"libsfn: memory allocation error\n"); return; }
+            for(end = section + len; section < end; section += 9) {
+                /* undocumented: section[4] supposed to indicate compression of some sort? grub-mkfont.c always writes 0 */
+                if(!section[4]) {
+                    /* undocumented: section[0] holds left and right joins (or both), not sure what to do with those */
+                    unicode = (section[1] << 16) | (section[2] << 8) | section[3];
+                    ptr = data + ((section[5] << 24) | (section[6] << 16) | (section[7] << 8) | section[8]);
+                    memset(bitmap, 0xFF, n);
+                    w = (ptr[0] << 8) | ptr[1]; h = (ptr[2] << 8) | ptr[3];
+/*                    x = (ptr[4] << 8) | ptr[5]; y = (ptr[6] << 8) | ptr[7];*/
+                    a = (ptr[8] << 8) | ptr[9];
+                    p = w; /* + (x < 0 ? 0 : x); h -= y;*/
+                    ptr += 10; /*k = (y - miy) * p;*/
+                    for(j = k = 0, m = 0x80; j < h; j++, k += p)
+                        for(i = 0; i < w; i++, m >>= 1) {
+                            if(!m) { m = 0x80; ptr++; }
+                            if(ptr[0] & m) bitmap[k + i/* + (x < 0 ? 0 : x)*/] = 0xFE;
+                        }
+                    if(sfn_charadd(unicode, p, h, a, 0, /*x < 0 ? -x :*/ 0))
+                        sfn_layeradd(unicode, SSFN_FRAG_BITMAP, 0, 0, p, h, 0xFE, bitmap);
+                    if(pbar) (*pbar)(0, 0, ++nc, numchars, PBAR_BITMAP);
+                }
+            }
+            free(bitmap);
+            break;
+        }
+        ptr += 8 + len;
+    }
+}
+
+/**
  * Parse fucked up Windows Console Font (binary)
  */
 void fnt(unsigned char *ptr, int size)
@@ -159,7 +239,7 @@ void fnt(unsigned char *ptr, int size)
         if(p * h > (int)sizeof(map)) continue;
         bitmap = realloc(bitmap, w * h);
         if(!bitmap) { fprintf(stderr,"libsfn: memory allocation error\n"); return; }
-        /* I got enough. I can't properly get the bytes, so lets copy them into correct order before I get crazy */
+        /* I'm fed up. I can't properly get the bytes, so lets copy them into correct order before I get crazy. Ugly, but works */
         for(j = 0; j < p; j++)
             for(k = 0; k < h; k++)
                 map[k * p + j] = *bit++;
@@ -387,7 +467,7 @@ void pcf(unsigned char *ptr, int size)
     unsigned char *bitmap = NULL, *bm;
     char *face = NULL, *name = NULL, *style = NULL, *manu = NULL;
     char *str, *s, *v;
-    int x, y, o, a, b = 0, k, w, h = 0, p, r, sx = 1, m, defchar = 0;
+    int x, y, o, a, b = 0, k, w, h = 0, p = 1, r, sx = 1, m, defchar = 0;
 #define pcf32(f,o) (f&(1<<2)? (ptr[o+0]<<24)|(ptr[o+1]<<16)|(ptr[o+2]<<8)|ptr[o+3] : \
     (ptr[o+3]<<24)|(ptr[o+2]<<16)|(ptr[o+1]<<8)|ptr[o+0])
 #define pcf16(f,o) (f&(1<<2)? (ptr[o+0]<<8)|ptr[o+1] : (ptr[o+1]<<8)|ptr[o+0])
@@ -484,6 +564,7 @@ void pcf(unsigned char *ptr, int size)
         /* do some heuristics and validation because PCF fonts are *usually* buggy... */
         if(x < 0) { o = -x; x = 0; } else o = 0;
         if(w < r) r = w;
+        if(p < 1) p = 1;
         n = (siz / p); y = b - a;
         if(n > (uint32_t)h) n = h;
         if(y < 0) y = 0;

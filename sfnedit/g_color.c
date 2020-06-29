@@ -91,7 +91,7 @@ void view_color(int idx)
     ui_win_t *win = &wins[idx];
     char tmp[10];
     int i, j, p, x = win->w - 74, w = (win->w - 16) / 32;
-    uint32_t h, c, s;
+    uint32_t h, c, s, *uc = (uint32_t*)&ctx.cpal;
     uint8_t *d, *a = (uint8_t*)&theme[THEME_LIGHT], *b = (uint8_t*)&theme[THEME_DARK], *C = (uint8_t*)&c;
 
     if(x < 0) x = 0;
@@ -102,7 +102,7 @@ void view_color(int idx)
     c = theme[THEME_BG];
     s = ((C[2] + C[1] + C[0]) / 3 > 0x7F) ? 0 : 0xFFFFFF;
     for(ctx.numcpal = 0; ctx.numcpal < 0xFE && ctx.cpal[(ctx.numcpal << 2) + 3]; ctx.numcpal++);
-    c = colorsel <= ctx.numcpal ? *((uint32_t*)&ctx.cpal[colorsel << 2]) : 0;
+    c = colorsel <= ctx.numcpal ? uc[colorsel] : 0;
     if(hue > 254) hue = 254;
 
     ssfn_dst.w = win->w - 4;
@@ -111,12 +111,13 @@ void view_color(int idx)
             ui_rect(win, 8+i*w, j*w + 30, w-2, w-2, colorsel == j*32+i ? s : theme[THEME_DARKER],
                 colorsel == j*32+i ? s : theme[THEME_LIGHTER]);
             ui_argb(win, 8+i*w+1, j*w + 30+1, w - 4, w - 4, p == 1016 ? theme[THEME_FG] : (p == 1020 ?
-                theme[THEME_BG] : *((uint32_t*)&ctx.cpal[p])));
+                theme[THEME_BG] : uc[p >> 2]));
         }
     if(colorsel >= 0xFE) {
         ui_box(win, 4, win->h - 260 - 20, 32 + 256 + 8 + 16, 260, theme[THEME_BG], theme[THEME_BG], theme[THEME_BG]);
         if(selfield >= 0 && selfield < 8) selfield = 8;
     } else {
+        if(!c) c = 0xFF000000;
         ssfn_dst.x = x; ssfn_dst.y = win->h - 180;
         ssfn_putc('A'); ui_num(win, x+18, ssfn_dst.y, C[3], win->field == 4, selfield);
         ssfn_dst.x = x; ssfn_dst.y += 24;
@@ -238,6 +239,7 @@ set:        c = hsv2rgb(255, hue, sat, val);
             ctx.cpal[i + 0] = C[0];
             ctx.cpal[i + 1] = C[1];
             ctx.cpal[i + 2] = C[2];
+            if(!ctx.cpal[i + 3]) ctx.cpal[i + 3] = 255;
         }
     }
 }

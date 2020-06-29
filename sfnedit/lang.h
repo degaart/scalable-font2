@@ -138,7 +138,7 @@ enum {
     COORDS_HADV,
     COORDS_VADV,
     COORDS_RTL,
-    COORDS_HORIZ,
+    COORDS_UTD,
     COORDS_LTR,
     COORDS_REPOS,
     COORDS_ITALIC,
@@ -157,7 +157,7 @@ enum {
     LAYERS_BITMAP,
     LAYERS_PIXMAP,
     LAYERS_FOREGROUND,
-    LAYERS_BACKGROUND,
+    LAYERS_PICKER,
     LAYERS_DELETE,
     /* kerning */
     KERN_DELETE,
@@ -180,7 +180,7 @@ enum {
     NUMTEXTS
 };
 
-#define NUMLANGS         1
+#define NUMLANGS         2
 
 extern char *dict[NUMLANGS][NUMTEXTS + 1], **lang;
 

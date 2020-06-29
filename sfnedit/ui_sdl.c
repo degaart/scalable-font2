@@ -43,8 +43,7 @@ int btnflags = 0, keyflags = 0, mx = 0, my = 0, ti = 0;
  */
 void ui_copy(char *s)
 {
-    if(s && *s)
-        SDL_SetClipboardText(s);
+    SDL_SetClipboardText(s);
 }
 
 /**
