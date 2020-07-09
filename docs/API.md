@@ -339,7 +339,7 @@ Normal Renderer Functions
 The following functions are only available if the header is included with `SSFN_IMPLEMENTATION` define.
 They allocate memory and therefore depend on libc (or crafted compilers like gcc have all four functions
 as built-ins), hence are expected to be used by normal user space applications. You can make the normal
-renderer dependency-free by including with `SSFN_STATIC`, however with limited funtionality, see section
+renderer dependency-free by including with `SSFN_MAXLINES`, however with limited funtionality, see section
 Configuring Memory Management above.
 
 ## Initilization
@@ -381,7 +381,7 @@ into an object and link that with your code. In this case you'll have a `_binary
 You can also pass an SSFN font collection to this function, in which case all fonts within the collection
 will be loaded into the context at once.
 
-Without the `SSFN_STATIC` define, the font can be gzip compressed, and `ssfn_load()` will transparently
+Without the `SSFN_MAXLINES` define, the font can be gzip compressed, and `ssfn_load()` will transparently
 inflate it (thanks to stb!).
 
 ### Return value
@@ -577,7 +577,7 @@ int SSFN::Font.Mem();
 Returns how much memory a particular renderer context consumes. It is typically less than 64k, but strongly depends
 how big and much glyphs are stored in the internal cache. Internal buffers can be freed with `ssfn_free()`.
 
-When included with `SSFN_STATIC` define, each context will require no more than 64k, and no dynamic allocation will
+When included with `SSFN_MAXLINES` define, each context will require no more than 64k, and no dynamic allocation will
 take place.
 
 ### Parameters

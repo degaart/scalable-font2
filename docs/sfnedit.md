@@ -125,11 +125,10 @@ cut, copy and paste selected range, and finally, drop selected range.
 | Key Combination | Description |
 | --------------- | ----------- |
 | <kbd>Down</kbd> / <kbd>Up</kbd>   | Scroll the list |
-| <kbd>Left</kbd> / <kbd>Right</kbd> | Select a glyph variant table |
-| <kbd>Shift</kbd> + left click and move | Select a range |
+| left click and move | Select a range |
 | <kbd>Ctrl</kbd> + <kbd>c</kbd> | Copy the selection to clipboard |
 | <kbd>Ctrl</kbd> + <kbd>x</kbd> | Cut out the selection and store it to clipboard |
-| <kbd>Ctrl</kbd> + <kbd>p</kbd> | Paste a range from clipboard started at selection |
+| <kbd>Ctrl</kbd> + <kbd>v</kbd> | Paste a range from clipboard started at selection |
 | left click    | Open glyph window for the character |
 | any other key | Start a search |
 
