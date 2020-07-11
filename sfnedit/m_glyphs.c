@@ -361,6 +361,15 @@ void ctrl_glyphs_onbtnpress()
                 / gsize + scrollglyphs;
             if(selstart < 0 || selstart >= numglyphs) selstart = -1;
             selend = glast = -1;
+        } else
+        if(event.w & 4) {
+            if(selend != -1) { wins[0].field = 11; ctrl_glyphs_onenter(); }
+            selstart = ((event.y - 52) / gsize) * (1<<wins[0].zoom) + (event.x - ((wins[0].w - gsize * (1<<wins[0].zoom))/2 + 1))
+                / gsize + scrollglyphs;
+            if(selstart < 0 || selstart >= numglyphs) selstart = -1;
+            selend = glast = -1;
+            wins[0].field = 12; ctrl_glyphs_onenter();
+            selstart = -1;
         }
     }
 }

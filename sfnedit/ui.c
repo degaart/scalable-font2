@@ -214,6 +214,12 @@ void ui_openwin(uint32_t unicode)
     wins[j].field = -1;
     wins[j].rc = 1;
     if(unicode == WINTYPE_MAIN) { wins[j].zoom = 4; wins[j].tool = -1; }
+    else if(!ctx.glyphs[unicode].numlayer) {
+        ctx.glyphs[unicode].width = ctx.width;
+        ctx.glyphs[unicode].height = ctx.height;
+        if(!iswhitespace(unicode))
+            ctx.glyphs[unicode].adv_x = ctx.glyphs[unicode].adv_y = ctx.glyphs[unicode].ovl_x = 0;
+    }
     input_maxlen = 0;
     input_str = input_cur = NULL;
     ui_updatetitle(j);

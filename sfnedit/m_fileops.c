@@ -400,6 +400,7 @@ void ctrl_fileops_onenter(int save)
                     sprintf(fstatus, "libsfn: %s", lang[ERR_SAVE]);
                     errstatus = fstatus;
                 }
+                fileops_readdir(save);
                 ui_cursorwin(&wins[0], CURSOR_PTR);
             } else {
                 strcat(path[pathlen++], files[selfiles].name);

@@ -2075,6 +2075,7 @@ int sfn_save(char *filename, int ascii, int comp)
                 fwrite(gz, stream.total_out + 8, 1, f);
                 fwrite(&crc, 4, 1, f);
                 fwrite(&gzs, 4, 1, f);
+                fclose(f);
                 x = stream.total_out + 16;
             } else {
                 fprintf(stderr, "libsfn: unable to write '%s'\n", filename);
@@ -2170,7 +2171,7 @@ void sfn_setstr(char **s, char *n, int len)
 void sfn_sanitize(int unicode)
 {
     sfncont_t *cont;
-    int i, j, k, l, h, s, e;
+    int i, j, k, l, m = 0, h, s, e;
 
     if(unicode == -1) { s = 0; e = 0x110000; } else { s = unicode; e = unicode + 1; }
     for(i = s; i < e; i++) {
@@ -2185,16 +2186,19 @@ void sfn_sanitize(int unicode)
                 if(ctx.glyphs[i].layers[j].type == SSFN_FRAG_CONTOUR) {
                     ctx.glyphs[i].layers[j].minx = ctx.glyphs[i].layers[j].miny = 256;
                     for(k = 0, cont = (sfncont_t*)ctx.glyphs[i].layers[j].data; k < ctx.glyphs[i].layers[j].len; k++, cont++) {
+                        if(cont->px > m) m = cont->px;
                         if(cont->px + 1 > ctx.glyphs[i].width) ctx.glyphs[i].width = cont->px + 1;
                         if(cont->py + 1 > ctx.glyphs[i].height) ctx.glyphs[i].height = cont->py + 1;
                         if(cont->px < ctx.glyphs[i].layers[j].minx) ctx.glyphs[i].layers[j].minx = cont->px;
                         if(cont->py < ctx.glyphs[i].layers[j].miny) ctx.glyphs[i].layers[j].miny = cont->py;
                         if(cont->type >= SSFN_CONTOUR_QUAD) {
+                            if(cont->c1x > m) m = cont->c1x;
                             if(cont->c1x + 1 > ctx.glyphs[i].width) ctx.glyphs[i].width = cont->c1x + 1;
                             if(cont->c1y + 1 > ctx.glyphs[i].height) ctx.glyphs[i].height = cont->c1y + 1;
                             if(cont->c1x < ctx.glyphs[i].layers[j].minx) ctx.glyphs[i].layers[j].minx = cont->c1x;
                             if(cont->c1y < ctx.glyphs[i].layers[j].miny) ctx.glyphs[i].layers[j].miny = cont->c1y;
                             if(cont->type >= SSFN_CONTOUR_CUBIC) {
+                                if(cont->c2x > m) m = cont->c2x;
                                 if(cont->c2x + 1 > ctx.glyphs[i].width) ctx.glyphs[i].width = cont->c2x + 1;
                                 if(cont->c2y + 1 > ctx.glyphs[i].height) ctx.glyphs[i].height = cont->c2y + 1;
                                 if(cont->c2x < ctx.glyphs[i].layers[j].minx) ctx.glyphs[i].layers[j].minx = cont->c2x;
@@ -2202,6 +2206,15 @@ void sfn_sanitize(int unicode)
                             }
                         }
                     }
+                } else {
+                    ctx.glyphs[i].layers[j].minx = ctx.glyphs[i].layers[j].miny = 256;
+                    for(l = 0; l < ctx.glyphs[i].height; l++)
+                        for(k = 0; k < ctx.glyphs[i].width; k++)
+                            if(ctx.glyphs[i].layers[j].data[l * ctx.glyphs[i].width + k] != 0xFF) {
+                                if(k > m) m = k;
+                                if(k < ctx.glyphs[i].layers[j].minx) ctx.glyphs[i].layers[j].minx = k;
+                                if(l < ctx.glyphs[i].layers[j].miny) ctx.glyphs[i].layers[j].miny = l;
+                            }
                 }
                 if(ctx.glyphs[i].layers[j].color >= ctx.numcpal || ctx.glyphs[i].layers[j].type == SSFN_FRAG_PIXMAP)
                     ctx.glyphs[i].layers[j].color = 0xFE;
@@ -2225,6 +2238,8 @@ void sfn_sanitize(int unicode)
         if(ctx.glyphs[i].kern)
             qsort(ctx.glyphs[i].kern, ctx.glyphs[i].numkern, sizeof(sfnkern_t), krnsrt);
         if(ctx.glyphs[i].ovl_x > 63) ctx.glyphs[i].ovl_x = 63;
+        if(!ctx.glyphs[i].adv_x && !ctx.glyphs[i].adv_y && m)
+            ctx.glyphs[i].adv_x = m + 2 + adv;
         if(ctx.glyphs[i].adv_x) ctx.glyphs[i].adv_y = 0;
         if(ctx.family == SSFN_FAMILY_MONOSPACE) {
             if(ctx.glyphs[i].adv_x) ctx.glyphs[i].adv_x = ((ctx.glyphs[i].width + 7) & ~7) + adv;

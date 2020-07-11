@@ -17,3 +17,4 @@ Scalable Screen Font 2.0 - Example Fonts
 
  - stoneage.sfn - pixmap font from an old DOS game, which I rewrote for Linux, [xstoneage](https://gitlab.com/bztsrc/xstoneage)
 
+ - bende.sfn - my little boy's secret writing system, entirely made with sfnedit
