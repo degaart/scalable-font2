@@ -152,7 +152,7 @@ The last command byte is padded with zero bits.
 | Bits | Command        | Argument bytes                                |
 | ---- | -------------- | --------------------------------------------- |
 |   00 | move to        | 2, x y (first two arguments)                  |
-|   01 | line to        | 4, x y                                        |
+|   01 | line to        | 2, x y                                        |
 |   10 | quad curve to  | 4, x y a b (where (a,b) is the control point) |
 |   11 | cubic curve to | 6, x y a b c d                                |
 
