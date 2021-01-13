@@ -65,7 +65,7 @@ sfnlayer_t *currlayer;
 void sfd(char *ptr, int size)
 {
     int i, j, w = -1, h = 0, b = 0, unicode = 0, nc = 0, numchars = 0, ps = 0, p[7], mx, xx, my, xy, f = 0;
-    long int avg_w = 0, avg_h = 0;
+    long int avg_w = 0, avg_h = 0, avg_n = 0;
     char *end = ptr + size, *endprop, *face, *name = NULL;
 #define scx(x) ((x - mx) * 254 / max_s)
 #define scy(y) ((max_b - y) * 254 / max_s)
@@ -175,6 +175,7 @@ void sfd(char *ptr, int size)
                     if(xy > max_h) max_h = xy;
                     avg_w += xx;
                     avg_h += xy;
+                    avg_n++;
                 }
             }
             while(ptr < end && *ptr && memcmp(ptr, "EndChar", 7)) ptr++;
@@ -182,8 +183,10 @@ void sfd(char *ptr, int size)
         while(*ptr && *ptr!='\n') ptr++;
         while(*ptr=='\n') ptr++;
     }
-    avg_w /= (long int)numchars;
-    avg_h /= (long int)numchars;
+    if(avg_n > 0) {
+        avg_w /= avg_n;
+        avg_h /= avg_n;
+    }
     if(!quiet && b != max_b) {
         fprintf(stderr, "\rlibsfn: inconsistent font: ascender %d != max(yMax) %d    \n", b, max_b);
     }
@@ -342,7 +345,7 @@ void ttf()
     FT_Vector v;
     FT_Error error;
     int i, j, n, x, y, numchars = 0;
-    long int avg_w = 0, avg_h = 0;
+    long int avg_w = 0, avg_h = 0, avg_n = 0;
     ftchr_t *c;
 
     /* unbeliveable, FT2 lib does not return the number of characters in the font... */
@@ -386,6 +389,7 @@ void ttf()
             if(c->bbox.yMax > max_y) max_y = c->bbox.yMax;
             avg_w += face->glyph->metrics.width;
             avg_h += face->glyph->metrics.height;
+            avg_n++;
 /*
 if(cp==0x21) {
     printf("\n%ld UUUUU Bounding box (%ld, %ld), (%ld, %ld)\n", cp,c->bbox.xMin, c->bbox.yMin, c->bbox.xMax, c->bbox.yMax);
@@ -416,8 +420,10 @@ if(cp==0x21) {
         }
         cp = FT_Get_Next_Char(face, cp, &agi);
     }
-    avg_w /= (long int)numchars;
-    avg_h /= (long int)numchars;
+    if(avg_n > 0) {
+        avg_w /= avg_n;
+        avg_h /= avg_n;
+    }
     /* due to optionally skipped characters */
     numchars = (int)((unsigned long int)c - (unsigned long int)ftchars) / sizeof(ftchr_t);
     if(min_x >= max_x || min_y >= max_y) min_x = max_x = min_y = max_y = max_w = max_h = max_b = 0;
@@ -425,14 +431,12 @@ if(cp==0x21) {
     if(!quiet && face->ascender != max_b) {
         fprintf(stderr, "\rlibsfn: inconsistent font: ascender %d != max(yMax) %d    \n", face->ascender, max_b);
     }
-    printf("\r  Numchars: %d, Bounding box: (%d, %d), (%d, %d) dx %d dy %d, w: %d, h: %d, baseline: %d\n", numchars,
-        min_x, min_y, max_x, max_y, max_x - min_x, max_y - min_y, max_w, max_h, max_b);
-/*
-    if(!origwh) {
+    if(origwh) {
         if(max_x - min_x > max_w) max_w = max_x - min_x;
         if(max_y - min_y > max_h) max_h = max_y - min_y;
     }
-*/
+    printf("\r  Numchars: %d, Bounding box: (%d, %d), (%d, %d) dx %d dy %d, w: %d, h: %d, baseline: %d\n", numchars,
+        min_x, min_y, max_x, max_y, max_x - min_x, max_y - min_y, max_w, max_h, max_b);
     max_s = max_w > max_h ? max_w : max_h;
     if(max_s > 0) {
         printf("  Scaling to %d x %d, average: %ld x %ld\n", max_s, max_s, avg_w, avg_h);
