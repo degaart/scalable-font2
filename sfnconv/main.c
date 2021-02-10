@@ -126,9 +126,11 @@ void save_file(char *outfile, ssfn_font_t *font)
 void usage()
 {
     printf("Scalable Screen Font 2.0 by bzt Copyright (C) 2020 MIT license\n"
-           " https://gitlab.com/bztsrc/scalable-font2\n\n"
+           " https://gitlab.com/bztsrc/scalable-font2\n"
+           " UNICODE database: %s\n\n"
            "./sfnconv [-c|-e|-d|-dd|-dd...|-D] [-C] [-U] "
-           "[-A] [-R] [-B <size>|-V] [-g]\n   [-b <p>] [-u <+p>] [-a <+p>] [-o] [-q] [-S <U+xxx>] [-E] [-t [b][i]<0..4>]");
+           "[-A] [-R] [-B <size>|-V] [-g]\n   [-b <p>] [-u <+p>] [-a <+p>] [-o] [-q] [-S <U+xxx>] [-E] [-t [b][i]<0..4>]"
+           , uniname_date);
     printf("\n   [-n <name>] [-f <family>] [-s <subfamily>] [-v <ver>] [-m <manufacturer>] "
            "\n   [-l <license>] [-r <from> <to>] <in> [ [-r <from> <to>] <in> ...] <out>\n\n"
            " -c:  create font collection\n"

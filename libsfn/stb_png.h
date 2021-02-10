@@ -1084,9 +1084,10 @@ static int stbi__parse_png_file(stbi__png *z, int scan, int req_comp)
                if (c.length != (stbi__uint32) s->img_n*2) return stbi__err("bad tRNS len","Corrupt PNG");
                has_trans = 1;
                if (z->depth == 16) {
-                  for (k = 0; k < s->img_n; ++k) tc16[k] = (stbi__uint16)stbi__get16be(s);
+                  for (k = 0; k < s->img_n && k < (int)sizeof(tc16); ++k) tc16[k] = (stbi__uint16)stbi__get16be(s);
                } else {
-                  for (k = 0; k < s->img_n; ++k) tc[k] = (unsigned char)(stbi__get16be(s) & 255) * stbi__depth_scale_table[z->depth];
+                  for (k = 0; k < s->img_n && k < (int)sizeof(tc); ++k) tc[k] =
+                    (unsigned char)(stbi__get16be(s) & 255) * stbi__depth_scale_table[z->depth];
                }
             }
             break;

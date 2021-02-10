@@ -2606,8 +2606,8 @@ void sfn_coverage()
 {
     int i, j, m, n, a, b, d;
 
-    printf("| Coverage | NumChar | Start  | End    | Description                                |\n"
-           "| -------: | ------: | ------ | ------ | ------------------------------------------ |\n");
+    printf("| Coverage | NumChar | Start  | End    | Description                                    |\n"
+           "| -------: | ------: | ------ | ------ | ---------------------------------------------- |\n");
     for(i = 0; i < UNICODE_NUMBLOCKS; i++)
         ublocks[i].cnt = 0;
     for(i = m = 0; i < 0x110000; i++)
@@ -2622,13 +2622,13 @@ void sfn_coverage()
             if(ublocks[i].cnt > n) { m += ublocks[i].cnt - n; ublocks[i].cnt = n; };
             a += ublocks[i].cnt; b += n;
             d = ublocks[i].cnt * 1000 / n;
-            printf("|   %3d.%d%% | %7d | %06X | %06X | %-42s |\n", d/10, d%10,
+            printf("|   %3d.%d%% | %7d | %06X | %06X | %-46s |\n", d/10, d%10,
                 ublocks[i].cnt, ublocks[i].start, ublocks[i].end, ublocks[i].name);
         }
     }
     if(m)
-        printf("|        - | %7d | 000000 | 10FFFF | No Block                                   |\n", m);
+        printf("|        - | %7d | 000000 | 10FFFF | No Block                                       |\n", m);
     d = a * 1000 / b;
-    printf("| -------- | ------- | ------------------------------------------------------------ |\n"
-        "|   %3d.%d%% | %7d |     = = = = = = = =   Overall Coverage   = = = = = = = =     |\n", d/10, d%10, a);
+    printf("| -------- | ------- | ---------------------------------------------------------------- |\n"
+        "|   %3d.%d%% | %7d |       = = = = = = = =   Overall Coverage   = = = = = = = =       |\n", d/10, d%10, a);
 }
