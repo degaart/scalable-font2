@@ -120,32 +120,6 @@ ssfn_buf_t *buf = font.Text(str, 0xFF101010);
 ```
 This latter is a drop-in replacement to SDL_ttf package's TTF_RenderUTF8_Blended() function.
 
-To handle new lines in strings:
-```c
-char *str = "String to render\nAnother line";
-int linestart = buf.x;
-
-/* C */
-while((ret = ssfn_render(&ctx, &buf, str)) > 0) {
-    str += ret;
-    while(*str == '\n') {
-        str++;
-        buf.x = linestart;
-        buf.y += ctx.line;
-    }
-}
-
-/* C++ */
-while((ret = font.Render(&buf, str)) > 0) {
-    str += ret;
-    while(*str == '\n') {
-        str++;
-        buf.x = linestart;
-        buf.y += font.LineHeight();
-    }
-}
-```
-
 Usage
 -----
 
