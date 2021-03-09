@@ -1,5 +1,6 @@
 /*
  * ssfn.h
+ * https://gitlab.com/bztsrc/scalable-font2
  *
  * Copyright (C) 2020 bzt (bztsrc@gitlab)
  *
