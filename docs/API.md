@@ -1,6 +1,9 @@
 Scalable Screen Font Renderer 2.0 API
 =====================================
 
+- TOC
+{:toc}
+
 Font Metrics
 ------------
 
