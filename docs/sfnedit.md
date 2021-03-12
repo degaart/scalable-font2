@@ -1,6 +1,8 @@
 Scalable Screen Font 2.0 Editor
 ===============================
 
+[[_TOC_]]
+
 This is a font converter and editor with a GUI for [SSFN](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/sfn_format.md)
 font files.
 

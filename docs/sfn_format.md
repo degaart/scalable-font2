@@ -1,6 +1,8 @@
 Scalable Screen Font 2.0 File Format
 ====================================
 
+[[_TOC_]]
+
 - File extension: `.sfn`
 - Mime type: `font/x-ssfont`
 

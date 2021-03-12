@@ -1,6 +1,8 @@
 Scalable Screen Font 2.0 Library API
 ====================================
 
+[[_TOC_]]
+
 Note: this is a supporting library to manage SSFN font files. It is NOT needed by normal applications
 that want to render text only. It is needed for applications that want to modify or convert SSFN fonts.
 The renderer's function are all prefixed by `ssfn_` (referring to the format), while the supporting

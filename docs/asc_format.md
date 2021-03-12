@@ -1,6 +1,8 @@
 Scalable Screen Font 2.0 ASCII Format
 ======================================
 
+[[_TOC_]]
+
 - File extension: `.asc`
 - Mime type: `text/x-ssfont`
 

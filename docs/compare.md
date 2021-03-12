@@ -1,6 +1,8 @@
 Scalable Screen Font 2.0 Comparitions
 =====================================
 
+[[_TOC_]]
+
 Feature Comparition to Other Font Formats
 -----------------------------------------
 

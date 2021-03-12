@@ -1,6 +1,8 @@
 Scalable Screen Font 2.0 Converter Utility
 ==========================================
 
+[[_TOC_]]
+
 SSFN is not just a renderer. It is also a file format, which comes with a command line tool to manage
 [SSFN font](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/sfn_format.md) files.
 
