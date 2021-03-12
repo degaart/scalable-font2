@@ -1,14 +1,14 @@
 Scalable Screen Font 2.0 File Format
 ====================================
 
-[[_TOC_]]
-
 - File extension: `.sfn`
 - Mime type: `font/x-ssfont`
 
 (This spec is about the binary format. See [asc_format.md](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/asc_format.md)
 for the human readable ASCII version, which is the "source file" format. This is
 about the "compiled file" format, created by the [converter](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/sfnconv.md).)
+
+[[_TOC_]]
 
 As this font format was primarily designed for screen, it differs from TrueType and
 OpenType fonts in many aspects. First, it uses pixels, not points (same as when TTF

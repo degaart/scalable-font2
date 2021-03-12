@@ -1,8 +1,6 @@
 Scalable Screen Font 2.0 ASCII Format
 ======================================
 
-[[_TOC_]]
-
 - File extension: `.asc`
 - Mime type: `text/x-ssfont`
 
@@ -15,6 +13,8 @@ definitions from one file to another. It can be considered as an easily editable
 
 The `sfnconv -A` utility outputs in this format, and can parse this to convert the font back to binary. Read more
 about the [converter](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/sfnconv.md)).
+
+[[_TOC_]]
 
 Header
 ------
