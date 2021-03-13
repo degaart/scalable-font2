@@ -76,7 +76,7 @@ ssfn_dst.p = 2048;                          /* bytes per line */
 ssfn_dst.x = ssfn_dst.y = 0;                /* pen position */
 ssfn_dst.fg = 0xFFFF;                       /* foreground color */
 
-/* render text directly to the screen and then adjust pen position */
+/* render UNICODE codepoints directly to the screen and then adjust pen position */
 ssfn_putc('H');
 ssfn_putc('e');
 ssfn_putc('l');
