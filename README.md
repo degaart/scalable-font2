@@ -76,8 +76,12 @@ ssfn_dst.p = 2048;                          /* bytes per line */
 ssfn_dst.x = ssfn_dst.y = 0;                /* pen position */
 ssfn_dst.fg = 0xFFFF;                       /* foreground color */
 
-/* render one glyph for UNICODE code point 'A', directly to the screen and then adjust pen position */
-ssfn_putc(0x41);
+/* render text directly to the screen and then adjust pen position */
+ssfn_putc('H');
+ssfn_putc('e');
+ssfn_putc('l');
+ssfn_putc('l');
+ssfn_putc('o');
 ```
 
 As you see this renderer implementation is very simple, extremely small (less than 2k). It can only render
@@ -122,7 +126,11 @@ ssfn_select(&ctx,
 );
 
 /* rasterize the first glyph in an UTF-8 string into a 32 bit packed pixel buffer */
-ssfn_render(&ctx, &buf, "A");
+/* returns how many bytes were consumed from the string */
+ssfn_render(&ctx, &buf, "Hello");
+ssfn_render(&ctx, &buf, "ello");
+ssfn_render(&ctx, &buf, "llo");                     /* assuming there's a ligature for "ll" in the font */
+ssfn_render(&ctx, &buf, "o");
 
 /* free resources */
 ssfn_free(&ctx);                                    /* free the renderer context's internal buffers */
