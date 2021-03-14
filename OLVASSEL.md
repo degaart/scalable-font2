@@ -3,7 +3,7 @@ Skálázható Képernyő Font 2.0
 
 Ez egy könnyen portolható, egyedülálló ANSI C/C++ fejlécfájl, skálázható bitmap és vektor font megjelenítő. Csak
 memóriával kapcsolatos libc függőségei vannak és nem használ lebegőpontos utasításokat sem. Nagyon kicsi (kevesebb,
-mint 32 kilobájt) és alig foglal memőriát, tökéletes beágyazott rendszerekhez és hobbi operációs rendszer kernelekhez.
+mint 32 kilobájt) és alig foglal memóriát, tökéletes beágyazott rendszerekhez és hobbi operációs rendszer kernelekhez.
 Mivel csak hobbiból írtam, ezért bárminemű adományt és támogatást szívesen fogadok, ha hasznosnak bizonyulna a számodra.
 
  - [ssfn.h](https://gitlab.com/bztsrc/scalable-font2/blob/master/ssfn.h) az SSFN [megjelenítő SDK](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/API.md)
