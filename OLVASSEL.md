@@ -82,7 +82,7 @@ ssfn_putc('H');
 ssfn_putc('e');
 ssfn_putc('l');
 ssfn_putc('l');
-ssfn_putc(öxF3); /* a hosszú ó kódpontja */
+ssfn_putc(0xF3); /* a hosszú ó kódpontja */
 ```
 
 Amint látható, ez a megjelenítő nagyon egyszerű, és nagyon kicsi (kevesebb, mint 2k). Csak fix méretű bitmap
