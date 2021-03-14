@@ -2531,6 +2531,10 @@ void sfn_vectorize()
 
     param = potrace_param_default();
     if(!param) { fprintf(stderr,"libsfn: memory allocation error\n"); return; }
+    param->turnpolicy = POTRACE_TURNPOLICY_MINORITY;
+    param->turdsize = 2;                            /* curve threshold */
+    param->alphamax = 1.3;                          /* 0.0 polygon, 1.3333 no corners */
+    param->opttolerance = 0.5;                      /* bigger: less accurate, fewer segments */
 
     for(i = 0; i < 0x110000; i++)
         if(ctx.glyphs[i].numlayer) numchars++;

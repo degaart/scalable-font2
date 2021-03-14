@@ -222,6 +222,8 @@ Loading kerning information from SplineFontDB .sfd files is not implemented as o
 Hinting is supported by the format, but not implementeted by the renderer (libsfn supports loading and saving the hinting
 grids). With the new bilinear interpolation scaler I'm not sure it's needed, we'll see how testing goes.
 
+Vectorizing bitmap fonts could use some work. Potrace is not the best on 16 x 16 bitmaps.
+
 Contributors
 ------------
 
