@@ -86,7 +86,7 @@ ssfn_putc(0xF3); /* a hosszú ó kódpontja */
 ```
 
 Amint látható, ez a megjelenítő nagyon egyszerű, és nagyon kicsi (kevesebb, mint 2k). Csak fix méretű bitmap
-fontokat tud megjeleníteni. Cserébe nem foglal memőriát, és nincs libc függősége, ezért nem tud átméretezni,
+fontokat tud megjeleníteni. Cserébe nem foglal memóriát, és nincs libc függősége, ezért nem tud átméretezni,
 de kezeli a proporcionális fontokat (például 8x16-os Latin betűk és 16x16-os CJK, kínai, japán és kóreai betűk).
 Emiatt egy teljes értékű UNICODE konzolt lehet vele implementálni.
 
