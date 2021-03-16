@@ -104,11 +104,11 @@ typedef struct {
     uint8_t     height;                 /* overall height of the font */
     uint8_t     baseline;               /* horizontal baseline in grid pixels */
     uint8_t     underline;              /* position of under line in grid pixels */
-    uint16_t    fragments_offs;         /* offset of fragments table relative to magic */
-    uint32_t    characters_offs;        /* characters table offset relative to magic */
-    uint32_t    ligature_offs;          /* ligatures table offset relative to magic */
-    uint32_t    kerning_offs;           /* kerning table offset relative to magic */
-    uint32_t    cmap_offs;              /* color map offset relative to magic */
+    uint16_t    fragments_offs;         /* offset of fragments table */
+    uint32_t    characters_offs;        /* characters table offset */
+    uint32_t    ligature_offs;          /* ligatures table offset */
+    uint32_t    kerning_offs;           /* kerning table offset */
+    uint32_t    cmap_offs;              /* color map offset */
 } __attribute__((packed)) ssfn_font_t;
 
 /***** renderer API *****/
@@ -219,7 +219,7 @@ uint32_t ssfn_utf8(char **str);                                                 
 int ssfn_load(ssfn_t *ctx, const void *data);                                       /* add an SSFN to context */
 int ssfn_select(ssfn_t *ctx, int family, const char *name, int style, int size);    /* select font to use */
 int ssfn_render(ssfn_t *ctx, ssfn_buf_t *dst, const char *str);                     /* render a glyph to a pixel buffer */
-int ssfn_bbox(ssfn_t *ctx, const char *str, int *w, int *h, int *left, int *top);   /* get bounding box of a rendered string */
+int ssfn_bbox(ssfn_t *ctx, const char *str, int *w, int *h, int *left, int *top);   /* get bounding box */
 ssfn_buf_t *ssfn_text(ssfn_t *ctx, const char *str, unsigned int fg);               /* renders text to a newly allocated buffer */
 int ssfn_mem(ssfn_t *ctx);                                                          /* return how much memory is used */
 void ssfn_free(ssfn_t *ctx);                                                        /* free context */
@@ -267,7 +267,7 @@ uint32_t ssfn_utf8(char **s)
         if(!(**s & 8)) { c = ((**s & 0x7)<<18)|((*(*s+1) & 0x3F)<<12)|((*(*s+2) & 0x3F)<<6)|(*(*s+3) & 0x3F); *s += 3; }
         else c = 0;
     }
-    *s += 1; /* *s++ is not what you think */
+    (*s)++;
     return c;
 }
 #endif
@@ -290,7 +290,7 @@ extern int memcmp (const void *__s1, const void *__s2, size_t __n) __THROW;
 extern void *memset (void *__s, int __c, size_t __n) __THROW;
 #endif
 
-/* Clang does not have built-in versions but gcc has */
+/* Clang does not have built-ins */
 # ifndef SSFN_memcmp
 #  ifdef __builtin_memcmp
 #   define SSFN_memcmp __builtin_memcmp
@@ -420,7 +420,6 @@ static void _ssfn_b(ssfn_t *ctx, int p,int h, int x0,int y0, int x1,int y1, int 
 }
 
 #ifndef SSFN_MAXLINES
-/* free internal cache */
 static void _ssfn_fc(ssfn_t *ctx)
 {
     int i, j, k;
@@ -1537,6 +1536,9 @@ int ssfn_putc(uint32_t unicode)
 
     if(!ssfn_src || ssfn_src->magic[0] != 'S' || ssfn_src->magic[1] != 'F' || ssfn_src->magic[2] != 'N' ||
         ssfn_src->magic[3] != '2' || !ssfn_dst.ptr || !ssfn_dst.p) return SSFN_ERR_INVINP;
+    if(unicode == '\r' || unicode == '\n') {
+        ssfn_dst.x = 0; if(unicode == '\n') { ssfn_dst.y += ssfn_src->height; } return SSFN_OK;
+    }
     w = ssfn_dst.w < 0 ? -ssfn_dst.w : ssfn_dst.w;
     for(ptr = (uint8_t*)ssfn_src + ssfn_src->characters_offs, i = 0; i < 0x110000; i++) {
         if(ptr[0] == 0xFF) { i += 65535; ptr++; }

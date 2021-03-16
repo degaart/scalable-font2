@@ -63,7 +63,7 @@ that mode has certain limitiations.)
 The header contains everything, no additional linking required!
 
 ```c
-#define SSFN_CONSOLEBITMAP_HICOLOR          /* use the special renderer for hicolor packed pixels */
+#define SSFN_CONSOLEBITMAP_TRUECOLOR        /* use the special renderer for 32 bit truecolor packed pixels */
 #include <ssfn.h>
 
 /* set up context by global variables */
@@ -74,7 +74,7 @@ ssfn_dst.w = 1024;                          /* width */
 ssfn_dst.h = 768;                           /* height */
 ssfn_dst.p = 2048;                          /* bytes per line */
 ssfn_dst.x = ssfn_dst.y = 0;                /* pen position */
-ssfn_dst.fg = 0xFFFF;                       /* foreground color */
+ssfn_dst.fg = 0xFFFFFF;                     /* foreground color */
 
 /* render UNICODE codepoints directly to the screen and then adjust pen position */
 ssfn_putc('H');
@@ -87,7 +87,7 @@ ssfn_putc('o');
 As you see this renderer implementation is very simple, extremely small (less than 2k). It can only render
 unscaled bitmap fonts. It does not allocate memory nor need libc, so it can't scale, but it can handle
 proportional fonts (like 8x16 for Latin letters, and 16x16 for CJK ideograms). Therefore you can implement
-a true UNICODE console with this renderer.
+a true UNICODE console with this renderer. It also works with paletted, hicolor and truecolor modes.
 
 IMPORTANT NOTE: unlike the normal renderer, this one does not handle gzip compressed fonts. Always pass an
 inflated font in `ssfn_src`.
@@ -138,7 +138,8 @@ ssfn_free(&ctx);                                    /* free the renderer context
 
 There's more, you can use the C++ wrapper class, you can select font by it's name and you can also query the
 bounding box for example, and `ssfn_text` will render entire strings into newly allocated pixel buffers,
-read the [API reference](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/API.md).
+read the [API reference](https://gitlab.com/bztsrc/scalable-font2/blob/master/docs/API.md). This only works
+for truecolor pixels, because it needs a separate alpha-channel to work properly.
 
 As with the simple renderer, the header contains everything, no additional linking required! Gzip uncompressor
 also included in this 28k of code, no need to link with zlib!

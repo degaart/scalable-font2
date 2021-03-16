@@ -122,6 +122,29 @@ ssfn_buf_t *buf = font.Text(str, 0xFF101010);
 ```
 This latter is a drop-in replacement to SDL_ttf package's TTF_RenderUTF8_Blended() function.
 
+### Newlines
+
+Newlines should be handled by the application and not passed to SSFN. However that latter works too in some simple
+cases, as it assumes left-to-right script written on the entire screen and moves pen accordinly. To move pen down,
+add the font's height, ssfn_src->height to ssfn_dst.y, and set ssfn_dst.x to 0. The same applies to ssfn_render(),
+but there you have two options on how much you want to move the cursor down: ctx->line contains the actual line's
+height (depending on what characters were written in that line), and ctx->size the scaled font's size.
+
+For vertical fonts and right-to-left scripts newlines must be handled by the application, because SSFN doesn't know
+the buffer's width (width is optional in ssfn_buf_t) and top margin (not stored in ssfn_buf_t).
+
+Example:
+```c
+for(; *s; s++) {
+    if(*s == '\n') {
+        ssfn_dst.y += ssfn_src->height;
+        ssfn_dst.x = 0;
+    } else
+        ssfn_putc(*s);
+}
+```
+(Hint: see "Render a Glyph" below on how to render to a cropped area.)
+
 Usage
 -----
 
