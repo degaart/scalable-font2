@@ -241,8 +241,8 @@ Destination buffer descriptor struct:
 | `.h`         | the buffer's height in pixels (optional)                                         |
 | `.fg`        | the foreground color in destination buffer's native format                       |
 | `.bg`        | the background color (only used if non-zero)                                     |
-| `.x`         | the coordinate to draw to, will be modified by advance values and kerning        |
-| `.y`         | the coordinate to draw to, will be modified by advance values and kerning        |
+| `.x`         | the coordinate to draw to, in pixels, will be modified by advance and kerning    |
+| `.y`         | the coordinate to draw to, in pixels, will be modified by advance and kerning    |
 
 Error Codes
 -----------
