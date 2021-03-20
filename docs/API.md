@@ -324,6 +324,8 @@ where the font face is set. To clear the glyph's background, set `ssfn_dst.bg` t
 significant byte (alpha channel for true-color mode) is 255, like 0xFF000000. This will fill the background
 with the index 0 (palette) or full black (hicolor and truecolor modes).
 
+<img src='https://gitlab.com/bztsrc/scalable-font2/raw/master/docs/api0.png'>
+
 ### Return value
 
 Either `SSFN_OK`, `SSFN_ERR_NOGLYPH` or `SSFN_ERR_INVINP` (bad or gzip compressed font). On success it modifies
@@ -488,6 +490,8 @@ be limited to (offsx, offsy) - (offsx + w, offsy + h), and no pixels will be mod
 This renderer never clears the background. If `dst.bg` is zero, then the alpha-blending will be calculated
 against the pixels already in the buffer. With a color given as background, that will be used to calculate
 gradients of anti-aliased edges.
+
+<img src='https://gitlab.com/bztsrc/scalable-font2/raw/master/docs/api1.png'>
 
 ### Return value
 
