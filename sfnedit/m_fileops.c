@@ -34,6 +34,7 @@
 #include <dirent.h>
 #include <time.h>
 #include <sys/stat.h>
+#include <inttypes.h>
 #include <stdlib.h>
 #include <limits.h>
 #include "libsfn.h"
@@ -49,10 +50,14 @@
 #endif
 extern char *realpath (const char *__restrict __name, char *__restrict __resolved) __THROW __wur;
 #endif
-#if defined(__MACOSX__) || __WORDSIZE == 32
-#define LL "ll"
+#ifndef PRIu64
+#if __WORDSIZE == 64
+#define PRIu64 "lu"
+#define PRId64 "ld"
 #else
-#define LL "l"
+#define PRIu64 "llu"
+#define PRId64 "lld"
+#endif
 #endif
 
 #ifndef PATH_MAX
@@ -286,7 +291,7 @@ void view_fileops(int save)
             ui_icon(win, 9, ssfn_dst.y, files[i].type ? ICON_FILE : ICON_FOLDER, 0);
             ssfn_dst.w = win->w - 284; if(ssfn_dst.w < 1) ssfn_dst.w = 1;
             ui_text(win, 30, ssfn_dst.y, files[i].name);
-            sprintf(tmp,"%13" LL "u",files[i].size);
+            sprintf(tmp,"%13" PRIu64,files[i].size);
             ssfn_dst.w = win->w - 168; if(ssfn_dst.w < 1) ssfn_dst.w = 1;
             ui_text(win, win->w - 280, ssfn_dst.y, tmp);
             ssfn_dst.w = win->w - 9; if(ssfn_dst.w < 1) ssfn_dst.w = 1;

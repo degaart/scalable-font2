@@ -98,7 +98,7 @@ foreach($blocks as $k=>$b) {
 }
 $s.="};\n#endif\n\n";
 $s.="/*** UNICODE code point names ***/
-#define tolower(X)  (((X) >= 'A') && ((X) <= 'Z') ? ('a'+((X)-'A')) : (X))
+#define tolowercase(X)  (((X) >= 'A') && ((X) <= 'Z') ? ('a'+((X)-'A')) : (X))
 int unicmp(char *a, char *b);
 void uniname_free();
 int uniname(int unicode);

@@ -317,14 +317,14 @@ int main(int argc, char **argv)
                         if(!re) {
                             fprintf(stderr, "sfnconv: unable to get range '%s', did you mean:\n", argv[i]);
                             for(j=0;j<UNICODE_NUMBLOCKS;j++)
-                                if(tolower(argv[i][0]) == tolower(ublocks[j].name[0]) &&
-                                    tolower(argv[i][1]) == tolower(ublocks[j].name[1])) {
+                                if(tolowercase(argv[i][0]) == tolowercase(ublocks[j].name[0]) &&
+                                    tolowercase(argv[i][1]) == tolowercase(ublocks[j].name[1])) {
                                     fprintf(stderr, " %s\n", ublocks[j].name);
                                     re++;
                                 }
                             if(!re)
                                 for(j=0;j<UNICODE_NUMBLOCKS;j++)
-                                    if(tolower(argv[i][0]) == tolower(ublocks[j].name[0])) {
+                                    if(tolowercase(argv[i][0]) == tolowercase(ublocks[j].name[0])) {
                                         fprintf(stderr, " %s\n", ublocks[j].name);
                                         re++;
                                     }

@@ -103,7 +103,7 @@ void ui_gettheme(char *fn)
 int ui_casecmp(char *a, char *b, int l)
 {
     for(;*a && *b && l--;a++,b++) {
-        if(tolower(*a) != tolower(*b)) return 1;
+        if(tolowercase(*a) != tolowercase(*b)) return 1;
     }
     return 0;
 }

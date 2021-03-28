@@ -355,7 +355,7 @@ unicode_block_t ublocks[] = {
 #endif
 
 /*** UNICODE code point names ***/
-#define tolower(X)  (((X) >= 'A') && ((X) <= 'Z') ? ('a'+((X)-'A')) : (X))
+#define tolowercase(X)  (((X) >= 'A') && ((X) <= 'Z') ? ('a'+((X)-'A')) : (X))
 int unicmp(char *a, char *b);
 void uniname_free();
 int uniname(int unicode);

@@ -127,7 +127,7 @@ int unicmp(char *a, char *b)
     for(;*a && *b;a++,b++) {
         while(*a==' ' || *a=='-' || *a=='_') a++;
         while(*b==' ' || *b=='-' || *b=='_') b++;
-        if(tolower(*a) != tolower(*b)) return 1;
+        if(tolowercase(*a) != tolowercase(*b)) return 1;
     }
     return *a || *b;
 }

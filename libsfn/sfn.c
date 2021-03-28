@@ -1310,7 +1310,7 @@ int sfn_dump(ssfn_font_t *font, int size, int dump)
             if(!font->cmap_offs) printf("not present\n");
             else {
                 ptr = (unsigned char *)font + font->cmap_offs;
-                printf("number of colors: %ld\n", (((unsigned char*)end - 4) - ptr) / 4);
+                printf("number of colors: %d\n", (int)((((unsigned char*)end - 4) - ptr) / 4));
                 printf("   "); for(i=0;i<16;i++) printf("       %02X",i);
                 for(i=0;i<254 && ptr < (unsigned char*)end - 4;i++) {
                     if(!(i&15)) printf("\n%02X: ", i);

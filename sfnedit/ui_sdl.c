@@ -74,13 +74,13 @@ void ui_titlewin(ui_win_t *win, char *title)
 void ui_resizewin(ui_win_t *win, int w, int h)
 {
     int i;
-
+    (void)w; (void)h;
     win->surface = SDL_GetWindowSurface((SDL_Window *)win->winid);
     win->data = (uint32_t*)((SDL_Surface*)win->surface)->pixels;
     win->p = ((SDL_Surface*)win->surface)->pitch/4;
-    win->w = w;
-    win->h = h;
-    for(i = 0; i < h * win->p; i++) win->data[i] = theme[THEME_BG];
+    win->w = ((SDL_Surface*)win->surface)->w;
+    win->h = ((SDL_Surface*)win->surface)->h;
+    for(i = 0; i < win->h * win->p; i++) win->data[i] = theme[THEME_BG];
 }
 
 /**
