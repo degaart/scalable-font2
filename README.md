@@ -154,6 +154,10 @@ executable (no installation nor third party DLLs required):
 
 <img alt="Scalable Screen Font Editor" src="https://gitlab.com/bztsrc/scalable-font2/raw/master/docs/sfnedit.png">
 
+NOTE for MacOS users: SDL2 is not statically compiled in, instead it is boundled with the application. It is possible that
+on MacOS BigSur and above this doesn't work. If the application doesn't start because it's missing SDL2, just download and
+install the latest dmg from official [libsdl.org](http://libsdl.org/download-2.0.php) to fix.
+
 License
 -------
 

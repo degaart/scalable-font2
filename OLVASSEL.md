@@ -154,6 +154,11 @@ kell hozzá semmiféle DLL):
 
 <img alt="Skálázható Képernyő Font Szerkesztő" src="https://gitlab.com/bztsrc/scalable-font2/raw/master/docs/sfnedit.png">
 
+FIGYELEM MacOS felhasználók: az SDL2 nincs statikusan belefordítva, helyette az applikáció boundle-be van csomagolva.
+Elképzelhető, hogy ezzel gond adódhat MacOS BigSur és afölötti verzióknál. Ha az applikáció nem indul el, mert hiányolja az
+SDL2-t, akkor csak le kell tölteni és telepíteni a legfrissebb dmg-t a hivatalos [libsdl.org](http://libsdl.org/download-2.0.php)
+oldalról, az megoldja a problémát.
+
 Licensz
 -------
 
