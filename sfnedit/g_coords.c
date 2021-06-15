@@ -206,9 +206,9 @@ void ctrl_setsize(int idx, int dw, int dh)
     sfncont_t *cont;
     unsigned char *data;
     int i, j, k, l, n, w = ctx.glyphs[win->unicode].width, h = ctx.glyphs[win->unicode].height;
-    if(ctx.glyphs[win->unicode].width + dw >= 0 && ctx.glyphs[win->unicode].width + dw <= 254)
+    if(ctx.glyphs[win->unicode].width + dw >= 0 && ctx.glyphs[win->unicode].width + dw <= 255)
         ctx.glyphs[win->unicode].width += dw;
-    if(ctx.glyphs[win->unicode].height + dh >= 0 && ctx.glyphs[win->unicode].height + dh <= 254)
+    if(ctx.glyphs[win->unicode].height + dh >= 0 && ctx.glyphs[win->unicode].height + dh <= 255)
         ctx.glyphs[win->unicode].height += dh;
     if(ctx.glyphs[win->unicode].width != w || ctx.glyphs[win->unicode].height != h) {
         for(n = 0; n < ctx.glyphs[win->unicode].numlayer; n++)
@@ -264,7 +264,7 @@ void ctrl_setsize(int idx, int dw, int dh)
 void ctrl_setbase(int idx, int d)
 {
     (void)idx;
-    if(d > 0 && ctx.baseline < 254) { ctx.baseline++; modified++; }
+    if(d > 0 && ctx.baseline < 255) { ctx.baseline++; modified++; }
     if(d < 0 && ctx.baseline > 0) { ctx.baseline--; modified++; }
 }
 
@@ -274,7 +274,7 @@ void ctrl_setbase(int idx, int d)
 void ctrl_setunder(int idx, int d)
 {
     (void)idx;
-    if(d > 0 && ctx.underline < 254) { ctx.underline++; modified++; }
+    if(d > 0 && ctx.underline < 255) { ctx.underline++; modified++; }
     if(d < 0 && ctx.underline > 0) { ctx.underline--; modified++; }
 }
 
@@ -295,7 +295,7 @@ void ctrl_setax(int idx, int d)
 {
     ui_win_t *win = &wins[idx];
     ctx.glyphs[win->unicode].adv_y = 0;
-    if(d > 0 && ctx.glyphs[win->unicode].adv_x < 254) { ctx.glyphs[win->unicode].adv_x++; modified++; }
+    if(d > 0 && ctx.glyphs[win->unicode].adv_x < 255) { ctx.glyphs[win->unicode].adv_x++; modified++; }
     if(d < 0 && ctx.glyphs[win->unicode].adv_x > 0) { ctx.glyphs[win->unicode].adv_x--; modified++; }
 }
 
@@ -306,7 +306,7 @@ void ctrl_setay(int idx, int d)
 {
     ui_win_t *win = &wins[idx];
     ctx.glyphs[win->unicode].adv_x = 0;
-    if(d > 0 && ctx.glyphs[win->unicode].adv_y < 254) { ctx.glyphs[win->unicode].adv_y++; modified++; }
+    if(d > 0 && ctx.glyphs[win->unicode].adv_y < 255) { ctx.glyphs[win->unicode].adv_y++; modified++; }
     if(d < 0 && ctx.glyphs[win->unicode].adv_y > 0) { ctx.glyphs[win->unicode].adv_y--; modified++; }
 }
 

@@ -93,7 +93,7 @@ void view_ranges()
     for(i = scrollranges; i < numranges && ssfn_dst.y < ssfn_dst.h; i++) {
         j = rres[i];
         if(i == selranges && win->field == 8)
-            ui_box(win, 9, ssfn_dst.y, win->w - 18, 16, theme[THEME_SELBG], theme[THEME_SELBG], theme[THEME_SELBG]);
+            ui_box(win, 9, ssfn_dst.y, win->w - 30, 16, theme[THEME_SELBG], theme[THEME_SELBG], theme[THEME_SELBG]);
         m = ublocks[j].cnt * 1000 / (ublocks[j].end - ublocks[j].start + 1 - ublocks[j].undef);
         sprintf(tmp, "%3d.%02d%%", m / 10, m % 10); m /= 10; if(m > 100) m = 100;
         ssfn_dst.fg = theme[i == selranges && win->field == 8 ? THEME_SELFG : THEME_FG];
@@ -103,6 +103,7 @@ void view_ranges()
         ui_text(win, 185, ssfn_dst.y, ublocks[j].name);
         ssfn_dst.y += 16;
     }
+    ui_hscrbar(win, win->w - 20, 72, 12, win->h - 99, scrollranges, pageranges, numranges, selfield == 16);
     ssfn_dst.fg = theme[THEME_FG];
     ssfn_dst.w = win->w;
     ssfn_dst.h = win->h;
@@ -168,6 +169,7 @@ void ctrl_ranges_onkey()
 void ctrl_ranges_onbtnpress()
 {
     ui_win_t *win = &wins[0];
+    int i, j;
 
     if(event.y > 29 && event.y < 48) {
         if(event.x >= 8 && event.x < win->w - 154) { showallrange ^= 1; input_refresh = 1; } else
@@ -175,19 +177,24 @@ void ctrl_ranges_onbtnpress()
     } else
     if(event.y > 73 && event.y < win->h - 26) {
         wins[0].field = 8;
-        if(event.w & 1) {
-            selranges = (event.y - 73) / 16 + scrollranges;
-            if(selranges >= numranges) selranges = numranges - 1;
-            if(selranges != clkranges) clkranges = selranges;
-            else ctrl_ranges_onenter();
-        } else
-        if(event.w & (1 << 3)) {
-            if(scrollranges > 0) scrollranges--;
-            if(selranges > scrollranges + pageranges - 1) selranges = scrollranges + pageranges - 1;
-        } else
-        if(event.w & (1 << 4)) {
-            if(scrollranges + pageranges < numranges) scrollranges++;
-            if(selranges < scrollranges) selranges = scrollranges;
+        if(event.x >= wins[0].w - 20 && numranges) {
+            i = 72 + (wins[0].h - 117) * scrollranges / numranges; j = 20 + (wins[0].h - 117) * pageranges / numranges;
+            if(event.y >= i && event.y < i + j) { selfield = 16; scrolly = event.y - i; }
+        } else {
+            if(event.w & 1) {
+                selranges = (event.y - 73) / 16 + scrollranges;
+                if(selranges >= numranges) selranges = numranges - 1;
+                if(selranges != clkranges) clkranges = selranges;
+                else ctrl_ranges_onenter();
+            } else
+            if(event.w & (1 << 3)) {
+                if(scrollranges > 0) scrollranges--;
+                if(selranges > scrollranges + pageranges - 1) selranges = scrollranges + pageranges - 1;
+            } else
+            if(event.w & (1 << 4)) {
+                if(scrollranges + pageranges < numranges) scrollranges++;
+                if(selranges < scrollranges) selranges = scrollranges;
+            }
         }
     } else wins[0].field = -1;
     ui_resizewin(&wins[0], wins[0].w, wins[0].h);
@@ -201,9 +208,22 @@ void ctrl_ranges_onmove()
 {
     int i;
     if(event.y > 73 && event.y < wins[0].h - 26) {
-        i = (event.y - 73) / 16 + scrollranges;
-        if(i >= numranges) i = numranges - 1;
-        sprintf(rstat, "U+%06X .. U+%06X", ublocks[rres[i]].start, ublocks[rres[i]].end);
-        status = rstat;
+        if(selfield == 16) {
+            i = scrollranges;
+            scrollranges = (event.y - scrolly - 73) * numranges / (wins[0].h - 117);
+            if(scrollranges > numranges - pageranges) scrollranges = numranges - pageranges;
+            if(scrollranges < 0) scrollranges = 0;
+            if(selranges < scrollranges) selranges = scrollranges;
+            if(selranges > scrollranges + pageranges - 1) selranges = scrollranges + pageranges - 1;
+            if(i != scrollranges) {
+                ui_resizewin(&wins[0], wins[0].w, wins[0].h);
+                ui_refreshwin(0, 0, 0, wins[0].w, wins[0].h);
+            }
+        } else {
+            i = (event.y - 73) / 16 + scrollranges;
+            if(i >= numranges) i = numranges - 1;
+            sprintf(rstat, "U+%06X .. U+%06X", ublocks[rres[i]].start, ublocks[rres[i]].end);
+            status = rstat;
+        }
     }
 }

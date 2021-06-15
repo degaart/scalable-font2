@@ -221,6 +221,11 @@ void view_fileops(int save)
             strcpy(filename, "noname.sfn");
         }
     }
+    ssfn_dst.fg = theme[THEME_FG];
+    ssfn_dst.bg = theme[THEME_BG];
+    ssfn_dst.w = win->w;
+    ssfn_dst.h = win->h;
+    ui_box(win, 10, 29, win->w - 168, 20, theme[THEME_BG], theme[THEME_BG], theme[THEME_BG]);
     memset(path, 0, sizeof(path));
     for(i = pathlen = 0, s = fn; *s; s++) {
         if(i < FILENAME_MAX-1) path[pathlen][i++] = *s;
@@ -237,6 +242,7 @@ void view_fileops(int save)
         ssfn_dst.x += 8;
     }
     pathX[i] = ssfn_dst.x - 8;
+    ssfn_dst.w = win->w;
     if(!files || lastsave != save || input_refresh) fileops_readdir(save);
     lastsave = save;
     if(wins[0].field == 8 && selfiles == -1 && numfiles > 0)
@@ -281,10 +287,10 @@ void view_fileops(int save)
             case 2: ui_tri(win, win->w - 20, 60, ordering & 1); break;
         }
         ssfn_dst.y = 72;
-        ssfn_dst.h = win->h - 51;
+        ssfn_dst.h = win->h - 63;
         for(i = scrollfiles; i < numfiles && ssfn_dst.y < ssfn_dst.h; i++, ssfn_dst.y += 16) {
             if(i == selfiles) {
-                ui_box(win, 9, ssfn_dst.y, win->w - 18, 16, theme[THEME_SELBG], theme[THEME_SELBG], theme[THEME_SELBG]);
+                ui_box(win, 9, ssfn_dst.y, win->w - 30, 16, theme[THEME_SELBG], theme[THEME_SELBG], theme[THEME_SELBG]);
                 ssfn_dst.fg = theme[THEME_SELFG];
             } else
                 ssfn_dst.fg = theme[THEME_FG];
@@ -310,6 +316,7 @@ void view_fileops(int save)
         ssfn_dst.fg = theme[THEME_FG];
         ssfn_dst.w = win->w;
         ssfn_dst.h = win->h;
+        ui_hscrbar(win, win->w - 20, 72, 12, win->h - 124, scrollfiles, pagefiles, numfiles, selfield == 12);
         j = win->w / 4;
         if(!save) {
             if(!strrs[0]) sprintf(strrs, "U+%X", rs);
@@ -499,19 +506,24 @@ void ctrl_fileops_onbtnpress(int save)
     } else
     if(event.y > 73 && event.y <= wins[0].h - 51) {
         wins[0].field = 8;
-        if(event.w & 1) {
-            selfiles = (event.y - 73) / 16 + scrollfiles;
-            if(selfiles >= numfiles) selfiles = numfiles - 1;
-            if(selfiles != clkfiles) clkfiles = selfiles;
-            else ctrl_fileops_onenter(save);
-        } else
-        if(event.w & (1 << 3)) {
-            if(scrollfiles > 0) scrollfiles--;
-            if(selfiles > scrollfiles + pagefiles - 1) selfiles = scrollfiles + pagefiles - 1;
-        } else
-        if(event.w & (1 << 4)) {
-            if(scrollfiles + pagefiles < numfiles) scrollfiles++;
-            if(selfiles < scrollfiles) selfiles = scrollfiles;
+        if(event.x >= wins[0].w - 20 && numfiles) {
+            i = 72 + (wins[0].h - 144) * scrollfiles / numfiles; j = 20 + (wins[0].h - 144) * pagefiles / numfiles;
+            if(event.y >= i && event.y < i + j) { selfield = 12; scrolly = event.y - i; }
+        } else {
+            if(event.w & 1) {
+                selfiles = (event.y - 73) / 16 + scrollfiles;
+                if(selfiles >= numfiles) selfiles = numfiles - 1;
+                if(selfiles != clkfiles) clkfiles = selfiles;
+                else ctrl_fileops_onenter(save);
+            } else
+            if(event.w & (1 << 3)) {
+                if(scrollfiles > 0) scrollfiles--;
+                if(selfiles > scrollfiles + pagefiles - 1) selfiles = scrollfiles + pagefiles - 1;
+            } else
+            if(event.w & (1 << 4)) {
+                if(scrollfiles + pagefiles < numfiles) scrollfiles++;
+                if(selfiles < scrollfiles) selfiles = scrollfiles;
+            }
         }
         ui_resizewin(&wins[0], wins[0].w, wins[0].h);
     } else
@@ -563,7 +575,27 @@ void ctrl_fileops_onclick(int save)
             wins[0].field = 8;
         }
     }
-    selfield = 0;
+    selfield = scrolly = 0;
+}
+
+/**
+ * On mouse move handler
+ */
+void ctrl_fileops_onmove()
+{
+    int i;
+    if(selfield == 12 && event.y > 73 && event.y < wins[0].h - 72) {
+        i = scrollfiles;
+        scrollfiles = (event.y - scrolly - 73) * numfiles / (wins[0].h - 144);
+        if(scrollfiles > numfiles - pagefiles) scrollfiles = numfiles - pagefiles;
+        if(scrollfiles < 0) scrollfiles = 0;
+        if(selfiles < scrollfiles) selfiles = scrollfiles;
+        if(selfiles > scrollfiles + pagefiles - 1) selfiles = scrollfiles + pagefiles - 1;
+        if(i != scrollfiles) {
+            ui_resizewin(&wins[0], wins[0].w, wins[0].h);
+            ui_refreshwin(0, 0, 0, wins[0].w, wins[0].h);
+        }
+    }
 }
 
 /**

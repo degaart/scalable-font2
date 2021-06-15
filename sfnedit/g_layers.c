@@ -36,7 +36,7 @@
 #include "lang.h"
 
 extern int colorsel, mousex, mousey;
-int sellayers = 0, scrolllayers = 0, pagelayers = 0, isclick = 0, issel = 0, ispicker = 0, selcmd = -1;
+int sellayers = 0, scrolllayers = 0, pagelayers = 0, isclick = 0, issel = 0, ispicker = 0, selcmd = -1, isfrc = 0;
 void ctrl_zoom_in(int idx, int mx, int my);
 void ctrl_zoom_out(int idx, int mx, int my);
 void ctrl_move(int idx, int mx, int my);
@@ -314,7 +314,7 @@ void ctrl_layers_onbtnpress(int idx)
     ui_win_t *win = &wins[idx];
     int x = win->w - 74, ox = win->zx > 0 ? win->zx : 0, oy = win->zy > 0 ? win->zy : 0;
     if(x < 0) x = 0;
-    selfield = win->field = mousex = mousey = -1; issel = isclick = 0;
+    selfield = win->field = mousex = mousey = -1; issel = isclick = isfrc = 0;
     if(sellayers < 0 || sellayers >= ctx.glyphs[win->unicode].numlayer) sellayers = 0;
     if(event.y < 26) {
         if(event.x > x && event.x < x + 24) selfield = 5; else
@@ -363,6 +363,7 @@ void ctrl_layers_onbtnpress(int idx)
                     if(selcmd == -1) { mousex = event.x; mousey = event.y; issel = 0; }
                     else issel = 1;
                     isclick = 1;
+                    isfrc = event.w & 4;
                 }
         }
     }
@@ -398,7 +399,7 @@ void ctrl_layers_onclick(int idx)
         event.x <= ox + 20 + win->zoom * ctx.glyphs[win->unicode].width &&
         event.y <= oy + 36 + win->zoom * ctx.glyphs[win->unicode].height && sellayers < ctx.glyphs[win->unicode].numlayer) {
             if(ctx.glyphs[win->unicode].layers[sellayers].type == SSFN_FRAG_CONTOUR && selcmd != -1) cursor = CURSOR_CROSS;
-            if(isclick && !ispicker && (ctx.glyphs[win->unicode].layers[sellayers].type == SSFN_FRAG_BITMAP ||
+            if((isclick || isfrc) && !ispicker && (ctx.glyphs[win->unicode].layers[sellayers].type == SSFN_FRAG_BITMAP ||
                 ctx.glyphs[win->unicode].layers[sellayers].type == SSFN_FRAG_PIXMAP)) {
                     cursor = CURSOR_CROSS;
                     c = ctx.glyphs[win->unicode].layers[sellayers].type == SSFN_FRAG_BITMAP ? 0xFE :
@@ -410,7 +411,7 @@ void ctrl_layers_onclick(int idx)
                     modified++;
             }
         }
-    isclick = issel = 0;
+    isclick = issel = isfrc = 0;
     selfield = win->field = mousex = mousey = -1;
 }
 
@@ -422,6 +423,7 @@ void ctrl_layers_onmove(int idx)
     ui_win_t *win = &wins[idx];
     sfncont_t *cont;
     int i, x = win->w - 74, ox = win->zx > 0 ? win->zx : 0, oy = win->zy > 0 ? win->zy : 0;
+    if(isfrc) return;
     if(x < 0) x = 0;
     posx = posy = -1; isclick = 0;
     if(sellayers < 0 || sellayers >= ctx.glyphs[win->unicode].numlayer) sellayers = 0;

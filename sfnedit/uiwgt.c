@@ -373,7 +373,7 @@ char *ui_input(ui_win_t *win, int x, int y, int w, char *str, int active, int ma
 void ui_button(ui_win_t *win, int x, int y, int w, char *str, int pressed, int active)
 {
     int i, j, p = y * win->p + x, p2 = (y + 20 - 1) * win->p + x, p3;
-    uint32_t l, b, B, d;
+    uint32_t l, b, B, d, t = theme[THEME_FG];
 
     if(pressed < 2) {
         l = theme[THEME_BTN0L]; b = theme[THEME_BTN0BL]; B = theme[THEME_BTN0BD]; d = theme[THEME_BTN0D];
@@ -385,7 +385,7 @@ void ui_button(ui_win_t *win, int x, int y, int w, char *str, int pressed, int a
     if(w < 0) return;
     if(active == -1) {
         l = d = b = B = theme[pressed < 2 ? THEME_DARK: THEME_BTN1BD];
-        ssfn_dst.fg = theme[THEME_LIGHTER]; active = 0;
+        t = theme[THEME_LIGHTER]; active = 0;
     }
     for(i=0; i < w && x + i < ssfn_dst.w; i++) {
         win->data[p + i - win->p] = theme[THEME_BTNB];
@@ -411,7 +411,13 @@ void ui_button(ui_win_t *win, int x, int y, int w, char *str, int pressed, int a
     ssfn_dst.bg = 0;
     ssfn_dst.w = x + w;
     x += (w - ui_textwidth(str)) / 2;
-    ui_text(win, x, y + 1, str);
+    if(t != theme[THEME_LIGHTER]) {
+        ssfn_dst.fg = theme[THEME_BTNB];
+        ui_text(win, x - 1, y + (pressed & 1 ? 1:0), str);
+    }
+    ssfn_dst.fg = t;
+    ui_text(win, x, y + (pressed & 1 ? 2:1), str);
+    ssfn_dst.fg = theme[THEME_FG];
     ssfn_dst.w = win->w;
 }
 
@@ -567,4 +573,20 @@ void ui_argb(ui_win_t *win, int x, int y, int w, int h, uint32_t c)
             ((uint8_t*)&win->data[p+i])[1] = (C[1]*C[3] + (256 - C[3])*d[1])>>8;
             ((uint8_t*)&win->data[p+i])[2] = (C[2]*C[3] + (256 - C[3])*d[2])>>8;
         }
+}
+
+/**
+ * Horizontal scrollbar
+ */
+void ui_hscrbar(ui_win_t *win, int x, int y, int w, int h, int scroll, int page, int num, int pressed)
+{
+    if(!num || page > num) {
+        ui_box(win, x, y, w, h, theme[pressed ? THEME_DARK : THEME_LIGHT], theme[THEME_BG], theme[pressed ? THEME_LIGHT : THEME_DARK]);
+        return;
+    }
+    if(scroll + page > num) scroll = num - page;
+    if(scroll < 0) scroll = 0;
+    ui_box(win, x, y, w, h, theme[THEME_DARKER], theme[THEME_DARKER], theme[THEME_DARKER]);
+    ui_box(win, x, y + (h - 20) * scroll / num, w, 20 + (h - 20) * page / num,
+        theme[pressed ? THEME_DARK : THEME_LIGHT], theme[THEME_BG], theme[pressed ? THEME_LIGHT : THEME_DARK]);
 }

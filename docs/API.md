@@ -326,6 +326,8 @@ with the index 0 (palette) or full black (hicolor and truecolor modes).
 
 <img src='https://gitlab.com/bztsrc/scalable-font2/raw/master/docs/api0.png'>
 
+*Simple API designed for consoles, it clears background*
+
 ### Return value
 
 Either `SSFN_OK`, `SSFN_ERR_NOGLYPH` or `SSFN_ERR_INVINP` (bad or gzip compressed font). On success it modifies
@@ -492,6 +494,8 @@ against the pixels already in the buffer. With a color given as background, that
 gradients of anti-aliased edges.
 
 <img src='https://gitlab.com/bztsrc/scalable-font2/raw/master/docs/api1.png'>
+
+*Normal API designed for GUI, it does not clear the background*
 
 ### Return value
 

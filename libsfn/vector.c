@@ -67,8 +67,8 @@ void sfd(char *ptr, int size)
     int i, j, w = -1, h = 0, b = 0, unicode = 0, nc = 0, numchars = 0, ps = 0, p[7], mx, xx, my, xy, f = 0;
     long int avg_w = 0, avg_h = 0, avg_n = 0;
     char *end = ptr + size, *endprop, *face, *name = NULL;
-#define scx(x) ((x - mx) * 254 / max_s)
-#define scy(y) ((max_b - y) * 254 / max_s)
+#define scx(x) (((x - mx) * 255 + max_s / 2) / max_s)
+#define scy(y) (((max_b - y) * 255 + max_s / 2) / max_s)
 
     for(face = ptr; face + 11 < end && *face; face++) {
         if(!memcmp(face, "StartChar:", 10)) numchars++;
@@ -293,12 +293,12 @@ void sfd(char *ptr, int size)
  */
 int sx(int i)
 {
-    return (i - bbox->xMin) * 254 / max_s;
+    return ((i - bbox->xMin) * 255 + max_s / 2) / max_s;
 }
 
 int sy(int i)
 {
-    return (max_b - i) * 254 / max_s;
+    return ((max_b - i) * 255 + max_s / 2) / max_s;
 }
 
 /*** contour command callbacks for FT2 ***/
@@ -446,8 +446,8 @@ if(cp==0x21) {
         if(face->style_flags & FT_STYLE_FLAG_ITALIC) ctx.style |= SSFN_STYLE_ITALIC;
 
         /* baseline and underline */
-        ctx.baseline = max_b * 254 / max_s;
-        ctx.underline = (max_b - face->underline_position) * 254 / max_s;
+        ctx.baseline = (max_b * 255 + max_s - 1) / max_s;
+        ctx.underline = ((max_b - face->underline_position) * 255 + max_s - 1) / max_s;
 
         /* iterate on characters and contour outlines */
         lastuni = -1;
@@ -457,12 +457,14 @@ if(cp==0x21) {
             if(FT_Load_Glyph(face, FT_Get_Char_Index(face, unicode), FT_LOAD_NO_SCALE) ||
                 (i && !face->glyph->glyph_index)) continue;
             bbox = &ftchars[i].bbox;
-            if(face->glyph->metrics.horiAdvance /*!face->glyph->metrics.vertBearingX && !face->glyph->metrics.vertBearingY*/) {
-                x = face->glyph->metrics.horiAdvance - bbox->xMin; y =0;
-                if(x < 0) x = 0;
+            if(face->glyph->metrics.horiAdvance /* !face->glyph->metrics.vertBearingX && !face->glyph->metrics.vertBearingY*/) {
+                x = face->glyph->metrics.horiAdvance - bbox->xMin + 1; y = 0;
+                if(x < 0) x = 1;
+                x = (x * 255 + max_s - 1) / max_s;
             } else {
-                x = 0; y = face->glyph->metrics.vertAdvance - bbox->yMin;
-                if(y < 0) y = 0;
+                x = 0; y = face->glyph->metrics.vertAdvance - bbox->yMin + 1;
+                if(y < 0) y = 1;
+                y = (y * 255 + max_s - 1) / max_s;
             }
             if(!quiet && (face->glyph->metrics.width >= 2*avg_w+avg_w/2 || face->glyph->metrics.height >= 2*avg_h+avg_h/2)) {
                 fprintf(stderr, "\rlibsfn: irregular dimensions in font: U+%06X", unicode);
@@ -479,9 +481,7 @@ if(cp==0x21) {
                 fprintf(stderr, "\n");
             }
             /* don't trust FT2's width and height, we'll recalculate them from the coordinates */
-            x = x * 255 / max_s; if(face->glyph->metrics.horiAdvance) x += 4;
-            y = y * 255 / max_s; if(!face->glyph->metrics.horiAdvance) y += 4;
-            if(sfn_charadd(unicode, 0, 0, x, y, !y && bbox->xMin < 0 ? -bbox->xMin * 255 / max_s : 0)) {
+            if(sfn_charadd(unicode, 0, 0, x, y, !y && bbox->xMin < 0 ? (-bbox->xMin * 255 + max_s - 1) / max_s : 0)) {
                 error = FT_Outline_Decompose(&face->glyph->outline, &funcs, NULL);
                 if(error && !quiet) { fprintf(stderr, "libsfn: FreeType2 decompose error %x\n", error); }
             }
@@ -495,8 +495,8 @@ if(cp==0x21) {
                     if(ftchars[i].unicode<33 || ftchars[j].unicode<33) continue;
                     v.x = v.y = 0;
                     FT_Get_Kerning(face, ftchars[i].unicode, ftchars[j].unicode, FT_KERNING_UNSCALED, &v);
-                    if(v.x) { v.x = v.x * 254 / max_s; v.y = 0; }
-                    else { v.x = 0; v.y = v.y * 254 / max_s; }
+                    if(v.x) { v.x = (v.x * 255 + max_s - 1) / max_s; v.y = 0; }
+                    else { v.x = 0; v.y = (v.y * 255 + max_s - 1) / max_s; }
                     if(v.x >= -1 && v.x <= 1 && v.y >= -1 && v.x <= 1) continue;
                     sfn_kernadd(ftchars[i].unicode, ftchars[j].unicode, v.x, v.y);
                     n++;

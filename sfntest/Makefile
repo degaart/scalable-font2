@@ -1,6 +1,6 @@
 SRCS = $(wildcard *.c)
 BINS = $(SRCS:.c=)
-CFLAGS = -ansi -pedantic -Wall -Wextra -I/usr/include/SDL2 -I../ -g
+CFLAGS = -ansi -pedantic -Wall -Wextra -I/usr/include/SDL2 -I../ -O3
 LIBS = -lSDL2
 ifneq ("$(wildcard /usr/include/zlib.h)","")
 CFLAGS += -DHAS_ZLIB=1

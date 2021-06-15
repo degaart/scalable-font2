@@ -107,7 +107,7 @@ void view_glyphs()
     ui_icon(win, win->w - 134 - 16, 30, ICON_SEARCH, 0);
     ui_input(win, win->w - 132, 29, 120, gsearch, wins[0].field == 14, 31, 0);
     gsize = (win->w - 20) / (1<<wins[0].zoom);
-    i = gsize * (1<<wins[0].zoom); x = (win->w - i) / 2 + 1;
+    i = gsize * (1<<wins[0].zoom); x = (win->w - i - 12) / 2 + 1;
     pageglyphs = ((win->h - 26 - 53) / gsize - 1) * (1<<wins[0].zoom); if(pageglyphs < (1<<wins[0].zoom)) pageglyphs = (1<<wins[0].zoom);
     scrollglyphs &= ~((1 << wins[0].zoom) - 1);
     ui_rect(win, x - 1, 51, i + 1, win->h - 26 - 51, theme[THEME_DARKER], theme[THEME_LIGHT]);
@@ -181,6 +181,7 @@ void view_glyphs()
     ssfn_dst.fg = theme[THEME_FG];
     ssfn_dst.w = win->w;
     ssfn_dst.h = win->h;
+    ui_hscrbar(win, x + 1 + (1<<wins[0].zoom) * gsize, 52, 12, win->h - 79, scrollglyphs, pageglyphs, numglyphs, selfield == 15);
 }
 
 /**
@@ -328,6 +329,7 @@ void ctrl_glyphs_onkey()
 void ctrl_glyphs_onbtnpress()
 {
     ui_win_t *win = &wins[0];
+    int i, j;
 
     selfield = -1;
     if(event.w != 1) glast = -1;
@@ -348,28 +350,34 @@ void ctrl_glyphs_onbtnpress()
         if(event.x >= win->w - 132 && event.x < win->w - 8) wins[0].field = 14;
     } else
     if(event.y >= 52 && event.y < win->h - 26) {
-        wins[0].field = 15;
-        if(event.w & (1 << 3)) {
-            if(scrollglyphs > 0) scrollglyphs -= (1<<wins[0].zoom);
-        } else
-        if(event.w & (1 << 4)) {
-            if(scrollglyphs + pageglyphs + (1<<wins[0].zoom) < numglyphs) scrollglyphs += (1<<wins[0].zoom);
-        } else
-        if(event.w & 1) {
-            selfield = 10;
-            selstart = ((event.y - 52) / gsize) * (1<<wins[0].zoom) + (event.x - ((wins[0].w - gsize * (1<<wins[0].zoom))/2 + 1))
-                / gsize + scrollglyphs;
-            if(selstart < 0 || selstart >= numglyphs) selstart = -1;
-            selend = glast = -1;
-        } else
-        if(event.w & 4) {
-            if(selend != -1) { wins[0].field = 11; ctrl_glyphs_onenter(); }
-            selstart = ((event.y - 52) / gsize) * (1<<wins[0].zoom) + (event.x - ((wins[0].w - gsize * (1<<wins[0].zoom))/2 + 1))
-                / gsize + scrollglyphs;
-            if(selstart < 0 || selstart >= numglyphs) selstart = -1;
-            selend = glast = -1;
-            wins[0].field = 12; ctrl_glyphs_onenter();
-            selstart = -1;
+        i = gsize * (1<<wins[0].zoom); i = (wins[0].w - i - 12) / 2 + 2 + (1<<wins[0].zoom) * gsize;
+        if(event.x >= i) {
+            i = 52 + (wins[0].h - 99) * scrollglyphs / numglyphs; j = 20 + (wins[0].h - 99) * pageglyphs / numglyphs;
+            if(event.y >= i && event.y < i + j) { selfield = 15; scrolly = event.y - i; }
+        } else {
+            wins[0].field = 15;
+            if(event.w & (1 << 3)) {
+                if(scrollglyphs > 0) scrollglyphs -= (1<<wins[0].zoom);
+            } else
+            if(event.w & (1 << 4)) {
+                if(scrollglyphs + pageglyphs + (1<<wins[0].zoom) < numglyphs) scrollglyphs += (1<<wins[0].zoom);
+            } else
+            if(event.w & 1) {
+                selfield = 10;
+                selstart = ((event.y - 52) / gsize) * (1<<wins[0].zoom) + (event.x - ((wins[0].w - 12 - gsize * (1<<wins[0].zoom))/2 + 1))
+                    / gsize + scrollglyphs;
+                if(selstart < 0 || selstart >= numglyphs) selstart = -1;
+                selend = glast = -1;
+            } else
+            if(event.w & 4) {
+                if(selend != -1) { wins[0].field = 11; ctrl_glyphs_onenter(); }
+                selstart = ((event.y - 52) / gsize) * (1<<wins[0].zoom) + (event.x - ((wins[0].w - 12 - gsize * (1<<wins[0].zoom))/2 + 1))
+                    / gsize + scrollglyphs;
+                if(selstart < 0 || selstart >= numglyphs) selstart = -1;
+                selend = glast = -1;
+                wins[0].field = 12; ctrl_glyphs_onenter();
+                selstart = -1;
+            }
         }
     }
 }
@@ -416,19 +424,30 @@ void ctrl_glyphs_onmove()
         glast = -1;
     } else
     if(event.y >= 52 && event.y < wins[0].h - 26) {
-        i = ((event.y - 52) / gsize) * (1<<wins[0].zoom) + (event.x - ((wins[0].w - gsize * (1<<wins[0].zoom))/2 + 1))
-            / gsize + scrollglyphs;
-        if(i >= 0 && i < numglyphs) {
-            status = gstat;
-            if(gres[i] != glast) {
-                if(selfield == 10 && selstart != -1) {
-                    selend = i;
-                    ui_refreshwin(0, 0, 0, wins[0].w, wins[0].h - 18);
-                    sprintf(gstat, "%s U+%06x .. U+%06X", lang[GLYPHS_SELECT], gres[selstart], gres[selend]);
-                } else {
-                    ui_chrinfo(gres[i]);
+        i = gsize * (1<<wins[0].zoom); i = (wins[0].w - i - 12) / 2 + 2 + (1<<wins[0].zoom) * gsize;
+        if(selfield == 15) {
+            i = scrollglyphs;
+            scrollglyphs = (event.y - scrolly - 52) * numglyphs / (wins[0].h - 99);
+            if(scrollglyphs > numglyphs - pageglyphs) scrollglyphs = numglyphs - pageglyphs;
+            if(scrollglyphs < 0) scrollglyphs = 0;
+            if(i != scrollglyphs) {
+                ui_refreshwin(0, 0, 0, wins[0].w, wins[0].h);
+            }
+        } else if (event.x < i) {
+            i = ((event.y - 52) / gsize) * (1<<wins[0].zoom) + (event.x - ((wins[0].w - 12 - gsize * (1<<wins[0].zoom))/2 + 1))
+                / gsize + scrollglyphs;
+            if(i >= 0 && i < numglyphs) {
+                status = gstat;
+                if(gres[i] != glast) {
+                    if(selfield == 10 && selstart != -1) {
+                        selend = i;
+                        ui_refreshwin(0, 0, 0, wins[0].w, wins[0].h - 18);
+                        sprintf(gstat, "%s U+%06x .. U+%06X", lang[GLYPHS_SELECT], gres[selstart], gres[selend]);
+                    } else {
+                        ui_chrinfo(gres[i]);
+                    }
+                    glast = gres[i];
                 }
-                glast = gres[i];
             }
         }
     } else

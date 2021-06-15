@@ -54,6 +54,7 @@ uint32_t theme[] = { 0xFF454545, 0xFFBEBEBE, 0xFF5C5C5C, 0xFF343434, 0xFF606060,
     0xFF800000, 0xFF004040, 0xFF005050, 0xFFFF0000, 0xFF007F7F, 0xFF0000B0, 0xFF00B000, 0xFF007F00, 0xFF005050 };
 
 int gw = 36+16+512, gh = 24+8+512, gotevt = 0, quiet = 0, lastpercent = 100, mainloop = 1, modified = 0, posx = 0, posy = 0;
+int scrolly  = 0;
 char ws[0x110000], *status, *errstatus = NULL;
 
 int numwin = 0;
@@ -386,6 +387,7 @@ void ui_pb(int step, int numstep, int curr, int total, int msg)
     ui_box(&wins[0], 0, wins[0].h - i, (int)(long)wins[0].w * (long)(curr + 1) / (long)(total + 1), i,
         theme[THEME_LIGHTER], theme[THEME_LIGHT], theme[THEME_LIGHTER]);
     ssfn_dst.fg = theme[THEME_FG];
+    ssfn_dst.bg = 0;
     ui_text(&wins[0], 0, wins[0].h - 18, s);
     ui_text(&wins[0], ssfn_dst.x + 8, wins[0].h - 18, !msg ? "" : lang[msg - 1 + STAT_MEASURE]);
     ui_flushwin(&wins[0], 0, wins[0].h - 18, wins[0].w, 18);
@@ -606,6 +608,7 @@ void ui_main(char *fn)
                     ui_refreshwin(0, 0, 0, wins[0].w, wins[0].h);
                     ui_focuswin(&wins[0]);
                     ctrl_dosave_onenter();
+                    wins[0].field = -1;
                 } else {
                     wins[0].field = 12;
                     ctrl_fileops_onenter(1);
@@ -645,6 +648,7 @@ void ui_main(char *fn)
                     if(!event.win)
                         switch(wins[0].tool) {
                             case MAIN_TOOL_ABOUT: ctrl_about_onmove(); break;
+                            case MAIN_TOOL_LOAD: case MAIN_TOOL_SAVE : ctrl_fileops_onmove(); break;
                             case MAIN_TOOL_RANGES: ctrl_ranges_onmove(); break;
                             case MAIN_TOOL_GLYPHS: ctrl_glyphs_onmove(); break;
                         }

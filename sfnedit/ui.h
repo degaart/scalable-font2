@@ -213,7 +213,7 @@ enum {
 
 extern char verstr[], ws[], *status, *errstatus;
 extern uint32_t theme[];
-extern int numwin, cursor, zip, ascii, selfield, rs, re, modified, posx, posy;
+extern int numwin, cursor, zip, ascii, selfield, rs, re, modified, posx, posy, scrolly;
 extern ui_win_t *wins;
 extern ui_event_t event;
 extern uint8_t *icon16, *icon64, *tools, *bga;
@@ -248,6 +248,7 @@ void ui_hex(ui_win_t *win, char c);
 void ui_argb(ui_win_t *win, int x, int y, int w, int h, uint32_t c);
 void ui_glyph(ui_win_t *win, int x, int y, int size, uint32_t unicode, int layer);
 void ui_edit(ui_win_t *win, int x, int y, uint32_t unicode, int layer);
+void ui_hscrbar(ui_win_t *win, int x, int y, int w, int h, int scroll, int page, int num, int pressed);
 
 /* common */
 void ui_gettheme(char *fn);
@@ -287,6 +288,7 @@ void ctrl_fileops_onenter(int save);
 void ctrl_fileops_onkey();
 void ctrl_fileops_onbtnpress(int save);
 void ctrl_fileops_onclick(int save);
+void ctrl_fileops_onmove();
 void ctrl_dosave_onenter();
 void ctrl_dosave_onbtnpress();
 void ctrl_dosave_onclick();

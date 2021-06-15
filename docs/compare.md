@@ -119,25 +119,25 @@ Here are the results:
 ### Unoptimized Code (-O0)
 
 ```
-Simple renderer: 1613 bytes
-Normal renderer: 29040 bytes
-File load time:      0.047582 sec
-Character lookup:    0.001413 sec
-Rasterization:       0.129243 sec
-Blitting:            0.127284 sec
-Kerning:             0.000505 sec
+Simple renderer: 1521 bytes
+Normal renderer: 29389 bytes
+File load time:      0.042081 sec
+Character lookup:    0.001375 sec
+Rasterization:       0.125243 sec
+Blitting:            0.123046 sec
+Kerning:             0.000475 sec
 ```
 Finished in **0.3 sec**.
 
 ### With Optimization (-O3)
 
 ```
-Simple renderer: 1240 bytes
-Normal renderer: 27112 bytes
-File load time:      0.043970 sec
-Character lookup:    0.001048 sec
-Rasterization:       0.042001 sec
-Blitting:            0.072184 sec
-Kerning:             0.000381 sec
+Simple renderer: 1355 bytes
+Normal renderer: 29852 bytes
+File load time:      0.044324 sec
+Character lookup:    0.001025 sec
+Rasterization:       0.037352 sec
+Blitting:            0.066342 sec
+Kerning:             0.000366 sec
 ```
-Finished in **0.16 sec**.
+Finished in **0.15 sec**.

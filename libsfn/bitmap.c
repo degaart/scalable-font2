@@ -65,7 +65,7 @@ void psf(unsigned char *ptr, int size)
     uint16_t *utbl = NULL;
     uint32_t c, g=0, unicode, nc = 0, numchars = psf->numglyph;
     unsigned char *s, *e, *glyph, *bitmap;
-    int i, j, k;
+    int i, j, k, l, n;
 
     s=(unsigned char*)(ptr + psf->headersize + psf->numglyph*psf->bytesperglyph);
     e=ptr + size;
@@ -97,15 +97,21 @@ void psf(unsigned char *ptr, int size)
         }
     }
     if((psf->flags >> 24) && !ctx.baseline) ctx.baseline = (psf->flags >> 24);
-    bitmap = (unsigned char*)malloc(psf->width * psf->height);
+    if(psf->width < 1) psf->width = 1;
+    if(psf->height < 1) psf->height = 1;
+    l = ((psf->width + 7) & ~7) * (psf->height + 1);
+    bitmap = (unsigned char*)malloc(l);
     if(!bitmap) { fprintf(stderr,"libsfn: memory allocation error\n"); return; }
     for(unicode=rs;unicode<=(uint32_t)re;unicode++) {
         g = utbl? utbl[unicode] : unicode;
         if((!g && unicode && !iswhitespace(unicode)) || g >= psf->numglyph) continue;
         glyph = ptr + psf->headersize + g*psf->bytesperglyph;
-        memset(bitmap, 0, psf->width * psf->height);
-        for(i=k=0;i<(int)psf->bytesperglyph;i++) {
-            for(j=0x80;j;j>>=1) bitmap[k++] = (glyph[i] & j) ? 0xFE : 0xFF;
+        memset(bitmap, 0, l);
+        for(i=k=0;i<(int)psf->bytesperglyph;) {
+            for(n = 0; n < (int)psf->width; i++)
+                for(j=0x80;j && n < (int)psf->width;j>>=1,n++)
+                    bitmap[k+n] = (glyph[i] & j) ? 0xFE : 0xFF;
+            k += psf->width;
         }
         if(sfn_charadd(unicode, psf->width, psf->height, 0, 0, 0))
             sfn_layeradd(unicode, SSFN_FRAG_BITMAP, 0, 0, psf->width, psf->height, 0xFE, bitmap);
@@ -383,7 +389,7 @@ void bdf(char *ptr, int size)
     }
     if(!ctx.manufacturer && manu)
         sfn_setstr(&ctx.manufacturer, manu, 0);
-    printf("\r  Name '%s' num_glyphs: %d, ascender: %d, underline: %d, height: %d\n", face, numchars, b, b + relul, ps);
+    printf("\r  Name '%s' num_glyphs: %d, ascender: %d, underline: %d, height: %d\n", ctx.name, numchars, b, b + relul, ps);
 
     while(ptr < end && *ptr) {
         if(!sfd) {
@@ -686,12 +692,12 @@ void png(unsigned char *ptr, int size)
         if(f == STBI_rgb_alpha)
             for(i = 0; i < w * h; i++) {
                 if(pbar) (*pbar)(0, 0, i, w * h, PBAR_QUANT);
-                data2[i] = sfn_cpaladd(data[i*4+2], data[i*4+1], data[i*4], data[i*4+3]);
+                data2[i] = sfn_cpaladd(data[i*4], data[i*4+1], data[i*4+2], data[i*4+3]);
             }
         else
             for(i = 0; i < w * h; i++) {
                 if(pbar) (*pbar)(0, 0, i, w * h, PBAR_QUANT);
-                data2[i] = sfn_cpaladd(data[i*3+2], data[i*3+1], data[i*3], 255);
+                data2[i] = sfn_cpaladd(data[i*3], data[i*3+1], data[i*3+2], 255);
             }
     }
 #ifdef HAS_QUANT

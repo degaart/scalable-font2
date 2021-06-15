@@ -64,8 +64,8 @@ glyph record looks like this:
 | width        | glyph's width in pixels (0 .. 255)                                               |
 | height       | glyph's height in pixels (0 .. 255)                                              |
 | ovl_x        | glyph's x overlay (left margin) in pixels (0 .. 63)                              |
-| adv_x        | glyph's horizontal advance in pixels (-128 .. 127)                               |
-| adv_y        | glyph's vertical advance in pixels (-128 .. 127)                                 |
+| adv_x        | glyph's horizontal advance in pixels (0 .. 255)                                  |
+| adv_y        | glyph's vertical advance in pixels (0 .. 255)                                    |
 | numlayers    | number of glyph's layers (0 .. 255)                                              |
 | layers\[]    | array of layers in `sfnlayer_t` records                                          |
 | numkern      | number of kerning pairs for this character                                       |

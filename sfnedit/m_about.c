@@ -119,7 +119,7 @@ void view_about()
     ptr++;
     ui_text(win, ssfn_dst.x + 8, ssfn_dst.y, ptr);
     ssfn_dst.y += 32;
-    ui_text(win, 8, ssfn_dst.y, "Copyright (C) 2020 bzt (bztsrc@gitlab) - MIT license");
+    ui_text(win, 8, ssfn_dst.y, "Copyright (C) 2021 bzt (bztsrc@gitlab) - MIT license");
     ssfn_dst.y += 16;
     ssfn_dst.fg = theme[THEME_LIGHTER];
     for(i = CPYRGT_0; i <= CPYRGT_9 && (int)ssfn_dst.y < win->h - 18; i++) {

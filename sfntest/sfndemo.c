@@ -121,9 +121,9 @@ void do_test(SDL_Surface *screen, char *fontfn)
     char *strE="BitStream Vera #Italic and %Bold and !Bold+Italic";
     char *strF="(generated)";
     char *str10="(font provided)";
-    char *str11="Oh, almost forgot: the compressed 😀 SSFN format supports bitmap based glyphs, vector based glyphs, and...";
+    char *str11="The compressed 😀 SSFN format supports bitmap based glyphs, vector based glyphs, and...";
     char *str12="->@-COLORFUL-PIXMAP-GLYPHS-=-ALSO>AVAILABLE-BY:->\n->THE-----------<SSFN>FORMAT-AND>RENDERER-;->=@->";
-    char *str13="Vertical, horizontal left-to-right and right-to-left rendering (with flag, no BiDi state machine):";
+    char *str13="Vertical, left-to-right and right-to-left rendering (with flag, no BiDi state machine):";
     char *str14="אבגדהוזחט";
     char strM[128];
     int sintbl[] = { 0, 1, 5, 9, 14, 21, 28, 36, 56, 67, 78, 67, 56, 46, 36, 28, 21, 14, 9, 5, 1 };
@@ -144,11 +144,11 @@ void do_test(SDL_Surface *screen, char *fontfn)
     /* load and select a font */
     ssfn_src = load_file("../fonts/unifont.sfn.gz", &size);
     ret = ssfn_load(&ctx, ssfn_src);
-    if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
+    if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: unifont.sfn.gz err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
     ret = ssfn_load(&ctx, load_file(fontfn ? fontfn : "../fonts/FreeSerif.sfn", &size));
-    if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
+    if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: FreeSerif.sfn err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
     ret = ssfn_load(&ctx, load_file("../fonts/FreeSans.sfn", &size));
-    if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
+    if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: FreeSans.sfn err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
 
     /* title */
     ret = ssfn_select(&ctx, SSFN_FAMILY_SERIF, NULL, SSFN_STYLE_REGULAR | SSFN_STYLE_NOCACHE, 32);
@@ -183,17 +183,17 @@ void do_test(SDL_Surface *screen, char *fontfn)
 
     /* load uvga first, then unifont */
     ret = ssfn_load(&ctx, load_file("../fonts/u_vga16.sfn.gz", &size));
-    if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
+    if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: u_vga16.sfn.gz err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
     ret = ssfn_load(&ctx, ssfn_src);
     if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
     ret = ssfn_load(&ctx, load_file("../fonts/FreeSerif.sfn", &size));
-    if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
+    if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: FreeSerif.sfn err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
     ret = ssfn_load(&ctx, load_file("../fonts/FreeSans.sfn", &size));
-    if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
+    if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: FreeSans.sfn err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
     ret = ssfn_load(&ctx, load_file("../fonts/VeraR.sfn", &size));
-    if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
+    if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: VeraR.sfn err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
     ret = ssfn_load(&ctx, load_file("../fonts/emoji.sfn", &size));
-    if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
+    if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: emoji.sfn err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
 
     /* testing switching to other fonts when glyph not found */
     ret = ssfn_select(&ctx, SSFN_FAMILY_MONOSPACE, NULL, SSFN_STYLE_REGULAR | SSFN_STYLE_NOCACHE, 16);
@@ -330,7 +330,7 @@ void do_test(SDL_Surface *screen, char *fontfn)
     };
 
     s = strD;
-    ssfn_dst.x = 370;
+    ssfn_dst.x = 400;
     ssfn_dst.y = 340;
     ssfn_select(&ctx, SSFN_FAMILY_SANS, NULL, SSFN_STYLE_REGULAR | SSFN_STYLE_NOCACHE, 27);
     while(*s) {
@@ -343,8 +343,8 @@ void do_test(SDL_Surface *screen, char *fontfn)
     };
 
     s = strF;
-    ssfn_dst.x = 700;
-    ssfn_dst.y = 340;
+    ssfn_dst.x = 680;
+    ssfn_dst.y = 361;
     ssfn_select(&ctx, SSFN_FAMILY_SANS, NULL, SSFN_STYLE_REGULAR | SSFN_STYLE_NOCACHE, 16);
     while((ret = ssfn_render(&ctx, &ssfn_dst, s)) > 0) s += ret;
     if(ret != SSFN_OK) { fprintf(stderr, "ssfn render error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
@@ -364,23 +364,23 @@ void do_test(SDL_Surface *screen, char *fontfn)
     };
 
     ret = ssfn_load(&ctx, load_file("../fonts/FreeSerifI.sfn", &size));
-    if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
+    if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: FreeSerifI.sfn err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
     ret = ssfn_load(&ctx, load_file("../fonts/FreeSerifB.sfn", &size));
-    if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
+    if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: FreeSerifB.sfn err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
     ret = ssfn_load(&ctx, load_file("../fonts/FreeSansI.sfn", &size));
-    if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
+    if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: FreeSansI.sfn err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
     ret = ssfn_load(&ctx, load_file("../fonts/FreeSansB.sfn", &size));
-    if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
+    if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: FreeSansB.sfn err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
     ret = ssfn_load(&ctx, load_file("../fonts/VeraB.sfn", &size));
-    if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
+    if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: VeraB.sfn err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
     ret = ssfn_load(&ctx, load_file("../fonts/VeraI.sfn", &size));
-    if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
+    if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: VeraI.sfn err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
     ret = ssfn_load(&ctx, load_file("../fonts/VeraBI.sfn", &size));
-    if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
+    if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: VeraBI.sfn err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
     ret = ssfn_load(&ctx, load_file("../fonts/stoneage.sfn", &size));
-    if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
+    if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: stoneage.sfn err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
     ret = ssfn_load(&ctx, load_file("../fonts/chrome.sfn", &size));
-    if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
+    if(ret != SSFN_OK) { fprintf(stderr, "ssfn load error: chrome.sfn err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
 
     s = strC;
     ssfn_dst.x = 8;
@@ -396,7 +396,7 @@ void do_test(SDL_Surface *screen, char *fontfn)
     };
 
     s = strD;
-    ssfn_dst.x = 370;
+    ssfn_dst.x = 400;
     ssfn_dst.y = 400;
     ssfn_select(&ctx, SSFN_FAMILY_SANS, NULL, SSFN_STYLE_REGULAR | SSFN_STYLE_NOCACHE, 27);
     while(*s) {
@@ -409,8 +409,8 @@ void do_test(SDL_Surface *screen, char *fontfn)
     };
 
     s = str10;
-    ssfn_dst.x = 700;
-    ssfn_dst.y = 400;
+    ssfn_dst.x = 680;
+    ssfn_dst.y = 421;
     ssfn_select(&ctx, SSFN_FAMILY_SANS, NULL, SSFN_STYLE_REGULAR | SSFN_STYLE_NOCACHE, 16);
     while((ret = ssfn_render(&ctx, &ssfn_dst, s)) > 0) s += ret;
     if(ret != SSFN_OK) { fprintf(stderr, "ssfn render error: err=%d %s\n", ret, ssfn_error(ret)); exit(2); }
@@ -479,7 +479,7 @@ void do_test(SDL_Surface *screen, char *fontfn)
 #else
     "allocated"
 #endif
-    ": @%d bytes. All of this from a 28k of code in a single ANSI C header, that's something, right?",
+    ": @%d bytes. All of this from a 29k of code in a single ANSI C header!",
         ssfn_mem(&ctx));
 
     ret = ssfn_select(&ctx, SSFN_FAMILY_SERIF, NULL, SSFN_STYLE_REGULAR | SSFN_STYLE_NOCACHE, 16);

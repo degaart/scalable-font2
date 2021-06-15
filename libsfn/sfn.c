@@ -978,7 +978,8 @@ int sfn_fragchr(int unicode, int type, int w, int h, int x, int y, void *data)
  */
 unsigned char sfn_cpaladd(int r, int g, int b, int a)
 {
-    int i, dr, dg, db, m, dm, q;
+    int i, dr, dg, db, m, q;
+    int64_t d, dm;
 
     if(!r && g<2 && !b && (!a || a==0xFF)) return 0xFF;                 /* background */
     if(r == 0xFF && g == 0xFF && b == 0xFF && a == 0xFF) return 0xFE;   /* foreground */
@@ -990,13 +991,12 @@ unsigned char sfn_cpaladd(int r, int g, int b, int a)
                 dr = r > ctx.cpal[i*4+2] ? r - ctx.cpal[i*4+2] : ctx.cpal[i*4+2] - r;
                 dg = g > ctx.cpal[i*4+1] ? g - ctx.cpal[i*4+1] : ctx.cpal[i*4+1] - g;
                 db = b > ctx.cpal[i*4+0] ? b - ctx.cpal[i*4+0] : ctx.cpal[i*4+0] - b;
-                if(dg > dr) dr = dg;
-                if(db > dr) dr = db;
-                if(dr < dm) { dm = dr; m = i; }
+                d = dr*dr + dg*dg + db*db;
+                if(d < dm) { dm = d; m = i; }
                 if(!dm) break;
             }
         }
-        if(dm>7 && i<254) {
+        if(dm>9+9+9 && i<254) {
             ctx.cpal[i*4+3] = a;
             ctx.cpal[i*4+2] = r;
             ctx.cpal[i*4+1] = g;
@@ -2072,11 +2072,11 @@ int sfn_save(char *filename, int ascii, int comp)
             f = fopen(filename, "wb");
             if(f) {
                 ctx.filename = filename;
-                fwrite(gz, stream.total_out + 8, 1, f);
+                fwrite(gz, stream.total_out + 4, 1, f);
                 fwrite(&crc, 4, 1, f);
                 fwrite(&gzs, 4, 1, f);
                 fclose(f);
-                x = stream.total_out + 16;
+                x = stream.total_out + 12;
             } else {
                 fprintf(stderr, "libsfn: unable to write '%s'\n", filename);
             }
