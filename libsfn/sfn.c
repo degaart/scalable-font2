@@ -632,9 +632,9 @@ sfnlayer_t *sfn_layeradd(int unicode, int t, int x, int y, int w, int h, int c, 
     if(x + w > ctx.glyphs[unicode].width) {
         if(t != SSFN_FRAG_CONTOUR && lyr && lyr->data) {
             l = (x + w) * ctx.glyphs[unicode].height;
-            data2 = (unsigned char*)malloc(l);
+            data2 = (unsigned char*)malloc(l + 1);
             if(!data2) { fprintf(stderr,"libsfn: memory allocation error\n"); return NULL; }
-            memset(data2, 0xFF, l);
+            memset(data2, 0xFF, l + 1);
             for(j = 0; j < ctx.glyphs[unicode].height; j++)
                 for(i = 0; i < ctx.glyphs[unicode].width; i++)
                     data2[j * (x + w) + i] = lyr->data[ctx.glyphs[unicode].width * j + i];
@@ -646,7 +646,7 @@ sfnlayer_t *sfn_layeradd(int unicode, int t, int x, int y, int w, int h, int c, 
     if(y + h > ctx.glyphs[unicode].height) {
         if(t != SSFN_FRAG_CONTOUR && lyr && lyr->data) {
             l = ctx.glyphs[unicode].width * (y + h);
-            lyr->data = (unsigned char*)realloc(lyr->data, l);
+            lyr->data = (unsigned char*)realloc(lyr->data, l + 1);
             if(!lyr->data) { fprintf(stderr,"libsfn: memory allocation error\n"); return NULL; }
             memset(lyr->data + ctx.glyphs[unicode].width * ctx.glyphs[unicode].height, 0,
                 ctx.glyphs[unicode].width * (y + h - ctx.glyphs[unicode].height));
@@ -663,9 +663,9 @@ sfnlayer_t *sfn_layeradd(int unicode, int t, int x, int y, int w, int h, int c, 
         lyr->color = c;
         if(t != SSFN_FRAG_CONTOUR) {
             l = ctx.glyphs[unicode].width * ctx.glyphs[unicode].height;
-            lyr->data = (unsigned char*)malloc(l);
+            lyr->data = (unsigned char*)malloc(l + 1);
             if(!lyr->data) { fprintf(stderr,"libsfn: memory allocation error\n"); return NULL; }
-            memset(lyr->data, 0xFF, l);
+            memset(lyr->data, 0xFF, l + 1);
         }
     }
     if(t != SSFN_FRAG_CONTOUR && data) {

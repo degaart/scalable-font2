@@ -7,9 +7,11 @@ Scalable Screen Font 2.0 - Example Fonts
 
  - Vera.sfn - an SSFN font collection of the above fonts
 
- - u_vga16.sfn.gz - bitmap font, converted from [u_vga16.bdf](http://www.inp.nsk.su/~bolkhov/files/fonts/univga/), made by Dmitry Bolkhovityanov (X license)
+ - u_vga16.sfn.gz - bitmap font, converted from [u_vga16.bdf](http://www.inp.nsk.su/~bolkhov/files/fonts/univga/), made by Dmitry Bolkhovityanov (MIT license)
 
  - unifont.sfn.gz bitmap font, converted from [unifont.hex](http://unifoundry.com/unifont/index.html) of the GNU unifont project (GPL with font embedding exception)
+
+ - creep.sfn.gz - bitmap font, converted from [creep.sfd](https://github.com/romeovs/creep/releases) (MIT license)
 
  - chrome.sfn - pixmap font, Retro Chrome looking, made after an image found by Google (for demostration purposes only, do not use)
 
@@ -17,4 +19,4 @@ Scalable Screen Font 2.0 - Example Fonts
 
  - stoneage.sfn - pixmap font from an old DOS game, which I rewrote for Linux, [xstoneage](https://gitlab.com/bztsrc/xstoneage) (for demostration purposes only, do not use)
 
- - bende.sfn - my little boy's secret writing system, with ligatures, entirely made with sfnedit (MIT)
+ - bende.sfn - my little boy's secret writing system, with ligatures, entirely made with sfnedit (MIT license)

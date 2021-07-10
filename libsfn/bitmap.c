@@ -404,18 +404,20 @@ void bdf(char *ptr, int size)
                 ptr++;
                 if(skipcode && uniname(unicode) == UNICODE_NUMNAMES && !memcmp(ptr,"0000\n7FFE", 9) &&
                     !memcmp(ptr + 35,"7FFE\n7FFE", 9)) ptr += 16*5;
-                else if(w * h <= 65536) {
-                    bitmap = realloc(bitmap, w * h);
-                    if(!bitmap) { fprintf(stderr,"libsfn: memory allocation error\n"); return; }
-                    for(i = 0;i < w * h && *ptr; ptr += 2) {
-                        while(*ptr=='\n' || *ptr=='\r') ptr++;
-                        c = gethex(ptr, 2);
-                        for(j=0x80;j;j>>=1) bitmap[i++] = c & j ? 0xFE : 0xFF;
+                else if(w > 0 && h > 0 && w * h <= 65536) {
+                    bitmap = realloc(bitmap, ((w + 7) & ~7) * (h + 1));
+                    if(!bitmap) { fprintf(stderr,"libsfn: memory allocation error\n"); }
+                    else {
+                        for(i = 0;i < w * h && *ptr; ptr += 2) {
+                            while(*ptr=='\n' || *ptr=='\r') ptr++;
+                            c = gethex(ptr, 2);
+                            for(j=0x80,k=0;j && k < w && i < w * h;k++,j>>=1) bitmap[i++] = c & j ? 0xFE : 0xFF;
+                        }
+                        while(i < ((w + 7) & ~7) * (h + 1)) bitmap[i++] = 0xFF;
+                        if(!skipcode && unicode == defchar) { sfn_chardel(0); unicode = 0; }
+                        if(sfn_charadd(unicode, w, h, 0, 0, 0))
+                            sfn_layeradd(unicode, SSFN_FRAG_BITMAP, 0, 0, w, h, 0xFE, bitmap);
                     }
-                    while(i < w * h) bitmap[i++] = 0xFF;
-                    if(!skipcode && unicode == defchar) { sfn_chardel(0); unicode = 0; }
-                    if(sfn_charadd(unicode, w, h, 0, 0, 0))
-                        sfn_layeradd(unicode, SSFN_FRAG_BITMAP, 0, 0, w, h, 0xFE, bitmap);
                 }
                 if(pbar) (*pbar)(0, 0, ++nc, numchars, PBAR_BITMAP);
             }
