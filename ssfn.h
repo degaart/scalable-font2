@@ -116,7 +116,7 @@ typedef struct {
     uint32_t    ligature_offs;          /* ligatures table offset */
     uint32_t    kerning_offs;           /* kerning table offset */
     uint32_t    cmap_offs;              /* color map offset */
-} _packed ssfn_font_t;
+} _pack ssfn_font_t;
 #ifdef _MSC_VER
 #pragma pack(pop)
 #endif
@@ -1634,5 +1634,5 @@ namespace SSFN {
 #endif
 }
 #endif
-/*                   */
+/*                     */
 #endif /* _SSFN_H_ */
