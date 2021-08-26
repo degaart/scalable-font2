@@ -95,6 +95,13 @@ typedef unsigned long int   uint64_t;
 #define SSFN_FRAG_HINTING       4
 
 /* main SSFN header, 32 bytes */
+#ifndef _MSC_VER
+#define _pack __attribute__((packed))
+#else
+#define _pack
+#pragma pack(push)
+#pragma pack(1)
+#endif
 typedef struct {
     uint8_t     magic[4];               /* SSFN magic bytes */
     uint32_t    size;                   /* total size in bytes */
@@ -109,7 +116,10 @@ typedef struct {
     uint32_t    ligature_offs;          /* ligatures table offset */
     uint32_t    kerning_offs;           /* kerning table offset */
     uint32_t    cmap_offs;              /* color map offset */
-} __attribute__((packed)) ssfn_font_t;
+} _packed ssfn_font_t;
+#ifdef _MSC_VER
+#pragma pack(pop)
+#endif
 
 /***** renderer API *****/
 #define SSFN_FAMILY_ANY      0xff       /* select the first loaded font */
@@ -1036,9 +1046,7 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
     ctx->rc = (ssfn_chr_t*)ptr; ptr += sizeof(ssfn_chr_t);
 
 #ifdef SSFN_PROFILING
-    gettimeofday(&tv1, NULL);
-    tvd.tv_sec = tv1.tv_sec - tv0.tv_sec;
-    tvd.tv_usec = tv1.tv_usec - tv0.tv_usec;
+    gettimeofday(&tv1, NULL); tvd.tv_sec = tv1.tv_sec - tv0.tv_sec; tvd.tv_usec = tv1.tv_usec - tv0.tv_usec;
     if(tvd.tv_usec < 0) { tvd.tv_sec--; tvd.tv_usec += 1000000L; }
     ctx->lookup += tvd.tv_sec * 1000000L + tvd.tv_usec;
     memcpy(&tv0, &tv1, sizeof(struct timeval));
@@ -1225,19 +1233,10 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
 #ifdef SSFN_DEBUGGLYPH
         printf("\nU+%06X size %d p %d h %d base %d under %d overlap %d ascender %d descender %d advance x %d advance y %d cb %d\n",
             unicode, ctx->size,p,h,ctx->f->baseline,ctx->f->underline,ctx->g->o,ctx->g->a,ctx->g->d,ctx->g->x,ctx->g->y,cb);
-        for(j = 0; j < h; j++) {
-            printf("%3d: ", j);
-            for(i = 0; i < p; i++) {
-                if(ctx->g->data[j*p+i] == 0xFF) printf(j == ctx->g->a ? "_" : ".");
-                else printf("%x", ctx->g->data[j*p+i] & 0xF);
-            }
-            printf("\n");
-        }
+        for(j = 0; j < h; j++) { printf("%3d: ", j); for(i = 0; i < p; i++) { if(ctx->g->data[j*p+i] == 0xFF) printf(j == ctx->g->a ? "_" : "."); else printf("%x", ctx->g->data[j*p+i] & 0xF); } printf("\n"); }
 #endif
 #ifdef SSFN_PROFILING
-        gettimeofday(&tv1, NULL);
-        tvd.tv_sec = tv1.tv_sec - tv0.tv_sec;
-        tvd.tv_usec = tv1.tv_usec - tv0.tv_usec;
+        gettimeofday(&tv1, NULL); tvd.tv_sec = tv1.tv_sec - tv0.tv_sec; tvd.tv_usec = tv1.tv_usec - tv0.tv_usec;
         if(tvd.tv_usec < 0) { tvd.tv_sec--; tvd.tv_usec += 1000000L; }
         ctx->raster += tvd.tv_sec * 1000000L + tvd.tv_usec;
         memcpy(&tv0, &tv1, sizeof(struct timeval));
@@ -1360,9 +1359,7 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
                 }
             }
 #ifdef SSFN_PROFILING
-            gettimeofday(&tv1, NULL);
-            tvd.tv_sec = tv1.tv_sec - tv0.tv_sec;
-            tvd.tv_usec = tv1.tv_usec - tv0.tv_usec;
+            gettimeofday(&tv1, NULL); tvd.tv_sec = tv1.tv_sec - tv0.tv_sec;tvd.tv_usec = tv1.tv_usec - tv0.tv_usec;
             if(tvd.tv_usec < 0) { tvd.tv_sec--; tvd.tv_usec += 1000000L; }
             ctx->blit += tvd.tv_sec * 1000000L + tvd.tv_usec;
             memcpy(&tv0, &tv1, sizeof(struct timeval));
@@ -1410,9 +1407,7 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
                 } /* if kerning fragment */
             }
 #ifdef SSFN_PROFILING
-            gettimeofday(&tv1, NULL);
-            tvd.tv_sec = tv1.tv_sec - tv0.tv_sec;
-            tvd.tv_usec = tv1.tv_usec - tv0.tv_usec;
+            gettimeofday(&tv1, NULL); tvd.tv_sec = tv1.tv_sec - tv0.tv_sec; tvd.tv_usec = tv1.tv_usec - tv0.tv_usec;
             if(tvd.tv_usec < 0) { tvd.tv_sec--; tvd.tv_usec += 1000000L; }
             ctx->kern += tvd.tv_sec * 1000000L + tvd.tv_usec;
 #endif
@@ -1639,5 +1634,5 @@ namespace SSFN {
 #endif
 }
 #endif
-/**/
+/*                   */
 #endif /* _SSFN_H_ */
