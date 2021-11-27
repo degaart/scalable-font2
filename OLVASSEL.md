@@ -73,7 +73,7 @@ ssfn_src = &_binary_console_sfn_start;      /* a használt bitmap font */
 ssfn_dst.ptr = 0xE0000000;                  /* a lineáris frémbuffer címe */
 ssfn_dst.w = 1024;                          /* szélesség */
 ssfn_dst.h = 768;                           /* magasság */
-ssfn_dst.p = 2048;                          /* sor hossza bájtban */
+ssfn_dst.p = 4096;                          /* sor hossza bájtban */
 ssfn_dst.x = ssfn_dst.y = 0;                /* toll poziciója */
 ssfn_dst.fg = 0xFFFF;                       /* előtér színe */
 
@@ -92,6 +92,11 @@ Emiatt egy teljes értékű UNICODE konzolt lehet vele implementálni.
 
 FONTOS MEGJEGYZÉS: a normál megjelenítővel ellentétben nem kezel gzip tömörített fontokat. Mindig kitömörített
 fontot kell megadni az `ssfn_src` változóban.
+
+FIGYELEM: ha laphibát dob a konzolos megjelenítő, mint [ennek a szerencsétlen flótás](https://forum.osdev.org/viewtopic.php?f=1&t=56005)nak,
+akkor az azt jelenti, hogy memória felülírásos hiba van a *TE* kódodban, vagy hibás bemenetet adtál meg. Egész
+egyszerűen azért, mert a konzolos megjelenítő egyáltalán nem is foglal memóriát, és csakis az általad `ssfn_dst`-ben
+megadott bufferbe ír, amiről *TE* állítod, hogy írhatja!
 
 ### Normál Megjelenítő
 

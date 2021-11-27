@@ -72,7 +72,7 @@ ssfn_src = &_binary_console_sfn_start;      /* the bitmap font to use */
 ssfn_dst.ptr = 0xE0000000;                  /* address of the linear frame buffer */
 ssfn_dst.w = 1024;                          /* width */
 ssfn_dst.h = 768;                           /* height */
-ssfn_dst.p = 2048;                          /* bytes per line */
+ssfn_dst.p = 4096;                          /* bytes per line */
 ssfn_dst.x = ssfn_dst.y = 0;                /* pen position */
 ssfn_dst.fg = 0xFFFFFF;                     /* foreground color */
 
@@ -91,6 +91,11 @@ a true UNICODE console with this renderer. It also works with paletted, hicolor 
 
 IMPORTANT NOTE: unlike the normal renderer, this one does not handle gzip compressed fonts. Always pass an
 inflated font in `ssfn_src`.
+
+NOTE: if you get page faults with the console renderer like [this miserable lost soul](https://forum.osdev.org/viewtopic.php?f=1&t=56005),
+that means *YOUR* code has memory corruption issues or you've given invalid input. This is so because the
+console renderer simply doesn't allocate any memory at all, and it only writes to a buffer you specify in
+`ssfn_dst` and *YOU* claim to be writeable!
 
 ### Normal Renderer
 
