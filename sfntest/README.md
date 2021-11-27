@@ -13,4 +13,4 @@ sfntest4: background and transparency tests
 
 sfntest5: bounding box test
 
-sfntest6: same as sfntest6, but rendering off-screen for valgrind testing
+sfntest6: same as sfntest5, but rendering off-screen for valgrind testing
