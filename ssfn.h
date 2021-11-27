@@ -365,14 +365,21 @@ static uint8_t *_ssfn_c(const ssfn_font_t *font, const char *str, int *len, uint
     if(font->ligature_offs) {
         for(l = (uint16_t*)((uint8_t*)font + font->ligature_offs), i = 0; l[i] && u == -1U; i++) {
             for(ptr = (uint8_t*)font + l[i], s = (uint8_t*)str; *ptr && *ptr == *s; ptr++, s++);
-            if(!*ptr) { u = SSFN_LIG_FIRST + i; *len = (int)(s - (uint8_t*)str); break; }
+            if(!*ptr) { u = SSFN_LIG_FIRST + i; break; }
         }
     }
     if(u == -1U) {
-        s = (uint8_t*)str;
-        u = ssfn_utf8((char**)&s);
-        *len = (int)(s - (uint8_t*)str);
+        /* inline ssfn_utf8 to workaround -O2 bug in gcc 11.1 */
+        s = (uint8_t*)str; u = *s;
+        if((*s & 128) != 0) {
+            if(!(*s & 32)) { u = ((*s & 0x1F)<<6)|(*(s+1) & 0x3F); s++; } else
+            if(!(*s & 16)) { u = ((*s & 0xF)<<12)|((*(s+1) & 0x3F)<<6)|(*(s+2) & 0x3F); s += 2; } else
+            if(!(*s & 8)) { u = ((*s & 0x7)<<18)|((*(s+1) & 0x3F)<<12)|((*(s+2) & 0x3F)<<6)|(*(s+3) & 0x3F); s += 3; }
+            else u = 0;
+        }
+        s++;
     }
+    *len = (int)(s - (uint8_t*)str);
     *unicode = u;
     for(ptr = (uint8_t*)font + font->characters_offs, i = 0; i < 0x110000; i++) {
         if(ptr[0] == 0xFF) { i += 65535; ptr++; }
@@ -1330,12 +1337,8 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
                     for (Ol = Op, x = 0; x <= k && dst->x + x - ox < j; x++, Ol++) {
                         if(dst->x + x - ox < 0 || (x > uix && x < uax)) continue;
                         O = *Ol;
-                        bR = (O >> (16 - cs)) & 0xFF;
-                        bG = (O >> 8) & 0xFF;
-                        bB = (O >> cs) & 0xFF;
-                        bB += ((fB - bB) * fA) >> 8;
-                        bG += ((fG - bG) * fA) >> 8;
-                        bR += ((fR - bR) * fA) >> 8;
+                        bR = (O >> (16 - cs)) & 0xFF; bG = (O >> 8) & 0xFF; bB = (O >> cs) & 0xFF;
+                        bB += ((fB - bB) * fA) >> 8;  bG += ((fG - bG) * fA) >> 8; bR += ((fR - bR) * fA) >> 8;
                         *Ol = (fA << 24) | (bR << (16 - cs)) | (bG << 8) | (bB << cs);
                     }
                 }
@@ -1348,12 +1351,8 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
                     for (Ol = Op, x = 0; x <= k && dst->x + x - ox < j; x++, Ol++) {
                         if(dst->x + x - ox < 0) continue;
                         O = *Ol;
-                        bR = (O >> (16 - cs)) & 0xFF;
-                        bG = (O >> 8) & 0xFF;
-                        bB = (O >> cs) & 0xFF;
-                        bB += ((fB - bB) * fA) >> 8;
-                        bG += ((fG - bG) * fA) >> 8;
-                        bR += ((fR - bR) * fA) >> 8;
+                        bR = (O >> (16 - cs)) & 0xFF; bG = (O >> 8) & 0xFF; bB = (O >> cs) & 0xFF;
+                        bB += ((fB - bB) * fA) >> 8; bG += ((fG - bG) * fA) >> 8; bR += ((fR - bR) * fA) >> 8;
                         *Ol = (fA << 24) | (bR << (16 - cs)) | (bG << 8) | (bB << cs);
                     }
                 }
@@ -1381,14 +1380,12 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
                 frg = (uint8_t*)ctx->f +  m;
                 if((frg[0] & 0xE0) == 0xC0) {
                     k = (((frg[0] & 0x1F) << 8) | frg[1]) + 1; frg += 2;
-                    /* check if there's a kerning group for the next code point */
                     while(k--) {
                         m = ((frg[2] & 0xF) << 16) | (frg[1] << 8) | frg[0];
                         if(P >= (uint32_t)m && P <= (uint32_t)(((frg[5] & 0xF) << 16) | (frg[4] << 8) | frg[3])) {
                             P -= m;
                             m = ctx->f->kerning_offs + ((((frg[2] >> 4) & 0xF) << 24) | (((frg[5] >> 4) & 0xF) << 16) |
                                 (frg[7] << 8) | frg[6]);
-                            /* decode RLE compressed offsets */
                             tmp = (uint8_t*)ctx->f + m;
                             while(tmp < (uint8_t*)ctx->f + ctx->f->size - 4) {
                                 if((tmp[0] & 0x7F) < P) {
@@ -1404,7 +1401,7 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
                         }
                         frg += 8;
                     }
-                } /* if kerning fragment */
+                }
             }
 #ifdef SSFN_PROFILING
             gettimeofday(&tv1, NULL); tvd.tv_sec = tv1.tv_sec - tv0.tv_sec; tvd.tv_usec = tv1.tv_usec - tv0.tv_usec;
@@ -1627,12 +1624,12 @@ namespace SSFN {
             ssfn_buf_t *Text(const std::string &str, unsigned int fg)
                 { return ssfn_text(&this->ctx,(const char*)str.data(), fg); }
             ssfn_buf_t *Text(const char *str, unsigned int fg) { return ssfn_text(&this->ctx, str, fg); }
-            int LineHeight() { return this->ctx->line ? this->ctx->line : this->ctx->size; }
+            int LineHeight() { return this->ctx.line ? this->ctx.line : this->ctx.size; }
             int Mem() { return ssfn_mem(&this->ctx); }
             const std::string ErrorStr(int err) { return std::string(ssfn_error(err)); }
     };
 #endif
 }
 #endif
-/*                     */
+/*         */
 #endif /* _SSFN_H_ */

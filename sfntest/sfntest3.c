@@ -73,6 +73,7 @@ void do_test(SDL_Surface *screen, char *fontfn, int argc)
     buf.w = screen->w;
     buf.h = screen->h;
     buf.fg = 0xFF202020;
+    buf.bg = 0;
 
     /* load and select a font */
     font = load_file(fontfn ? fontfn : "../fonts/FreeSerif.sfn", &size);

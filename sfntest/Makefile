@@ -12,6 +12,10 @@ all: $(BINS) size
 testC++: sfntest2.c
 	g++ $(CFLAGS:-ansi=-std=c++11) $< -o $@ $(LIBS)
 
+sfntest6: sfntest6.c ../ssfn.h
+	gcc $(CFLAGS) $< -o $@
+	valgrind -s --leak-check=full --show-leak-kinds=all ./$@
+
 %: %.c ../ssfn.h
 	gcc $(CFLAGS) $< -o $@ $(LIBS)
 

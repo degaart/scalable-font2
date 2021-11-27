@@ -1,5 +1,5 @@
 /*
- * sfntest2.c
+ * sfntest4.c
  *
  * Copyright (C) 2020 bzt (bztsrc@gitlab)
  *
@@ -112,6 +112,7 @@ void do_test(SDL_Surface *screen, char *fontfn)
     ssfn_dst.w = screen->w;
     ssfn_dst.h = screen->h;
     ssfn_dst.fg = 0xFF202020;
+    ssfn_dst.bg = 0;
     ssfn_dst.x = 4; ssfn_dst.y = 48;
 
     /* load and select a font */

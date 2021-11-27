@@ -88,6 +88,7 @@ int x,y;
     buf.w = screen->w;
     buf.h = screen->h;
     buf.fg = 0xFF202020;
+    buf.bg = 0;
     buf.x = 4; buf.y = 48;
 
     /* load and select a font */
