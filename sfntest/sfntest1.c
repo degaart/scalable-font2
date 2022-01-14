@@ -29,6 +29,7 @@
 
 #include <stdio.h>
 #define SSFN_CONSOLEBITMAP_TRUECOLOR
+/*#define SSFN_CONSOLEBITMAP_CONTROL*/
 #include "../ssfn.h"
 #if HAS_ZLIB
 #include <zlib.h>

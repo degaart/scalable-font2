@@ -124,14 +124,11 @@ This latter is a drop-in replacement to SDL_ttf package's TTF_RenderUTF8_Blended
 
 ### Newlines
 
-Newlines should be handled by the application and not passed to SSFN. However that latter works too in some simple
-cases, as it assumes left-to-right script written on the entire screen and moves pen accordingly. To move pen down,
-add the font's height, ssfn_src->height to ssfn_dst.y, and set ssfn_dst.x to 0. The same applies to ssfn_render(),
-but there you have two options on how much you want to move the cursor down: ctx->line contains the actual line's
-height (depending on what characters were written in that line), and ctx->size the scaled font's size.
-
-For vertical fonts and right-to-left scripts newlines must be handled by the application, because SSFN doesn't know
-the buffer's width (width is optional in ssfn_buf_t) and top margin (not stored in ssfn_buf_t).
+This is a font rasterizer library, therefore it won't interpret control codes for you. As such, newlines should be handled
+by the application and not passed to ssfn_putc(). To move pen down, add the font's height, ssfn_src->height to ssfn_dst.y,
+and set ssfn_dst.x to 0. The same applies to ssfn_render(), but there you have two options on how much you want to move the
+cursor down: ctx->line contains the actual line's height (depending on what characters were written in that line), and
+ctx->size the scaled font's size.
 
 Example:
 ```c
@@ -142,6 +139,10 @@ if(*s == '\n') {
     ssfn_putc(*s);
 ```
 (Hint: see section "Render a Glyph" for ssfn_render() below on how to render to a cropped area. Works for ssfn_putc() too.)
+
+All that being said, you can enable *basic* control code interpretation in the simple render (and only there) with the
+`SSFN_CONSOLEBITMAP_CONTROL` define. This assumes left-to-right script written on the entire screen and moves pen accordingly
+if it encounters a newline character.
 
 Usage
 -----
@@ -189,6 +190,17 @@ Include the normal renderer implementation as well, not just the file format def
 Only one of these can be specified at once. These include the simple renderer which is totally independent
 from the rest of the API. It is a very specialized renderer, limited and optimized for OS kernel consoles.
 It renderers directly to the framebuffer, and you specify the framebuffer's pixel format with one of these.
+
+```c
+#define SSFN_CONSOLEBITMAP_CONTROL
+```
+
+This will enable *basic* control code interpretarition in the simple render. In order to use this, you **must**
+set the framebuffer's size in ssfn_dst.w and ssfn_dst.h, furthermore in the font, the tab character has to have
+its advance set (to whatever size you want it to be). For example, if you have a 8x16 bitmap and you want the
+tab to be 4 characters wide, then set the advance x of U+0009 to 32. Besides of the `\t` character, this mode also
+interprets carrige return `\r` and newline `\n` characters, it will move the cursor to the next line when the line
+is full and it will also scroll the screen when the bottom is reached.
 
 ### Configuring Memory Management
 

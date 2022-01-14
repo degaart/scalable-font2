@@ -92,6 +92,9 @@ a true UNICODE console with this renderer. It also works with paletted, hicolor 
 IMPORTANT NOTE: unlike the normal renderer, this one does not handle gzip compressed fonts. Always pass an
 inflated font in `ssfn_src`.
 
+NOTE: this is a font rasterizer, not a console library. By default, it won't interpret control codes (like
+`\t`, `\r` or `\n`) for you, however you can turn this feature on with a define.
+
 NOTE: if you get page faults with the console renderer like [this miserable lost soul](https://forum.osdev.org/viewtopic.php?f=1&t=56005),
 that means *YOUR* code has memory corruption issues or you've given invalid input. This is so because the
 console renderer simply doesn't allocate any memory at all, and it only writes to a buffer you specify in
