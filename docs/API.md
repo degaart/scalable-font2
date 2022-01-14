@@ -195,12 +195,16 @@ It renderers directly to the framebuffer, and you specify the framebuffer's pixe
 #define SSFN_CONSOLEBITMAP_CONTROL
 ```
 
-This will enable *basic* control code interpretarition in the simple render. In order to use this, you **must**
-set the framebuffer's size in ssfn_dst.w and ssfn_dst.h, furthermore in the font, the tab character has to have
+This will enable *basic* control code interpretation in the simple render. In order to use this, you **must**
+set the framebuffer's size in `ssfn_dst.w` and `ssfn_dst.h`, furthermore in the font, the tab character has to have
 its advance set (to whatever size you want it to be). For example, if you have a 8x16 bitmap and you want the
-tab to be 4 characters wide, then set the advance x of U+0009 to 32. Besides of the `\t` character, this mode also
-interprets carrige return `\r` and newline `\n` characters, it will move the cursor to the next line when the line
-is full and it will also scroll the screen when the bottom is reached.
+tab to be 4 characters wide, then set the advance x of U+0009 to 32.
+
+ - handles `\t` tab character (if you have advance set in the font)
+ - handles `\r` carrige return (moves the cursor to the beginning of the line)
+ - handles `\n` newline (moves the cursor to the beginning of the next line)
+ - handles if the line is full and the character won't fit (moves the cursor to the beginning of the next line)
+ - scrolls the screen if the pen is moved beyond the last line
 
 ### Configuring Memory Management
 
