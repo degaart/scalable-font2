@@ -238,7 +238,7 @@ a glyph defined for the code point, and one if not (skip runs). The table always
 
 | 1st byte | More bytes | Description |
 | -------- | ---------- | ---------------------------------------------------------------- |
-| 0xxxxxxx | 6+x        | There's a glyph for this character                               |
+| 0xxxxxxx | 5+x        | There's a glyph for this character                               |
 | 10nnnnnn | -          | Skip N + 1 code points (up to 64)                                |
 | 11NNNNNN | 1          | Skip (N << 8 + additional byte) + 1 code points (up to 16128)    |
 | 11111111 | -          | Skip 65536 code points                                           |
@@ -250,7 +250,7 @@ that is skipped. If no glyph is defined for the 0th character, then the applicat
 ### Glyph Header
 
 If the characters table describe a glyph at a given code point position, then it starts with a 6 bytes long
-header.
+header (including the aforementioned 1st byte with a zero most significant bit).
 
 | Offset | Length | Description                                       |
 | -----: | -----: | ------------------------------------------------- |
@@ -262,9 +262,9 @@ header.
 |      5 |      1 | advance y                                         |
 
 Bits in attributes:
-- o is the x overlap (up to 63, that's 1/4th of total width). Has to be subtracted from pen_x before draw.
+- o is the x overlap in pixels (up to 63, that's 1/4th of total width). Has to be subtracted from pen_x before draw.
 - f encodes large fragment descriptor: 0 = 5 bytes, 1 = 6 bytes.
-- 0 most significant bit must be zero.
+- 0 most significant bit must be zero (this is what makes it a "glyph defined" record).
 
 If advance x is zero and y is non-zero, then the character direction is vertical up-to-down.
 
