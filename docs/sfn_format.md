@@ -238,7 +238,7 @@ a glyph defined for the code point, and one if not (skip runs). The table always
 
 | 1st byte | More bytes | Description |
 | -------- | ---------- | ---------------------------------------------------------------- |
-| 0xxxxxxx | 5+x        | There's a glyph for this character                               |
+| 0??????? | 5 at least | There's a glyph for this character                               |
 | 10nnnnnn | -          | Skip N + 1 code points (up to 64)                                |
 | 11NNNNNN | 1          | Skip (N << 8 + additional byte) + 1 code points (up to 16128)    |
 | 11111111 | -          | Skip 65536 code points                                           |
