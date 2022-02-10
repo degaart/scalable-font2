@@ -498,7 +498,7 @@ void asc(char *ptr, int size)
             ptr +=  2; y = atoi(ptr); while(*ptr && *ptr != '\r' && *ptr != '\n' && *ptr != '=') ptr++;
             ptr +=  2; o = atoi(ptr); while(*ptr && *ptr != '\r' && *ptr != '\n' && *ptr != '\"') ptr++;
             if(unicode >= SSFN_LIG_FIRST && unicode <= SSFN_LIG_LAST && *ptr == '\"')
-                sfn_setstr(&ctx.ligatures[unicode-SSFN_LIG_FIRST], ptr, 0);
+                sfn_setstr(&ctx.ligatures[unicode-SSFN_LIG_FIRST], ptr + 1, 0);
             if(w > 255) { w = 255; } if(w < 0) w = 0;
             if(h > 255) { h = 255; } if(h < 0) h = 0;
             if(x > 254) { x = 254; } if(x < 0) x = 0;
