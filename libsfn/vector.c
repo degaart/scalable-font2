@@ -595,19 +595,34 @@ void ft2_parse()
 
     if(face->face_flags & FT_FACE_FLAG_SCALABLE) ttf(); else ft2();
 
+    /* for the sfnt string ids, see https://scripts.sil.org/cms/scripts/page.php?site_id=nrsi&id=IWS-Chapter08#3054f18b */
+
     /* unique font name */
     if(!ctx.name) {
         if(!FT_Get_Sfnt_Name(face, 3, &name)) sfn_setstr(&ctx.name, (char*)name.string, name.string_len); else
-        if(!FT_Get_Sfnt_Name(face, 20, &name)) sfn_setstr(&ctx.name, (char*)name.string, name.string_len);
+        if(!FT_Get_Sfnt_Name(face, 4, &name)) sfn_setstr(&ctx.name, (char*)name.string, name.string_len); else
+        if(!FT_Get_Sfnt_Name(face, 6, &name)) sfn_setstr(&ctx.name, (char*)name.string, name.string_len); else
+        if(!FT_Get_Sfnt_Name(face, 20, &name)) sfn_setstr(&ctx.name, (char*)name.string, name.string_len); else
+        if(!FT_Get_Sfnt_Name(face, 18, &name)) sfn_setstr(&ctx.name, (char*)name.string, name.string_len);
     }
     /* fallback */
     if(!ctx.name) sfn_setstr(&ctx.name, face->family_name, 0);
 
     /* family name */
-    if(!ctx.familyname && !FT_Get_Sfnt_Name(face, 1, &name)) sfn_setstr(&ctx.familyname, (char*)name.string, name.string_len);
+    if(!ctx.familyname) {
+        if(!FT_Get_Sfnt_Name(face, 1, &name)) sfn_setstr(&ctx.familyname, (char*)name.string, name.string_len); else
+        if(!FT_Get_Sfnt_Name(face, 16, &name)) sfn_setstr(&ctx.familyname, (char*)name.string, name.string_len);
+    }
+    /* fallback */
+    if(!ctx.familyname) sfn_setstr(&ctx.familyname, face->family_name, 0);
 
     /* subfamily name */
-    if(!ctx.subname && !FT_Get_Sfnt_Name(face, 2, &name)) sfn_setstr(&ctx.subname, (char*)name.string, name.string_len);
+    if(!ctx.subname) {
+        if(!FT_Get_Sfnt_Name(face, 2, &name)) sfn_setstr(&ctx.subname, (char*)name.string, name.string_len); else
+        if(!FT_Get_Sfnt_Name(face, 17, &name)) sfn_setstr(&ctx.subname, (char*)name.string, name.string_len);
+    }
+    /* fallback */
+    if(!ctx.subname) sfn_setstr(&ctx.subname, face->style_name, 0);
 
     /* version / revision */
     if(!ctx.revision && !FT_Get_Sfnt_Name(face, 5, &name)) sfn_setstr(&ctx.revision, (char*)name.string, name.string_len);
@@ -621,7 +636,8 @@ void ft2_parse()
     /* copyright */
     if(!ctx.license) {
         if(!FT_Get_Sfnt_Name(face, 0, &name)) sfn_setstr(&ctx.license, (char*)name.string, name.string_len); else
-        if(!FT_Get_Sfnt_Name(face, 7, &name)) sfn_setstr(&ctx.license, (char*)name.string, name.string_len);
+        if(!FT_Get_Sfnt_Name(face, 7, &name)) sfn_setstr(&ctx.license, (char*)name.string, name.string_len); else
+        if(!FT_Get_Sfnt_Name(face, 13, &name)) sfn_setstr(&ctx.license, (char*)name.string, name.string_len);
     }
 
     FT_Done_Face(face); face = NULL;
