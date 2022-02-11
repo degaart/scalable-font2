@@ -581,6 +581,28 @@ int ft2_read(unsigned char *data, int size)
 }
 
 /**
+ * Get a string from ft2
+ * for the sfnt string ids, see https://scripts.sil.org/cms/scripts/page.php?site_id=nrsi&id=IWS-Chapter08#3054f18b
+ */
+int ft2_str(int id, FT_SfntName *name)
+{
+    int i;
+
+    if(!name || !face) return 0;
+    /* NOTE: see freetype2/src/base/ftsnames.c line 73, it is a real mine-field:
+     * 1. it does not check if the name entry for an idx is valid or not
+     * 2. if it happens to have bad values, or otherwise unable to read from the stream, it will still return FT_Err_OK.
+     * Also, see freetype2/src/sfnt/ttload.c line 947, it skips empty and bad records, which means FT_Get_Sfnt_Name's idx isn't
+     * necessarily aligned with sfnt ids any more, it could be just a total arbitrary ft2 internal id.
+     * So we have to do it the hard way...
+     */
+    for(i = 0; i < (int)FT_Get_Sfnt_Name_Count(face); i++)
+        if(!FT_Get_Sfnt_Name(face, i, name) && name->string != NULL && name->string_len > 0 && name->string[0] && name->name_id == id)
+            return 1;
+    return 0;
+}
+
+/**
  * Parse a FT2 font
  */
 void ft2_parse()
@@ -595,49 +617,47 @@ void ft2_parse()
 
     if(face->face_flags & FT_FACE_FLAG_SCALABLE) ttf(); else ft2();
 
-    /* for the sfnt string ids, see https://scripts.sil.org/cms/scripts/page.php?site_id=nrsi&id=IWS-Chapter08#3054f18b */
-
     /* unique font name */
     if(!ctx.name) {
-        if(!FT_Get_Sfnt_Name(face, 3, &name)) sfn_setstr(&ctx.name, (char*)name.string, name.string_len); else
-        if(!FT_Get_Sfnt_Name(face, 4, &name)) sfn_setstr(&ctx.name, (char*)name.string, name.string_len); else
-        if(!FT_Get_Sfnt_Name(face, 6, &name)) sfn_setstr(&ctx.name, (char*)name.string, name.string_len); else
-        if(!FT_Get_Sfnt_Name(face, 20, &name)) sfn_setstr(&ctx.name, (char*)name.string, name.string_len); else
-        if(!FT_Get_Sfnt_Name(face, 18, &name)) sfn_setstr(&ctx.name, (char*)name.string, name.string_len);
+        if(ft2_str(4, &name)) sfn_setstr(&ctx.name, (char*)name.string, name.string_len); else
+        if(ft2_str(3, &name)) sfn_setstr(&ctx.name, (char*)name.string, name.string_len); else
+        if(ft2_str(6, &name)) sfn_setstr(&ctx.name, (char*)name.string, name.string_len); else
+        if(ft2_str(20, &name)) sfn_setstr(&ctx.name, (char*)name.string, name.string_len); else
+        if(ft2_str(18, &name)) sfn_setstr(&ctx.name, (char*)name.string, name.string_len);
     }
     /* fallback */
     if(!ctx.name) sfn_setstr(&ctx.name, face->family_name, 0);
 
     /* family name */
     if(!ctx.familyname) {
-        if(!FT_Get_Sfnt_Name(face, 1, &name)) sfn_setstr(&ctx.familyname, (char*)name.string, name.string_len); else
-        if(!FT_Get_Sfnt_Name(face, 16, &name)) sfn_setstr(&ctx.familyname, (char*)name.string, name.string_len);
+        if(ft2_str(1, &name)) sfn_setstr(&ctx.familyname, (char*)name.string, name.string_len); else
+        if(ft2_str(16, &name)) sfn_setstr(&ctx.familyname, (char*)name.string, name.string_len);
     }
     /* fallback */
     if(!ctx.familyname) sfn_setstr(&ctx.familyname, face->family_name, 0);
 
     /* subfamily name */
     if(!ctx.subname) {
-        if(!FT_Get_Sfnt_Name(face, 2, &name)) sfn_setstr(&ctx.subname, (char*)name.string, name.string_len); else
-        if(!FT_Get_Sfnt_Name(face, 17, &name)) sfn_setstr(&ctx.subname, (char*)name.string, name.string_len);
+        if(ft2_str(2, &name)) sfn_setstr(&ctx.subname, (char*)name.string, name.string_len); else
+        if(ft2_str(17, &name)) sfn_setstr(&ctx.subname, (char*)name.string, name.string_len);
     }
     /* fallback */
     if(!ctx.subname) sfn_setstr(&ctx.subname, face->style_name, 0);
 
     /* version / revision */
-    if(!ctx.revision && !FT_Get_Sfnt_Name(face, 5, &name)) sfn_setstr(&ctx.revision, (char*)name.string, name.string_len);
+    if(!ctx.revision && ft2_str(5, &name)) sfn_setstr(&ctx.revision, (char*)name.string, name.string_len);
 
     /* manufacturer */
     if(!ctx.manufacturer) {
-        if(!FT_Get_Sfnt_Name(face, 8, &name)) sfn_setstr(&ctx.manufacturer, (char*)name.string, name.string_len); else
-        if(!FT_Get_Sfnt_Name(face, 9, &name)) sfn_setstr(&ctx.manufacturer, (char*)name.string, name.string_len);
+        if(ft2_str(8, &name)) sfn_setstr(&ctx.manufacturer, (char*)name.string, name.string_len); else
+        if(ft2_str(9, &name)) sfn_setstr(&ctx.manufacturer, (char*)name.string, name.string_len);
     }
 
     /* copyright */
     if(!ctx.license) {
-        if(!FT_Get_Sfnt_Name(face, 0, &name)) sfn_setstr(&ctx.license, (char*)name.string, name.string_len); else
-        if(!FT_Get_Sfnt_Name(face, 7, &name)) sfn_setstr(&ctx.license, (char*)name.string, name.string_len); else
-        if(!FT_Get_Sfnt_Name(face, 13, &name)) sfn_setstr(&ctx.license, (char*)name.string, name.string_len);
+        if(ft2_str(0, &name)) sfn_setstr(&ctx.license, (char*)name.string, name.string_len); else
+        if(ft2_str(7, &name)) sfn_setstr(&ctx.license, (char*)name.string, name.string_len); else
+        if(ft2_str(13, &name)) sfn_setstr(&ctx.license, (char*)name.string, name.string_len);
     }
 
     FT_Done_Face(face); face = NULL;

@@ -2153,14 +2153,17 @@ void sfn_setfamilytype(int t)
  */
 void sfn_setstr(char **s, char *n, int len)
 {
-    int i;
+    int i, l = len;
 
+    if(*s) { free(*s); *s = NULL; }
     if(!n) return;
-    if(*s) free(*s);
-    while(*n == ' ' || *n == '\t') { n++; if(len) len--; }
-    for(i = 0; (!len || i < len) && n[i] && n[i] != '\"' && n[i] != '\r' && n[i] != '\n'; i++);
+    while(*n == ' ' || *n == '\t') { n++; if(len) l--; }
+    if(len && !l) return;
+    for(i = 0; (!len || i < l) && n[i] && n[i] != '\"' && n[i] != '\r' && n[i] != '\n'; i++);
     while(i && (n[i-1] == ' ' || n[i-1] == '\t')) i--;
+    if(!i) return;
     *s = malloc(i + 1);
+    if(!*s) return;
     memcpy(*s, n, i);
     *(*s + i) = 0;
 }
