@@ -586,6 +586,8 @@ int ft2_read(unsigned char *data, int size)
  */
 int ft2_str(int id, FT_SfntName *name)
 {
+    uint8_t *src, *dst, *end;
+    uint16_t chr;
     int i;
 
     if(!name || !face) return 0;
@@ -597,8 +599,23 @@ int ft2_str(int id, FT_SfntName *name)
      * So we have to do it the hard way...
      */
     for(i = 0; i < (int)FT_Get_Sfnt_Name_Count(face); i++)
-        if(!FT_Get_Sfnt_Name(face, i, name) && name->string != NULL && name->string_len > 0 && name->string[0] && name->name_id == id)
+        if(!FT_Get_Sfnt_Name(face, i, name) && name->string != NULL && name->string_len > 0 && name->name_id == id) {
+            if(!name->encoding_id && name->string[0]) return 1;
+            /* TTF isn't really documented, but ft2 seems to think this is UTF16-BE when it gets face->family_name */
+            src = name->string; end = name->string + name->string_len;
+            dst = name->string = (uint8_t*)malloc(name->string_len * 2);
+            if(!dst) return 0;
+            for(; src < end; src += 2) {
+                chr = (src[0] << 8) | src[1];
+                if(!chr) break;
+                if(chr < 0x80) *dst++ = chr;
+                else if(chr < 0x800) { *dst++ = ((chr>>6)&0x1F)|0xC0; *dst++ = (chr&0x3F)|0x80; }
+                else { *dst++ = ((chr>>12)&0x0F)|0xE0; *dst++ = ((chr>>6)&0x3F)|0x80; *dst++ = (chr&0x3F)|0x80; }
+            }
+            name->encoding_id = 1;
+            name->string_len = (uintptr_t)dst - (uintptr_t)name->string;
             return 1;
+        }
     return 0;
 }
 
@@ -619,45 +636,57 @@ void ft2_parse()
 
     /* unique font name */
     if(!ctx.name) {
+        name.string = NULL;
         if(ft2_str(4, &name)) sfn_setstr(&ctx.name, (char*)name.string, name.string_len); else
         if(ft2_str(3, &name)) sfn_setstr(&ctx.name, (char*)name.string, name.string_len); else
         if(ft2_str(6, &name)) sfn_setstr(&ctx.name, (char*)name.string, name.string_len); else
         if(ft2_str(20, &name)) sfn_setstr(&ctx.name, (char*)name.string, name.string_len); else
         if(ft2_str(18, &name)) sfn_setstr(&ctx.name, (char*)name.string, name.string_len);
+        if(name.encoding_id && name.string) free(name.string);
     }
     /* fallback */
     if(!ctx.name) sfn_setstr(&ctx.name, face->family_name, 0);
 
     /* family name */
     if(!ctx.familyname) {
+        name.string = NULL;
         if(ft2_str(1, &name)) sfn_setstr(&ctx.familyname, (char*)name.string, name.string_len); else
         if(ft2_str(16, &name)) sfn_setstr(&ctx.familyname, (char*)name.string, name.string_len);
+        if(name.encoding_id && name.string) free(name.string);
     }
     /* fallback */
     if(!ctx.familyname) sfn_setstr(&ctx.familyname, face->family_name, 0);
 
     /* subfamily name */
     if(!ctx.subname) {
+        name.string = NULL;
         if(ft2_str(2, &name)) sfn_setstr(&ctx.subname, (char*)name.string, name.string_len); else
         if(ft2_str(17, &name)) sfn_setstr(&ctx.subname, (char*)name.string, name.string_len);
+        if(name.encoding_id && name.string) free(name.string);
     }
     /* fallback */
     if(!ctx.subname) sfn_setstr(&ctx.subname, face->style_name, 0);
 
     /* version / revision */
+    name.string = NULL;
     if(!ctx.revision && ft2_str(5, &name)) sfn_setstr(&ctx.revision, (char*)name.string, name.string_len);
+    if(name.encoding_id && name.string) free(name.string);
 
     /* manufacturer */
     if(!ctx.manufacturer) {
+        name.string = NULL;
         if(ft2_str(8, &name)) sfn_setstr(&ctx.manufacturer, (char*)name.string, name.string_len); else
         if(ft2_str(9, &name)) sfn_setstr(&ctx.manufacturer, (char*)name.string, name.string_len);
+        if(name.encoding_id && name.string) free(name.string);
     }
 
     /* copyright */
     if(!ctx.license) {
+        name.string = NULL;
+        if(ft2_str(13, &name)) sfn_setstr(&ctx.license, (char*)name.string, name.string_len); else
         if(ft2_str(0, &name)) sfn_setstr(&ctx.license, (char*)name.string, name.string_len); else
-        if(ft2_str(7, &name)) sfn_setstr(&ctx.license, (char*)name.string, name.string_len); else
-        if(ft2_str(13, &name)) sfn_setstr(&ctx.license, (char*)name.string, name.string_len);
+        if(ft2_str(7, &name)) sfn_setstr(&ctx.license, (char*)name.string, name.string_len);
+        if(name.encoding_id && name.string) free(name.string);
     }
 
     FT_Done_Face(face); face = NULL;
