@@ -85,8 +85,8 @@ ssfn_t ctx = { 0 };
 ssfn_load(&ctx, &_binary_freeserif_sfn_start);
 
 /* C++ */
-SSFN::Font font = new SSFN::Font;
-font.Load(&_binary_freeserif_sfn_start, 0);
+SSFN::Font *font = new SSFN::Font;
+font->Load(&_binary_freeserif_sfn_start);
 ```
 
 To render a text to an existing pixel buffer or to the screen:
@@ -108,7 +108,7 @@ while((ret = ssfn_render(&ctx, &buf, str)) > 0)
     str += ret;
 
 /* C++ */
-while((ret = font.Render(&buf, str)) > 0)
+while((ret = font->Render(&buf, str)) > 0)
     str += ret;
 ```
 
@@ -118,7 +118,7 @@ To allocate a new pixel buffer with transparent background and the rendered text
 ssfn_buf_t *buf = ssfn_text(&ctx, str, 0xFF101010);
 
 /* C++ */
-ssfn_buf_t *buf = font.Text(str, 0xFF101010);
+ssfn_buf_t *buf = font->Text(str, 0xFF101010);
 ```
 This latter is a drop-in replacement to SDL_ttf package's TTF_RenderUTF8_Blended() function.
 
@@ -338,7 +338,9 @@ If `.w` and `.h` is not set, then no clipping will be performed. With `ssfn_dst.
 zero, `ssfn_putc` will operate in transparent background mode: it will only modify the destination buffer
 where the font face is set. To clear the glyph's background, set `ssfn_dst.bg` to some value where the most
 significant byte (alpha channel for true-color mode) is 255, like 0xFF000000. This will fill the background
-with the index 0 (palette) or full black (hicolor and truecolor modes).
+with the index 0 (palette) or full black (hicolor and truecolor modes). With `SSFN_CONSOLEBITMAP_CONTROL`
+defined, the simple renderer interprets tab, newline, etc. characters and scrolls the buffer (see above, in
+section Configuration).
 
 <img src='https://gitlab.com/bztsrc/scalable-font2/raw/master/docs/api0.png'>
 

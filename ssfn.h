@@ -1567,7 +1567,7 @@ namespace SSFN {
 
         public:
             int Load(const std::string &data);
-            int Load(const unsigned char *data, int len);
+            int Load(const void *data, int len);
             int Select(int family, const std::string &name, int style, int size);
             int Select(int family, const char *name, int style, int size);
             int Render(ssfn_buf_t *dst, const std::string &str);
@@ -1590,12 +1590,12 @@ namespace SSFN {
             ~Font() { ssfn_free(&this->ctx); }
 
         public:
-            int Load(const std::string &data) { return ssfn_load(&this->ctx,(const void*)data.data()); }
-            int Load(const unsigned char *data) { return ssfn_load(&this->ctx, (const void*)data); }
+            int Load(const std::string &data) { return ssfn_load(&this->ctx,reinterpret_cast<const void*>(data.data())); }
+            int Load(const void *data) { return ssfn_load(&this->ctx, data); }
             int Select(int family, const std::string &name, int style, int size)
                 { return ssfn_select(&this->ctx, family, (char*)name.data(), style, size); }
             int Select(int family, char *name, int style, int size) { return ssfn_select(&this->ctx,family,name,style,size); }
-            int Render(ssfn_buf_t *dst, const std::string &str) { return ssfn_render(&this->ctx,dst,(const char*)str.data()); }
+            int Render(ssfn_buf_t *dst, const std::string &str) { return ssfn_render(&this->ctx,dst,(const char *)str.data()); }
             int Render(ssfn_buf_t *dst, const char *str) { return ssfn_render(&this->ctx, dst, str); }
             int BBox(const std::string &str, int *w, int *h, int *left, int *top)
                 { return ssfn_bbox(&this->ctx, (const char *)str.data(), w, h, left, top); }
@@ -1610,5 +1610,5 @@ namespace SSFN {
 #endif
 }
 #endif
-/*  */
+/*              */
 #endif /* _SSFN_H_ */
