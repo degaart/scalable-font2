@@ -459,6 +459,7 @@ Parameter defines:
 | `SSFN_STYLE_UNDERLINE`  | under line glyphs. This is not stored in fonts, always generated   |
 | `SSFN_STYLE_STHROUGH`   | strike-through glyphs. Not stored either, always generated         |
 | `SSFN_STYLE_NOAA`       | don't use anti-aliasing (might be unreadable for small sizes)      |
+| `SSFN_STYLE_NOSMOOTH`   | don't use edge-smoothing on scaled bitmap glyphs                   |
 | `SSFN_STYLE_NOKERN`     | don't use kerning relation when calculating advance offsets        |
 | `SSFN_STYLE_NODEFGLYPH` | don't draw default glyph for missing ones                          |
 | `SSFN_STYLE_NOCACHE`    | don't use internal glyph cache (slower, but memory efficient)      |

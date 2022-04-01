@@ -135,6 +135,7 @@ typedef struct {
 #define SSFN_STYLE_NOHINTING 1024       /* no auto hinting grid (not used as of now) */
 #define SSFN_STYLE_RTL       2048       /* render right-to-left */
 #define SSFN_STYLE_ABS_SIZE  4096       /* scale absoulte height */
+#define SSFN_STYLE_NOSMOOTH  8192       /* no edge-smoothing for bitmaps */
 
 /* error codes */
 #define SSFN_OK                 0       /* success */
@@ -929,7 +930,7 @@ int ssfn_select(ssfn_t *ctx, int family, const char *name, int style, int size)
 #ifndef SSFN_MAXLINES
     _ssfn_fc(ctx);
 #endif
-    if((style & ~0x1FFF)) return SSFN_ERR_BADSTYLE;
+    if((style & ~0x3FFF)) return SSFN_ERR_BADSTYLE;
     if(size < 8 || size > SSFN_SIZE_MAX) return SSFN_ERR_BADSIZE;
 
     if(family == SSFN_FAMILY_BYNAME) {
@@ -973,12 +974,15 @@ int ssfn_render(ssfn_t *ctx, ssfn_buf_t *dst, const char *str)
     uint16_t r[640];
     uint32_t unicode, P, O, *Op, *Ol;
     unsigned long int sR, sG, sB, sA;
-    int ret = 0, i, j, k, l, p, m, n, o, s, x, y, w, h, a, A, b, B, nr, uix, uax;
+    int ret = 0, i, j, k, l, p, m, n, o, s, x, y, w, h, H, a, A, b, B, nr, uix, uax;
     int ox, oy, y0, y1, Y0, Y1, x0, x1, X0, X1, X2, xs, ys, yp, pc, fB, fG, fR, fA, bB, bG, bR, dB, dG, dR, dA;
 #ifdef SSFN_PROFILING
     struct timeval tv0, tv1, tvd;
     gettimeofday(&tv0, NULL);
 #endif
+#define PUTPIXEL  O = *Ol;bR = (O >> (16 - cs)) & 0xFF; bG = (O >> 8) & 0xFF; bB = (O >> cs) & 0xFF;\
+    bB += ((fB - bB) * fA) >> 8; bG += ((fG - bG) * fA) >> 8; bR += ((fR - bR) * fA) >> 8;\
+    *Ol = (fA << 24) | (bR << (16 - cs)) | (bG << 8) | (bB << cs);
 
     if(!ctx || !str) return SSFN_ERR_INVINP;
     if(!*str) return 0;
@@ -1037,6 +1041,8 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
     if(!ctx->f || !ctx->f->height || !ctx->size) return SSFN_ERR_NOFACE;
     if((unicode >> 16) > 0x10) return SSFN_ERR_INVINP;
     ctx->rc = (ssfn_chr_t*)ptr; ptr += sizeof(ssfn_chr_t);
+    H = (ctx->style & SSFN_STYLE_ABS_SIZE) || SSFN_TYPE_FAMILY(ctx->f->type) == SSFN_FAMILY_MONOSPACE || !ctx->f->baseline ?
+        ctx->size : ctx->size * ctx->f->height / ctx->f->baseline;
 
 #ifdef SSFN_PROFILING
     gettimeofday(&tv1, NULL); tvd.tv_sec = tv1.tv_sec - tv0.tv_sec; tvd.tv_usec = tv1.tv_usec - tv0.tv_usec;
@@ -1052,7 +1058,7 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
     } else
 #endif
     {
-        h = ctx->style & SSFN_STYLE_NOAA ? ctx->size : (ctx->size > ctx->f->height ? (ctx->size + 4) & ~3 : ctx->f->height);
+        h = ctx->style & SSFN_STYLE_NOAA ? H : (ctx->size > ctx->f->height ? (ctx->size + 4) & ~3 : ctx->f->height);
         ci = (ctx->style & SSFN_STYLE_ITALIC) && !(SSFN_TYPE_STYLE(ctx->f->type) & SSFN_STYLE_ITALIC);
         cb = (ctx->style & SSFN_STYLE_BOLD) && !(SSFN_TYPE_STYLE(ctx->f->type) & SSFN_STYLE_BOLD) ? (ctx->f->height+64)>>6 : 0;
         w = (ctx->rc->w * h + ctx->f->height - 1) / ctx->f->height;
@@ -1172,7 +1178,7 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
                         }
                     }
                 }
-                if(!(ctx->style & SSFN_STYLE_NOAA)) {
+                if(!(ctx->style & (SSFN_STYLE_NOAA|SSFN_STYLE_NOSMOOTH))) {
                     m = color == 0xFD ? 0xFC : 0xFD; o = y * p + p + x;
                     for(k = h; k > ctx->f->height + 4; k -= 2*ctx->f->height) {
                         for(j = 1, l = o; j < a - 1; j++, l += p)
@@ -1227,8 +1233,7 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
     }
     if(dst) {
         /* blit glyph from cache into buffer */
-        h = (ctx->style & SSFN_STYLE_ABS_SIZE) || SSFN_TYPE_FAMILY(ctx->f->type) == SSFN_FAMILY_MONOSPACE || !ctx->f->baseline ?
-            ctx->size : ctx->size * ctx->f->height / ctx->f->baseline;
+        h = H;
         if(h > ctx->line) ctx->line = h;
         w = ctx->g->p * h / ctx->g->h;
         s = ((ctx->g->x - ctx->g->o) * h + ctx->f->height - 1) / ctx->f->height;
@@ -1296,6 +1301,7 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
                         }
                     }
                     if(m) { sR /= m; sG /= m; sB /= m; sA /= m; } else { sR >>= 8; sG >>= 8; sB >>= 8; sA >>= 8; }
+                    if(ctx->style & SSFN_STYLE_NOAA) sA = sA > 127 ? 255 : 0;
                     if(sA > 15) {
                         *Ol = ((sA > 255 ? 255 : sA) << 24) | ((sR > 255 ? 255 : sR) << (16 - cs)) |
                             ((sG > 255 ? 255 : sG) << 8) | ((sB > 255 ? 255 : sB) << cs);
@@ -1312,10 +1318,7 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
                     if(dst->y + y - oy < 0) continue;
                     for (Ol = Op, x = 0; x <= k && dst->x + x - ox < j; x++, Ol++) {
                         if(dst->x + x - ox < 0 || (x > uix && x < uax)) continue;
-                        O = *Ol;
-                        bR = (O >> (16 - cs)) & 0xFF; bG = (O >> 8) & 0xFF; bB = (O >> cs) & 0xFF;
-                        bB += ((fB - bB) * fA) >> 8;  bG += ((fG - bG) * fA) >> 8; bR += ((fR - bR) * fA) >> 8;
-                        *Ol = (fA << 24) | (bR << (16 - cs)) | (bG << 8) | (bB << cs);
+                        PUTPIXEL;
                     }
                 }
             }
@@ -1326,10 +1329,7 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
                     if(dst->y + y - oy < 0) continue;
                     for (Ol = Op, x = 0; x <= k && dst->x + x - ox < j; x++, Ol++) {
                         if(dst->x + x - ox < 0) continue;
-                        O = *Ol;
-                        bR = (O >> (16 - cs)) & 0xFF; bG = (O >> 8) & 0xFF; bB = (O >> cs) & 0xFF;
-                        bB += ((fB - bB) * fA) >> 8; bG += ((fG - bG) * fA) >> 8; bR += ((fR - bR) * fA) >> 8;
-                        *Ol = (fA << 24) | (bR << (16 - cs)) | (bG << 8) | (bB << cs);
+                        PUTPIXEL;
                     }
                 }
             }
@@ -1610,5 +1610,6 @@ namespace SSFN {
 #endif
 }
 #endif
-/*              */
+/*                                                                                                                              */
+/*                                     */
 #endif /* _SSFN_H_ */
