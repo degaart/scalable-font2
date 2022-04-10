@@ -51,7 +51,7 @@
 #define BM_USET(bm, x, y) (*bm_index(bm, x, y) |= bm_mask(x))
 
 int rs = 0, re = 0x10FFFF, replace = 0, skipundef = 0, skipcode = 0, hinting = 0, adv = 0, relul = 0;
-int rasterize = 0, origwh = 0, lastuni = -1, *fidx, dorounderr = 0;
+int rasterize = 0, origwh = 0, lastuni = -1, *fidx, dorounderr = 0, monosize = 0, advrecalc = 0;
 sfnctx_t ctx;
 sfnprogressbar_t pbar = NULL;
 
@@ -2244,9 +2244,13 @@ void sfn_sanitize(int unicode)
         if(!ctx.glyphs[i].adv_x && !ctx.glyphs[i].adv_y && m)
             ctx.glyphs[i].adv_x = m + 2 + adv;
         if(ctx.glyphs[i].adv_x) ctx.glyphs[i].adv_y = 0;
-        if(ctx.family == SSFN_FAMILY_MONOSPACE) {
+        if(ctx.family == SSFN_FAMILY_MONOSPACE && advrecalc) {
             if(ctx.glyphs[i].adv_x) ctx.glyphs[i].adv_x = ((ctx.glyphs[i].width + 7) & ~7) + adv;
             else ctx.glyphs[i].adv_y = ctx.height + adv;
+        }
+        if(monosize > 0) {
+            ctx.glyphs[i].adv_x = ((ctx.glyphs[i].adv_x + monosize - 1) / monosize) * monosize;
+            ctx.glyphs[i].adv_y = ((ctx.glyphs[i].adv_y + monosize - 1) / monosize) * monosize;
         }
     }
     ctx.width = ctx.height = 0;

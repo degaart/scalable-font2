@@ -128,8 +128,8 @@ void usage()
     printf("Scalable Screen Font 2.0 by bzt Copyright (C) 2020 MIT license\n"
            " https://gitlab.com/bztsrc/scalable-font2\n"
            " UNICODE database: %s\n\n"
-           "./sfnconv [-c|-e|-d|-dd|-dd...|-D] [-C] [-U] "
-           "[-A] [-R] [-B <size>|-V] [-g]\n   [-b <p>] [-u <+p>] [-a <+p>] [-o] [-q] [-S <U+xxx>] [-E] [-t [b][i]<0..4>]"
+           "./sfnconv [-c|-e|-d|-dd|-dd...|-D] [-C] [-U] [-A] [-R] [-B <size>|-V] [-g] [-T]\n"
+           "   [-b <p>] [-u <p>] [-a <p>] [-M <n>] [-o] [-q] [-S <U+xxx>] [-E] [-t [b][i]<0..4>]"
            , uniname_date);
     printf("\n   [-n <name>] [-f <family>] [-s <subfamily>] [-v <ver>] [-m <manufacturer>] "
            "\n   [-l <license>] [-r <from> <to>] <in> [ [-r <from> <to>] <in> ...] <out>\n\n"
@@ -144,21 +144,23 @@ void usage()
     printf(" -B:  rasterize vector fonts to bitmaps\n"
            " -V:  vectorize bitmap fonts to scalable fonts\n"
            " -g:  save grid information for hinting\n"
+           " -T:  recalculate bitmap advances\n"
            " -b:  horizontal baseline in pixels (1-255)\n"
            " -u:  underline position in pixels (relative to baseline)\n"
-           " -a:  add a constant to advance (1-255, some fonts need it, others don't)\n"
-           " -o:  use original width and height instead of calculated one\n"
-           " -q:  quiet, don't report font errors\n"
-           " -S:  skip a UNICODE code point, this flag can be repeated\n");
-    printf(" -E:  don't care about rounding errors\n"
+           " -a:  add a constant to advance (1-255, some fonts need it)\n"
+           " -M:  monospacing, round advances up to multiple of n\n"
+           " -o:  use original width and height instead of calculated one\n");
+    printf(" -q:  quiet, don't report font errors\n"
+           " -S:  skip a UNICODE code point, this flag can be repeated\n"
+           " -E:  don't care about rounding errors\n"
            " -t:  set type b=bold,i=italic,u,U,0=Serif,1/s=Sans,2/d=Decor,3/m=Mono,4/h=Hand\n"
            " -n:  set font unique name\n"
            " -f:  set font family (like FreeSerif, Vera, Helvetica)\n"
            " -s:  set subfamily (like Regular, Medium, Bold, Oblique, Thin, etc.)\n"
            " -v:  set font version / revision (like creation date for example)\n"
-           " -m:  set manufacturer (creator, designer, foundry)\n"
-           " -l:  set license (like MIT, GPL or URL to the license)\n");
-    printf(" -r:  code point range, this flag can be repeated before each input\n"
+           " -m:  set manufacturer (creator, designer, foundry)\n");
+    printf(" -l:  set license (like MIT, GPL or URL to the license)\n"
+           " -r:  code point range, this flag can be repeated before each input\n"
            " in:  input font(s) SSFN"
 #ifdef USE_NOFOREIGN
             " and ASC"
@@ -278,6 +280,7 @@ int main(int argc, char **argv)
                 case 'm': if(++i>=argc) usage(); sfn_setstr(&ctx.manufacturer, argv[i], 0); continue;
                 case 'l': if(++i>=argc) usage(); sfn_setstr(&ctx.license, argv[i], 0); continue;
                 case 'b': if(++i>=argc) usage(); ctx.baseline = atoi(argv[i]); continue;
+                case 'M': if(++i>=argc) usage(); monosize = atoi(argv[i]); continue;
                 case 'a': if(++i>=argc) usage(); adv = atoi(argv[i]); continue;
                 case 'u': if(++i>=argc) usage(); relul = atoi(argv[i]); continue;
                 case 'B': if(++i>=argc) usage(); rasterize = atoi(argv[i]); continue;
@@ -352,6 +355,7 @@ int main(int argc, char **argv)
                             case 'd': dump++; break;
                             case 'D': dump = 99; break;
                             case 'C': dump = -1; break;
+                            case 'T': advrecalc = 1; break;
                             default: fprintf(stderr, "sfnconv: unknown flag '%c'\n", argv[i][j]); return 1;
                         }
                     }

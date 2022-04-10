@@ -6,9 +6,10 @@ This is a command line font converter tool. For further details, read the [docum
 ```
 Scalable Screen Font 2.0 by bzt Copyright (C) 2020 MIT license
  https://gitlab.com/bztsrc/scalable-font2
+ UNICODE database: 2022-02-15
 
-./sfnconv [-c|-e|-d|-dd|-dd...|-D] [-C] [-U] [-A] [-R] [-B <size>|-V] [-g]
-   [-b <p>] [-u <+p>] [-a <+p>] [-o] [-q] [-S <U+xxx>] [-E] [-t [b][i]<0..4>]
+./sfnconv [-c|-e|-d|-dd|-dd...|-D] [-C] [-U] [-A] [-R] [-B <size>|-V] [-g] [-T]
+   [-b <p>] [-u <p>] [-a <p>] [-M <n>] [-o] [-q] [-S <U+xxx>] [-E] [-t [b][i]<0..4>]
    [-n <name>] [-f <family>] [-s <subfamily>] [-v <ver>] [-m <manufacturer>]
    [-l <license>] [-r <from> <to>] <in> [ [-r <from> <to>] <in> ...] <out>
 
@@ -23,9 +24,11 @@ Scalable Screen Font 2.0 by bzt Copyright (C) 2020 MIT license
  -B:  rasterize vector fonts to bitmaps
  -V:  vectorize bitmap fonts to scalable fonts
  -g:  save grid information for hinting
+ -T:  recalculate bitmap advances
  -b:  horizontal baseline in pixels (1-255)
  -u:  underline position in pixels (relative to baseline)
- -a:  add a constant to advance (1-255, some fonts need it, others don't)
+ -a:  add a constant to advance (1-255, some fonts need it)
+ -M:  monospacing, round advances up to multiple of n
  -o:  use original width and height instead of calculated one
  -q:  quiet, don't report font errors
  -S:  skip a UNICODE code point, this flag can be repeated
@@ -38,7 +41,7 @@ Scalable Screen Font 2.0 by bzt Copyright (C) 2020 MIT license
  -m:  set manufacturer (creator, designer, foundry)
  -l:  set license (like MIT, GPL or URL to the license)
  -r:  code point range, this flag can be repeated before each input
- in:  input font(s) SSFN,ASC,TTF,OTF,WOFF,PST1,PST42,PSF2,PCF,BDF,hex,TGA,PNG*
+ in:  input font(s) SSFN,ASC,PSF2,PCF,BDF,SFD,HEX,TGA,PNG*
  out: output SSFN/ASC filename**
 
 *  - input files can be gzip compressed, like .psfu.gz, .bdf.gz or .hex.gz

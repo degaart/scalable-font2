@@ -172,13 +172,19 @@ Some formats don't store these, and many fonts has invalid values, so you might 
 manually. It helps a lot if you open OTF/TTF fonts in [FontForge](https://fontforge.github.io) and
 save them to a new file, as FontForge does a very good job in validation and correction on metrics.
 
+To convert into monospace, there are two flags. `-T` can be used for bitmap fonts, which recalculates
+the advance and rounds it up to the smalles multiple of 8 that's larger than width. `-M` requires a
+numeric argument, and rounds advances up to multiple of that, so this can be used for vector fonts too.
+
 ```
  -b:    horizontal baseline in pixels
  -u:    underline position in pixels (relative to baseline)
  -a:    add a constant to advance (some fonts need it, others don't)
  -o:    use original width and height instead of calculated one
  -E:    don't care about rounding errors
-```
+ -T:    recalculate bitmap advances
+ -M:    monospacing, round advances up to multiple of n
+ ```
 
 Example:
 ```sh
