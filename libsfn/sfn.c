@@ -629,6 +629,10 @@ sfnlayer_t *sfn_layeradd(int unicode, int t, int x, int y, int w, int h, int c, 
         for(i = 0; i < ctx.glyphs[unicode].numlayer; i++)
             if(ctx.glyphs[unicode].layers[i].type == t && (t != SSFN_FRAG_BITMAP || ctx.glyphs[unicode].layers[i].color == c))
                 { lyr = &ctx.glyphs[unicode].layers[i]; break; }
+    if(x < 0) {
+        if(!quiet) fprintf(stderr, "libsfn: negative x position in U+%06x character's glyph.\n", unicode);
+        x = 0;
+    }
     if(x + w > ctx.glyphs[unicode].width) {
         if(t != SSFN_FRAG_CONTOUR && lyr && lyr->data) {
             l = (x + w) * ctx.glyphs[unicode].height;
@@ -642,6 +646,10 @@ sfnlayer_t *sfn_layeradd(int unicode, int t, int x, int y, int w, int h, int c, 
             lyr->data = data2;
         }
         ctx.glyphs[unicode].width = x + w;
+    }
+    if(y < 0) {
+        if(!quiet) fprintf(stderr, "libsfn: negative y position in U+%06x character's glyph.\n", unicode);
+        y = 0;
     }
     if(y + h > ctx.glyphs[unicode].height) {
         if(t != SSFN_FRAG_CONTOUR && lyr && lyr->data) {

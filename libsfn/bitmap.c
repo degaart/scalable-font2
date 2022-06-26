@@ -306,7 +306,7 @@ void hex(char *ptr, int size)
 void bdf(char *ptr, int size)
 {
     uint32_t c;
-    int w = 0, h = 0, i, j, a, b = 0, unicode = 0, nc = 0, numchars = 0, defchar = 0, ps = 0, mx, xx, my, xy, k;
+    int w = 0, h = 0, l = 0, t = 0, i, j, a, b = 0, unicode = 0, nc = 0, numchars = 0, defchar = 0, ps = 0, mx, xx, my, xy, k;
     char *end = ptr + size, *face, *name = NULL, *style = NULL, *manu = NULL;
     unsigned char *bitmap = NULL, sfd = 0, dec[4];
 
@@ -398,6 +398,10 @@ void bdf(char *ptr, int size)
                 ptr += 4; w = atoi(ptr);
                 while(*ptr && *ptr!=' ') ptr++;
                 ptr++; h = atoi(ptr);
+                while(*ptr && *ptr!=' ') ptr++;
+                ptr++; l = atoi(ptr);
+                while(*ptr && *ptr!=' ') ptr++;
+                ptr++; t = atoi(ptr);
             }
             if(!memcmp(ptr, "BITMAP", 6)) {
                 ptr += 6; while(*ptr && *ptr!='\n') ptr++;
@@ -416,10 +420,11 @@ void bdf(char *ptr, int size)
                         while(i < ((w + 7) & ~7) * (h + 1)) bitmap[i++] = 0xFF;
                         if(!skipcode && unicode == defchar) { sfn_chardel(0); unicode = 0; }
                         if(sfn_charadd(unicode, w, h, 0, 0, 0))
-                            sfn_layeradd(unicode, SSFN_FRAG_BITMAP, 0, 0, w, h, 0xFE, bitmap);
+                            sfn_layeradd(unicode, SSFN_FRAG_BITMAP, l, ctx.baseline - t - h, w, h, 0xFE, bitmap);
                     }
                 }
                 if(pbar) (*pbar)(0, 0, ++nc, numchars, PBAR_BITMAP);
+                w = h = l = t = 0;
             }
         } else
         if(!memcmp(ptr, "BDFChar:", 8)) {

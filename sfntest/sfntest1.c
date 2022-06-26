@@ -86,7 +86,7 @@ ssfn_font_t *load_font(char *filename)
 /**
  * testing the SSFN library (simple bitmap renderer)
  */
-void do_test(SDL_Surface *screen)
+void do_test(SDL_Surface *screen, char *fn)
 {
     char *s, *str[] = {
         "Simple renderer with UNICODE VGA!", "Üdvözlet!", "¡Bienvenido!", "Здравствуйте!", "Καλως ηρθες!", "متعدد اللغات",
@@ -98,7 +98,7 @@ void do_test(SDL_Surface *screen)
     int i;
 
     /* initialize the simple renderer */
-    ssfn_src = load_font("../fonts/u_vga16.sfn.gz");
+    ssfn_src = load_font(fn && *fn ? fn : "../fonts/u_vga16.sfn.gz");
     ssfn_dst.ptr = (uint8_t*)screen->pixels;
     ssfn_dst.p = screen->pitch;
     ssfn_dst.fg = 0xFFFFFF;
@@ -180,7 +180,7 @@ int main(int argc __attribute__((unused)), char **argv __attribute__((unused)))
     window = SDL_CreateWindow("SSFN simple renderer test", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 640, 480, 0);
     screen = SDL_GetWindowSurface(window);
 
-    do_test(screen);
+    do_test(screen, argv[1]);
 
     do{ SDL_UpdateWindowSurface(window); SDL_Delay(10); } while(SDL_WaitEvent(&event) && event.type != SDL_QUIT &&
         event.type != SDL_MOUSEBUTTONDOWN && event.type != SDL_KEYDOWN);
