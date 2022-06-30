@@ -458,6 +458,7 @@ Parameter defines:
 | `SSFN_STYLE_USRDEF2`    | user defined style                                                 |
 | `SSFN_STYLE_UNDERLINE`  | under line glyphs. This is not stored in fonts, always generated   |
 | `SSFN_STYLE_STHROUGH`   | strike-through glyphs. Not stored either, always generated         |
+| `SSFN_STYLE_A`          | keep the original buffer's alpha channel untouched                 |
 | `SSFN_STYLE_NOAA`       | don't use anti-aliasing (might be unreadable for small sizes)      |
 | `SSFN_STYLE_NOSMOOTH`   | don't use edge-smoothing on scaled bitmap glyphs                   |
 | `SSFN_STYLE_NOKERN`     | don't use kerning relation when calculating advance offsets        |
