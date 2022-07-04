@@ -931,7 +931,7 @@ int ssfn_select(ssfn_t *ctx, int family, const char *name, int style, int size)
 #ifndef SSFN_MAXLINES
     _ssfn_fc(ctx);
 #endif
-    if((style & ~0x3FFF)) return SSFN_ERR_BADSTYLE;
+    if((style & ~0x5FFF)) return SSFN_ERR_BADSTYLE;
     if(size < 8 || size > SSFN_SIZE_MAX) return SSFN_ERR_BADSIZE;
 
     if(family == SSFN_FAMILY_BYNAME) {
