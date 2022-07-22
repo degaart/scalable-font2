@@ -586,7 +586,7 @@ int ft2_read(unsigned char *data, int size)
  */
 int ft2_str(int id, FT_SfntName *name)
 {
-    uint8_t *src, *dst, *end;
+    uint8_t *src, *dst, *end, *old;
     uint16_t chr;
     int i;
 
@@ -602,9 +602,9 @@ int ft2_str(int id, FT_SfntName *name)
         if(!FT_Get_Sfnt_Name(face, i, name) && name->string != NULL && name->string_len > 0 && name->name_id == id) {
             if(!name->encoding_id && name->string[0]) return 1;
             /* TTF isn't really documented, but ft2 seems to think this is UTF16-BE when it gets face->family_name */
-            src = name->string; end = name->string + name->string_len; free(src);
+            src = old = name->string; end = name->string + name->string_len;
             dst = name->string = (uint8_t*)malloc(name->string_len * 2);
-            if(!dst) return 0;
+            if(!dst) { name->string = old; return 0; }
             for(; src < end; src += 2) {
                 chr = (src[0] << 8) | src[1];
                 if(!chr) break;
@@ -614,6 +614,7 @@ int ft2_str(int id, FT_SfntName *name)
             }
             name->encoding_id = 1;
             name->string_len = (uintptr_t)dst - (uintptr_t)name->string;
+            free(old);
             return 1;
         }
     return 0;
