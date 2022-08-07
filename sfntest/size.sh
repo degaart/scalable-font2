@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # get the symbol table, grep for ssfn stuff, convert more spaces to one with
 # while+read, then add the 3rd coloumn (size), finally display the last sum
