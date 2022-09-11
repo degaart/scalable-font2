@@ -7,6 +7,10 @@ CFLAGS += -DHAS_ZLIB=1
 LIBS += -lz
 endif
 
+# workaround a gcc 12 bug: it compains about _ssfn_zexpand, but the checker is just wrong.
+# TODO: remove this when gcc gets fixed.
+CFLAGS+=-Wno-use-after-free
+
 all: $(BINS) size
 
 testC++: sfntest2.c
@@ -26,4 +30,4 @@ size: sfntest1 sfntest2
 	@./size.sh
 
 clean:
-	@rm $(BINS) sfntest7 testC++ *.o 2>/dev/null || true
+	@rm $(BINS) sfntest7 testC++ *.o buffer.tga 2>/dev/null || true

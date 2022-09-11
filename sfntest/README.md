@@ -16,3 +16,5 @@ sfntest5: bounding box test
 sfntest6: same as sfntest5, but rendering off-screen for valgrind testing
 
 sfntest7: same as sfntest2, but uses the C++ wrapper class
+
+sfntest8: generate a buffer with text and save into a Targa .tga image file

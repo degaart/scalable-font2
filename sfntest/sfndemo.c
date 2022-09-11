@@ -480,7 +480,7 @@ void do_test(SDL_Surface *screen, char *fontfn)
 #else
     "allocated"
 #endif
-    ": @%d bytes. All of this from a 29k of code in a single ANSI C header!",
+    ": @%d bytes. All of this from a 30k of code in a single ANSI C header!",
         ssfn_mem(&ctx));
 
     ret = ssfn_select(&ctx, SSFN_FAMILY_SERIF, NULL, SSFN_STYLE_REGULAR | SSFN_STYLE_NOCACHE, 16);

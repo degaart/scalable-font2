@@ -1,10 +1,10 @@
-Scalable Screen Font 2.0 Comparitions
-=====================================
+Scalable Screen Font 2.0 Comparisons
+====================================
 
 [[_TOC_]]
 
-Feature Comparition to Other Font Formats
------------------------------------------
+Feature Comparison to Other Font Formats
+----------------------------------------
 
 | Feature                | SSFN | ASC  | SFD  | TTF  | OTF  | PST1 | PSF2 | BDF  | PNG  |
 | ---------------------- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- |
@@ -141,3 +141,43 @@ Blitting:            0.066342 sec
 Kerning:             0.000366 sec
 ```
 Finished in **0.15 sec**.
+
+**Update 2022**: I've repeated the same test on the same machine but with the latest kernel and the latest gcc 12.2.0:
+
+### Unoptimized Code (-O0)
+
+```
+Simple renderer: 1429 bytes
+Normal renderer: 29728 bytes
+File load time:      0.084566 sec
+Character lookup:    0.002340 sec
+Rasterization:       0.194156 sec
+Blitting:            0.198645 sec
+Kerning:             0.000841 sec
+Raster/blit diff:    0.004489 sec
+```
+Finished in **0.46 sec**.
+
+### With Optimization (-O3)
+
+```
+Simple renderer: 1173 bytes
+Normal renderer: 30721 bytes
+File load time:      0.077983 sec
+Character lookup:    0.001618 sec
+Rasterization:       0.062947 sec
+Blitting:            0.111094 sec
+Kerning:             0.000588 sec
+Raster/blit diff:    0.048147 sec
+```
+Finished in **0.24 sec**.
+
+With this gcc 12 version, almost every block become considerably slower for some reason (the source code itself hasn't changed).
+The optimized version of rasterization is about fine, but the blitter speed up isn't as much as with the old gcc 9 version. I
+might take a look at that and do manual optimization where the new gcc optimizer failed, if/when I have the time.
+
+What's interesting, that the [file load time](../sfntest/sfndemo.c#L45) (which includes zlib decompression and totally independent
+to the SSFN library) too takes about twice the time than with the gcc 9 compiled version (and zlib's source definitely hasn't
+changed in the meantime). Also gcc 12 incorrectly throws a warning about `ssfn.h:605:31: warning: pointer may be used after ‘realloc’`.
+Yeah, I can assure you, that's totally not the case, gcc is just wrong. BTW this function (_ssfn_zexpand) comes from stb's code,
+and stbi__zexpand is working perfectly in stb_image too, using exactly the same pointer arithmetic.

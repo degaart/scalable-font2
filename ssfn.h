@@ -1448,8 +1448,9 @@ ssfn_buf_t *ssfn_text(ssfn_t *ctx, const char *str, unsigned int fg)
     buf->fg = fg;
     if(!*str || ssfn_bbox(ctx, str, (int*)&buf->w, (int*)&buf->h, (int*)&buf->x, (int*)&buf->y) != SSFN_OK)
         return buf;
-    buf->ptr = (uint8_t*)SSFN_realloc(NULL, buf->w * buf->h * sizeof(uint32_t));
-    SSFN_memset(buf->ptr, 0, buf->w * buf->h * sizeof(uint32_t));
+    buf->p = buf->w * sizeof(uint32_t);
+    buf->ptr = (uint8_t*)SSFN_realloc(NULL, buf->p * buf->h);
+    SSFN_memset(buf->ptr, 0, buf->p * buf->h);
     ctx->style &= ~SSFN_STYLE_A;
     while((ret = ssfn_render(ctx, buf, str)) > 0)
         str += ret;
@@ -1612,5 +1613,5 @@ namespace SSFN {
 #endif
 }
 #endif
-/*                                */
+/*                              */
 #endif /* _SSFN_H_ */
