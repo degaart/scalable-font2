@@ -36,7 +36,7 @@
 #include "lang.h"
 
 extern int colorsel, mousex, mousey;
-int sellayers = 0, scrolllayers = 0, pagelayers = 0, isclick = 0, issel = 0, ispicker = 0, selcmd = -1, isfrc = 0;
+int sellayers = 0, scrolllayers = 0, pagelayers = 0, isclick = 0, issel = 0, ispicker = 0, selcmd = -1, isfrc = 0, cx, cy;
 void ctrl_zoom_in(int idx, int mx, int my);
 void ctrl_zoom_out(int idx, int mx, int my);
 void ctrl_move(int idx, int mx, int my);
@@ -70,8 +70,10 @@ void view_layers(int idx)
     i = win->zoom/2; if(i < 2) i = 2;
     ui_box(win, 20+win->zx-i, 36, i, win->h - 36, theme[THEME_BG],theme[THEME_BG],theme[THEME_BG]);
     ui_box(win, 20+win->zx+w, 36, i, win->h - 36, theme[THEME_BG],theme[THEME_BG],theme[THEME_BG]);
-    ui_box(win, 20, 36+win->zy-i, x - 20, i, theme[THEME_BG],theme[THEME_BG],theme[THEME_BG]);
-    ui_box(win, 20, 36+win->zy+h, x - 20, i, theme[THEME_BG],theme[THEME_BG],theme[THEME_BG]);
+    if(win->zy-i >= 0)
+        ui_box(win, 20, 36+win->zy-i, x - 20, i, theme[THEME_BG],theme[THEME_BG],theme[THEME_BG]);
+    if(win->zy+h < win->h)
+        ui_box(win, 20, 36+win->zy+h, x - 20, i, theme[THEME_BG],theme[THEME_BG],theme[THEME_BG]);
     ui_grid(win, ctx.glyphs[win->unicode].width, ctx.glyphs[win->unicode].height);
     if(selcmd != -1 && issel && posx != -1 && posy != -1 && sellayers < ctx.glyphs[win->unicode].numlayer) {
         cont = (sfncont_t*)ctx.glyphs[win->unicode].layers[sellayers].data;
@@ -362,7 +364,7 @@ void ctrl_layers_onbtnpress(int idx)
                     }
                     if(selcmd == -1) { mousex = event.x; mousey = event.y; issel = 0; }
                     else issel = 1;
-                    isclick = 1;
+                    isclick = 1; cx = event.x; cy = event.y;
                     isfrc = event.w & 4;
                 }
         }
@@ -422,8 +424,9 @@ void ctrl_layers_onmove(int idx)
 {
     ui_win_t *win = &wins[idx];
     sfncont_t *cont;
-    int i, x = win->w - 74, ox = win->zx > 0 ? win->zx : 0, oy = win->zy > 0 ? win->zy : 0;
-    if(isfrc) return;
+    int i, j, x = win->w - 74, ox = win->zx > 0 ? win->zx : 0, oy = win->zy > 0 ? win->zy : 0;
+    i = event.x > cx ? event.x - cx : cx - event.x; j = event.y > cy ? event.y - cy : cy - event.y; if(j > i) i = j;
+    if(isfrc || (isclick && i < 3)) return;
     if(x < 0) x = 0;
     posx = posy = -1; isclick = 0;
     if(sellayers < 0 || sellayers >= ctx.glyphs[win->unicode].numlayer) sellayers = 0;

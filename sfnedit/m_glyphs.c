@@ -330,6 +330,7 @@ void ctrl_glyphs_onbtnpress()
 {
     ui_win_t *win = &wins[0];
     int i, j;
+    char *s;
 
     selfield = -1;
     if(event.w != 1) glast = -1;
@@ -379,6 +380,11 @@ void ctrl_glyphs_onbtnpress()
                 selstart = -1;
             }
         }
+        if((event.h & 2) && selfield == 10 && selstart > -1 && selend == -1) {
+            /* ctrl + click: copy UTF-8 representation to clipboard */
+            s = utf8(gres[selstart]);
+            if(s && *s) ui_copy(s);
+        }
     }
 }
 
@@ -401,7 +407,9 @@ void ctrl_glyphs_onclick()
         if(event.x >= 216 && event.x < 236 && selfield == 8) { wins[0].field = 12; ctrl_glyphs_onenter(); wins[0].field = -1; }
         if(event.x >= 250 && event.x < 270 && selfield == 9) { wins[0].field = 13; ctrl_glyphs_onenter(); wins[0].field = -1; }
     } else
-    if(event.y >= 52 && event.y < wins[0].h - 26 && selfield == 10 && selstart > -1 && selend == -1) ui_openwin(gres[selstart]);
+    if(!(event.h & 2) && event.y >= 52 && event.y < wins[0].h - 26 && selfield == 10 && selstart > -1 && selend == -1) {
+        ui_openwin(gres[selstart]);
+    }
     selfield = -1;
 }
 
