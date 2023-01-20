@@ -37,6 +37,7 @@ They support importing virtually all font formats:
  - Windows Console Fonts (.fon, .fnt),
  - GRUB's PFF2 Fonts (.pf2),
  - GNU unifont (.hex),
+ - Bits'N'Picas (.kbits, .kbitx)
  - Portable Network Graphics and TARGA (.png, .tga, for pixel fonts),
  - ...and others! Compressed variants (.gz) supported on-the-fly. Vectorizing bitmap fonts and rasterizing vector fonts also possible.
 

@@ -169,7 +169,7 @@ void usage()
 #if HAS_FT
            ",TTF,OTF,WOFF,PST1,PST42"
 #endif
-           ",PSF2,PCF,BDF,SFD,HEX,TGA,PNG"
+           ",PSF2,PCF,BDF,SFD,HEX,KBITS,TGA,PNG"
 #endif
            "*\n"
            " out: output SSFN/ASC filename**\n\n"

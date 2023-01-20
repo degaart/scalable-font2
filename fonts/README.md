@@ -15,6 +15,8 @@ Scalable Screen Font 2.0 - Example Fonts
 
  - lanapixel.sfn.gz - bitmap font, 14px sized with pretty decent UNICODE coverage by eishiya from [LanaPixel_BitmapOnly.ttf](https://opengameart.org/content/lanapixel-localization-friendly-pixel-font) (CC-BY-4.0, despite what the original page states, this isn't 11px and isn't a pixel font)
 
+ - galmuri7.sfn.gz - bitmap font, 15px sized with an armada of CJK characters from [Galmuri7.kbitx](https://galmuri.quiple.dev/glyphs) (SIL license)
+
  - chrome.sfn - pixmap font, Retro Chrome looking, made after an image found by Google (for demostration purposes only, do not use)
 
  - emoji.sfn - pixmap font, created from a screenshot of [unicode.org's emoji page](http://www.unicode.org/emoji/charts/full-emoji-list.html) (for demostration purposes only, do not use)

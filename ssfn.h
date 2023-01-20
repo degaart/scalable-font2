@@ -600,35 +600,26 @@ inline static int _ssfn__zhuffman_decode(_ssfn__zbuf *a, _ssfn__zhuffman *z)
 static int _ssfn__zexpand(_ssfn__zbuf *z, char *zout)
 {
    char *q;
-   int cur, limit;
-   z->zout = zout;
-   cur   = (int) (z->zout     - z->zout_start);
-   limit = (int) (z->zout_end - z->zout_start);
-   if(limit == 8) {
-       if(z->zout_start[0] != 'S' || z->zout_start[1] != 'F' || z->zout_start[2] != 'N') return 0;
-       limit = *((uint32_t*)&z->zout_start[4]);
-   } else return 0;
+   unsigned int cur, limit;
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wuse-after-free"
+#endif
+   z->zout = zout; cur = (unsigned int) (z->zout - z->zout_start); limit = (unsigned int) (z->zout_end - z->zout_start);
+   if(limit == 8) { if(z->zout_start[0] != 'S' || z->zout_start[1] != 'F' || z->zout_start[2] != 'N') return 0; limit = *((uint32_t*)&z->zout_start[4]); } else return 0;
    q = (char *) SSFN_realloc(z->zout_start, limit);
    if (q == NULL) return 0;
-   z->zout_start = q;
-   z->zout       = q + cur;
-   z->zout_end   = q + limit;
+   z->zout_start = q; z->zout = q + cur; z->zout_end = q + limit;
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
    return 1;
 }
 
-static int _ssfn__zlength_base[31] = {
-   3,4,5,6,7,8,9,10,11,13,
-   15,17,19,23,27,31,35,43,51,59,
-   67,83,99,115,131,163,195,227,258,0,0 };
-
-static int _ssfn__zlength_extra[31]=
-{ 0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0,0,0 };
-
-static int _ssfn__zdist_base[32] = { 1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,
-257,385,513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577,0,0};
-
-static int _ssfn__zdist_extra[32] =
-{ 0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13};
+static int _ssfn__zlength_base[31]={3,4,5,6,7,8,9,10,11,13,15,17,19,23,27,31,35,43,51,59,67,83,99,115,131,163,195,227,258,0,0};
+static int _ssfn__zlength_extra[31]={0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0,0,0};
+static int _ssfn__zdist_base[32]={1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,385,513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577,0,0};
+static int _ssfn__zdist_extra[32]={0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13};
 
 static int _ssfn__parse_huffman_block(_ssfn__zbuf *a)
 {
@@ -637,10 +628,7 @@ static int _ssfn__parse_huffman_block(_ssfn__zbuf *a)
       int z = _ssfn__zhuffman_decode(a, &a->z_length);
       if (z < 256) {
          if (z < 0) return 0;
-         if (zout >= a->zout_end) {
-            if (!_ssfn__zexpand(a, zout)) return 0;
-            zout = a->zout;
-         }
+         if (zout >= a->zout_end) { if (!_ssfn__zexpand(a, zout)) return 0; zout = a->zout; }
          *zout++ = (char) z;
       } else {
          unsigned char *p;
@@ -659,12 +647,8 @@ static int _ssfn__parse_huffman_block(_ssfn__zbuf *a)
             zout = a->zout;
          }
          p = (unsigned char *) (zout - dist);
-         if (dist == 1) {
-            unsigned char v = *p;
-            if (len) { do *zout++ = v; while (--len); }
-         } else {
-            if (len) { do *zout++ = *p++; while (--len); }
-         }
+         if (dist == 1) {unsigned char v = *p;if (len) { do *zout++ = v; while (--len); }
+         } else { if (len) { do *zout++ = *p++; while (--len); } }
       }
    }
 }
@@ -1613,5 +1597,5 @@ namespace SSFN {
 #endif
 }
 #endif
-/*                              */
+/*   */
 #endif /* _SSFN_H_ */

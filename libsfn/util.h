@@ -29,6 +29,8 @@
 
 unsigned int gethex(char *ptr, int len);
 unsigned int getnum(char *s);
+unsigned char *getleb(unsigned char *bytes, unsigned int *value);
 unsigned char *rle_enc(unsigned char *inbuff, int inlen, int *outlen);
 unsigned char *rle_dec(unsigned char *inbuff, int inlen, int *outlen);
 int isempty(int len, unsigned char *data);
+int base64_decode(char *s, unsigned char *out);

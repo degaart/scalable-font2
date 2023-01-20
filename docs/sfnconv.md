@@ -25,7 +25,8 @@ Reading bitmap font has no library dependencies, and the tool can read the most 
 formats: [PC Screen Font](https://www.win.tue.nl/~aeb/linux/kbd/font-formats-1.html) (.psfu,
 Linux Console's format), [X11 Bitmap Distribution Format](https://www.x.org/docs/BDF/bdf.pdf) (.bdf) and
 [X11 Portable Compiled Font](http://ftp.x.org/pub/R6.4/xc/lib/font/bitmap/) (.pcf),
-[GNU unifont](http://unifoundry.com/unifont/index.html) (.hex), Windows FNT/FON (.fnt) and GRUB's PFF2 (.pf2).
+[GNU unifont](http://unifoundry.com/unifont/index.html) (.hex), Windows FNT/FON (.fnt), GRUB's PFF2 (.pf2), and
+[Bits'N'Picas fonts](https://github.com/kreativekorp/bitsnpicas) (.kbits, .kbitx).
 Other bitmap formats, like bitmap sfnt are supported through freetype2.
 
 Bitmap fonts are also compressed, but with a loss-less deduplication algorithm.

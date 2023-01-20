@@ -325,34 +325,37 @@ void bdf(char *ptr, int size)
 
     while(ptr < end && *ptr) {
         if(!memcmp(ptr, "FACE_NAME ", 10) && !face) {
-            ptr += 10; while(*ptr && *ptr!='\"') { ptr++; } ptr++; face = ptr;
+            ptr += 10; while(*ptr==' ') { ptr++; } if(*ptr=='\"') { ptr++; } face = ptr;
         }
         if(!memcmp(ptr, "FONT_NAME ", 10) && !face) {
-            ptr += 10; while(*ptr && *ptr!='\"') { ptr++; } ptr++; face = ptr;
+            ptr += 10; while(*ptr==' ') { ptr++; } if(*ptr=='\"') { ptr++; } face = ptr;
         }
         if(!memcmp(ptr, "FONT_VERSION ", 13) && !ctx.revision) {
-            ptr += 13; while(*ptr && *ptr!='\"') { ptr++; } ptr++;
+            ptr += 13; while(*ptr==' ') { ptr++; } if(*ptr=='\"') ptr++;
             sfn_setstr(&ctx.revision, ptr, 0);
         }
         if(!memcmp(ptr, "ADD_STYLE_NAME ", 15) && !ctx.name && !style) {
-            ptr += 15; while(*ptr && *ptr!='\"') { ptr++; } ptr++; style = ptr;
+            ptr += 15; while(*ptr==' ') { ptr++; } if(*ptr=='\"') ptr++;
+            style = ptr;
         }
         if(!memcmp(ptr, "FOUNDRY ", 8) && !ctx.manufacturer) {
-            ptr += 8; while(*ptr && *ptr!='\"') { ptr++; } ptr++; manu = ptr;
+            ptr += 8; while(*ptr==' ') { ptr++; } if(*ptr=='\"') ptr++;
+            manu = ptr;
         }
         if(!memcmp(ptr, "HOMEPAGE ", 9) && !ctx.manufacturer && !manu) {
-            ptr += 9; while(*ptr && *ptr!='\"') { ptr++; } ptr++; manu = ptr;
+            ptr += 9; while(*ptr==' ') { ptr++; } if(*ptr=='\"') ptr++;
+            manu = ptr;
         }
         if(!memcmp(ptr, "FAMILY_NAME ", 12) && !ctx.familyname) {
-            ptr += 12; while(*ptr && *ptr!='\"') { ptr++; } ptr++;
+            ptr += 12; while(*ptr==' ') { ptr++; } if(*ptr=='\"') ptr++;
             sfn_setstr(&ctx.familyname, ptr, 0);
         }
         if(!memcmp(ptr, "WEIGHT_NAME ", 12) && !ctx.subname) {
-            ptr += 12; while(*ptr && *ptr!='\"') { ptr++; } ptr++;
+            ptr += 12; while(*ptr==' ') { ptr++; } if(*ptr=='\"') ptr++;
             sfn_setstr(&ctx.subname, ptr, 0);
         }
         if(!memcmp(ptr, "COPYRIGHT ", 10) && !ctx.license) {
-            ptr += 10; while(*ptr && *ptr!='\"') { ptr++; } ptr++;
+            ptr += 10; while(*ptr==' ') { ptr++; } if(*ptr=='\"') ptr++;
             sfn_setstr(&ctx.license, ptr, 0);
         }
         if(!memcmp(ptr, "FONT_ASCENT ", 12)) {
@@ -369,7 +372,7 @@ void bdf(char *ptr, int size)
             ps = atoi(ptr); }
         if(!memcmp(ptr, "ENDPROPERTIES", 13) || !memcmp(ptr, "BDFEndProperties", 16)) break;
         while(*ptr && *ptr!='\n') ptr++;
-        while(*ptr=='\n') ptr++;
+        while(*ptr=='\r' || *ptr=='\n') ptr++;
     }
     if(!ctx.name) {
         if(!face) face = ctx.familyname;
@@ -437,7 +440,7 @@ void bdf(char *ptr, int size)
             my = atoi(ptr); while(*ptr && *ptr != ' ') { ptr++; } while(*ptr == ' ') ptr++;
             xy = atoi(ptr); while(*ptr && *ptr != ' ' && *ptr != '\n') { ptr++; } while(*ptr == ' ') ptr++;
             if(*ptr != '\n') a = atoi(ptr); else a = w;
-            while(*ptr && *ptr != '\n') { ptr++; } ptr++;
+            while(*ptr && *ptr != '\n') { ptr++; } while(*ptr == '\r' || *ptr == '\n') ptr++;
             h = ps; xx -= mx - 1; xy -= my - 1;
             xx = (xx + 7) & ~7;
             if(xx * xy < 65536) {
@@ -465,7 +468,7 @@ void bdf(char *ptr, int size)
             if(pbar) (*pbar)(0, 0, ++nc, numchars, PBAR_BITMAP);
         }
         while(*ptr && *ptr!='\n') ptr++;
-        while(*ptr=='\n') ptr++;
+        while(*ptr=='\r' || *ptr=='\n') ptr++;
     }
     if(bitmap) free(bitmap);
 }
@@ -604,6 +607,230 @@ void pcf(unsigned char *ptr, int size)
             sfn_layeradd(j, SSFN_FRAG_BITMAP, x, y, r, n, 0xFE, bitmap);
     }
     if(bitmap) free(bitmap);
+}
+
+/**
+ * Parse name chunk
+ */
+void kbits_name(char **strings)
+{
+    /* unique font name */
+    if(!ctx.name) {
+        if(strings[4]) sfn_setstr(&ctx.name, strings[4], 0); else
+        if(strings[3]) sfn_setstr(&ctx.name, strings[3], 0); else
+        if(strings[6]) sfn_setstr(&ctx.name, strings[6], 0); else
+        if(strings[20]) sfn_setstr(&ctx.name, strings[20], 0); else
+        if(strings[18]) sfn_setstr(&ctx.name, strings[18], 0); else
+        /* fallback */
+        if(strings[16]) sfn_setstr(&ctx.name, strings[16], 0);
+    }
+
+    /* family name */
+    if(!ctx.familyname) {
+        if(strings[1]) sfn_setstr(&ctx.familyname, strings[1], 0); else
+        if(strings[16]) sfn_setstr(&ctx.familyname, strings[16], 0);
+    }
+
+    /* subfamily name */
+    if(!ctx.subname) {
+        if(strings[2]) sfn_setstr(&ctx.subname, strings[2], 0); else
+        if(strings[17]) sfn_setstr(&ctx.subname, strings[17], 0);
+    }
+
+    /* version / revision */
+    if(!ctx.revision && strings[5]) sfn_setstr(&ctx.revision, strings[5], 0);
+
+    /* manufacturer */
+    if(!ctx.manufacturer) {
+        if(strings[8]) sfn_setstr(&ctx.manufacturer, strings[8], 0); else
+        if(strings[9]) sfn_setstr(&ctx.manufacturer, strings[9], 0);
+    }
+
+    /* copyright */
+    if(!ctx.license) {
+        if(strings[13]) sfn_setstr(&ctx.license, strings[13], 0); else
+        if(strings[0]) sfn_setstr(&ctx.license, strings[0], 0); else
+        if(strings[7]) sfn_setstr(&ctx.license, strings[7], 0);
+    }
+}
+
+/**
+ * Parse Bits'N'Picas font format (binary)
+ */
+void kbits(unsigned char *ptr, int size)
+{
+    uint8_t *end = ptr + size, *s, *save;
+    unsigned char *bitmap = NULL;
+    char *strings[32] = { 0 };
+    int i, j, k, numchars = 0, a, x, y, w, h;
+
+    ctx.height = ptr[0x17];   /* lineAscent */
+    ctx.baseline = ctx.underline = 0;
+    ptr += 0x24;
+    while(ptr < end && (!memcmp(ptr, "name", 4) || !memcmp(ptr, "\0ame", 4))) {
+        if(ptr[11] < 32) strings[(int)ptr[11]] = (char*)ptr + 14;
+        ptr += 14 + ((ptr[12] << 8) | ptr[13]); *ptr = 0;
+    }
+    kbits_name(strings);
+
+    save = ptr;
+    while(ptr < end && (!memcmp(ptr, "char", 4) || !memcmp(ptr, "\0har", 4))) {
+        if(ctx.baseline < ptr[0x17]) ctx.baseline = ptr[0x17];
+        if(ctx.height < ptr[0x1b]) ctx.height = ptr[0x1b];
+        for(i = ptr[0x1b], ptr += 0x1c; i > 0; i--, ptr += 4 + ptr[3]);
+        numchars++;
+    }
+    if(ctx.underline < ctx.baseline) ctx.underline = ctx.baseline;
+    ptr = save;
+    while(ptr < end && (!memcmp(ptr, "char", 4) || !memcmp(ptr, "\0har", 4))) {
+        s = ptr;
+        x = (char)ptr[0x13]; y = ctx.baseline - (char)ptr[0x17]; h = ptr[0x1b];
+        if(y < 0 || y > ctx.height || h < 1) y = 0;
+        if(x < 0 || x >= 255) x = 0;
+        for(w = 0, i = ptr[0x1b], ptr += 0x1c; i > 0; i--, ptr += 4 + ptr[3]) if(ptr[3] > w) w = ptr[3];
+        if(x + w > ctx.width) ctx.width = x + w;
+        if(y + h > ctx.height) ctx.height = y + h;
+    }
+    printf("\r  Name '%s' num_glyphs: %d, ascender: %d, underline: %d, height: %d\n", ctx.name, numchars, ctx.baseline,
+        ctx.underline, ctx.height);
+
+    ptr = save;
+    while(ptr < end && (!memcmp(ptr, "char", 4) || !memcmp(ptr, "\0har", 4))) {
+        s = ptr;
+        a = ptr[0xf]; x = (char)ptr[0x13]; y = ctx.baseline - ptr[0x17]; h = ptr[0x1b];
+        if(y < 0 || y > ctx.height || h < 1) y = 0;
+        unicode = (ptr[8] << 24) | (ptr[9] << 16) | (ptr[10] << 8) | ptr[11];
+        for(w = 0, i = s[0x1b], s += 0x1c; i > 0; i--, s += 4 + s[3]) if(s[3] > w) w = s[3];
+        bitmap = realloc(bitmap, w * h + 1);
+        if(!bitmap) { fprintf(stderr,"libsfn: memory allocation error\n"); return; }
+        memset(bitmap, 0xFF, w * h + 1);
+        for(i = h, ptr += 0x1c, k = 0; i > 0; i--, ptr += 4 + ptr[3], k += w)
+            for(j = 0; j < ptr[3]; j++) bitmap[k + j] = ptr[4 + j] > 127 ? 0xFE : 0xFF;
+        if(y + h > ctx.height) h = ctx.height - y;
+        if(sfn_charadd(unicode, (x < 0 ? 0 : x) + w, y + h, a, 0, (x < 0 ? -x : 0)))
+            sfn_layeradd(unicode, SSFN_FRAG_BITMAP, (x < 0 ? 0 : x), y, w, h, 0xFE, bitmap);
+    }
+    if(bitmap) free(bitmap);
+}
+
+/**
+ * Parse Bits'N'Picas font format (text)
+ */
+void kbitx(char *ptr, int size)
+{
+    unsigned char *bitmap = NULL, *buf = NULL, *buf2;
+    char *strings[32] = { 0 }, *s, *e, *save, *end = ptr + size;
+    int i, j, l, numchars = 0, a, x, y, w, h;
+    int repeatCount = 0, repeatData = -1, data;
+
+    while(ptr < end && *ptr && memcmp(ptr, "<g ", 3) && memcmp(ptr, "</kbits", 7)) {
+        if(!memcmp(ptr, "<name ", 6)) {
+            for(i = -1, e = NULL, s = ptr; *s && *s != '\n' && *s != '>'; s++) {
+                if(!memcmp(s, "id=\"", 4)) { s += 4; i = atoi(s); while(*s && *s != '>' && *s != '\n' && *s != '\"') s++; } else
+                if(!memcmp(s, "value=\"", 7)) { s += 7; e = s; while(*s && *s != '\n' && *s != '\"') s++; }
+            }
+            if(i >= 0 && i < 32 && e) strings[i] = e;
+        }
+        while(*ptr && *ptr!='\n') ptr++;
+        while(*ptr=='\r' || *ptr=='\n' || *ptr == ' ') ptr++;
+    }
+    ctx.height = ctx.baseline = ctx.underline = 0;
+    kbits_name(strings);
+
+    save = ptr;
+    while(ptr < end && *ptr && !memcmp(ptr, "<g ", 3)) {
+        y = 0;
+        for(e = NULL, s = ptr; *s && *s != '\n' && *s != '>'; s++) {
+            if(!memcmp(s, "y=\"", 3)) { s += 3; y = atoi(s); while(*s && *s != '>' && *s != '\n' && *s != '\"') s++; }
+        }
+        if(y > ctx.baseline) ctx.baseline = y;
+        while(*ptr && *ptr!='\n') ptr++;
+        while(*ptr=='\r' || *ptr=='\n' || *ptr == ' ') ptr++;
+        numchars++;
+    }
+    if(ctx.underline < ctx.baseline) ctx.underline = ctx.baseline;
+    ptr = save;
+    while(ptr < end && *ptr && !memcmp(ptr, "<g ", 3)) {
+        x = y = w = h = 0;
+        for(e = NULL, s = ptr; *s && *s != '\n' && *s != '>'; s++) {
+            if(!memcmp(s, "x=\"", 3)) { s += 3; x = atoi(s); while(*s && *s != '>' && *s != '\n' && *s != '\"') s++; } else
+            if(!memcmp(s, "y=\"", 3)) { s += 3; y = ctx.baseline - atoi(s); while(*s && *s != '>' && *s != '\n' && *s != '\"') s++; } else
+            if(!memcmp(s, "d=\"", 3)) { s += 3; e = s; while(*s && *s != '>' && *s != '\n' && *s != '\"') s++; }
+        }
+        if(y < 0 || y > ctx.height || h < 1) y = 0;
+        if(x < 0 || x >= 255) x = 0;
+        while(*ptr && *ptr!='\n') ptr++;
+        while(*ptr=='\r' || *ptr=='\n' || *ptr == ' ') ptr++;
+        if(e) {
+            buf2 = buf = realloc(buf, ptr - e + 256);
+            if(!buf2) { fprintf(stderr,"libsfn: memory allocation error\n"); return; }
+            memset(buf, 0, ptr - e + 256);
+            if(base64_decode(e, buf) > 2) {
+                buf2 = getleb(buf2, (unsigned int*)&h);
+                buf2 = getleb(buf2, (unsigned int*)&w);
+            };
+        };
+        if(x + w > ctx.width) ctx.width = x + w;
+        if(y + h > ctx.height) ctx.height = y + h;
+    }
+    printf("\r  Name '%s' num_glyphs: %d, ascender: %d, underline: %d, height: %d\n", ctx.name, numchars, ctx.baseline,
+        ctx.underline, ctx.height);
+
+    ptr = save;
+    while(ptr < end && *ptr && !memcmp(ptr, "<g ", 3)) {
+        a = x = y = w = h = 0;
+        for(e = NULL, s = ptr; *s && *s != '\n' && *s != '>'; s++) {
+            if(!memcmp(s, "u=\"", 3)) { s += 3; unicode = (uint32_t)atoi(s); while(*s && *s != '>' && *s != '\n' && *s != '\"') s++; } else
+            if(!memcmp(s, "x=\"", 3)) { s += 3; x = atoi(s); while(*s && *s != '>' && *s != '\n' && *s != '\"') s++; } else
+            if(!memcmp(s, "y=\"", 3)) { s += 3; y = ctx.baseline - atoi(s); while(*s && *s != '>' && *s != '\n' && *s != '\"') s++; } else
+            /* this isn't width, this is actually advance x */
+            if(!memcmp(s, "w=\"", 3)) { s += 3; a = atoi(s); while(*s && *s != '>' && *s != '\n' && *s != '\"') s++; } else
+            if(!memcmp(s, "d=\"", 3)) { s += 3; e = s; while(*s && *s != '>' && *s != '\n' && *s != '\"') s++; }
+        }
+        while(*ptr && *ptr!='\n') ptr++;
+        while(*ptr=='\r' || *ptr=='\n' || *ptr == ' ') ptr++;
+        if(e) {
+            buf2 = buf = realloc(buf, ptr - e + 256);
+            if(!buf2) { fprintf(stderr,"libsfn: memory allocation error\n"); return; }
+            memset(buf, 0, ptr - e + 256);
+            if((l = base64_decode(e, buf)) > 2) {
+                buf2 = getleb(buf2, (unsigned int*)&h);
+                buf2 = getleb(buf2, (unsigned int*)&w);
+                bitmap = realloc(bitmap, w * h + 1);
+                if(!bitmap) { fprintf(stderr,"libsfn: memory allocation error\n"); return; }
+                memset(bitmap, 0xFF, w * h + 1);
+                for(j = repeatCount = 0, repeatData = -1; j < w * h && buf2 <= buf + l; ) {
+                    if(repeatCount > 0) {
+                        repeatCount--;
+                        if(repeatData == -1) {
+                            bitmap[j++] = buf2 == buf + l || *buf2++ > 127 ? 0xFE : 0xFF;
+                            continue;
+                        } else {
+                            bitmap[j++] = repeatData > 127 ? 0xFE : 0xFF;
+                            continue;
+                        }
+                    }
+                    if(buf2 == buf + l) { bitmap[j++] = 0xFE; break; }
+                    data = *buf2++;
+                    repeatCount = data & 0x1F;
+                    if((data & 0x20) != 0) repeatCount <<= 5;
+                    switch(data & 0xC0) {
+                        case 0x00: repeatData = 0x00; break;
+                        case 0x40: repeatData = 0xFF; break;
+                        case 0x80:
+                            if(buf2 == buf + l) { bitmap[j++] = 0xFE; buf2++; break; }
+                            repeatData = *buf2++;
+                        break;
+                        case 0xC0: repeatData = -1; break;
+                    }
+                }
+            } else x = w = 0;
+        } else x = w = 0;
+        if(sfn_charadd(unicode, (x < 0 ? 0 : x) + w, y + h, a, 0, (x < 0 ? -x : 0)))
+            sfn_layeradd(unicode, SSFN_FRAG_BITMAP, (x < 0 ? 0 : x), y, w, h, 0xFE, bitmap);
+    }
+    if(bitmap) free(bitmap);
+    if(buf) free(buf);
 }
 
 /**

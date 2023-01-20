@@ -31,13 +31,14 @@ Szinte minden létező font formátumot támogatnak:
  - PS Type1 (.pfa, .pfb),
  - PS Type42 (.pfa, .pfb),
  - Webfonts (.woff, .woff2),
- - FontForge SplineFontDB-ej (.sfd, vektor és bitmap alapú fontok),
+ - FontForge SplineFontDB-je (.sfd, vektor és bitmap alapú fontok),
  - X11 Bitmap Distribution Format (.bdf),
  - X11 Portable Compiled Font (.pcf),
  - Linux konzol fontok PC Screen Font (.psf, .psfu),
  - Windows konzol fontok (.fon, .fnt),
  - GRUB PFF2 fontjai (.pf2),
  - GNU unifont (.hex),
+ - Bits'N'Picas (.kbits, .kbitx)
  - Portable Network Graphics és TARGA (.png, .tga, a színes pixel alapú fontokhoz),
  - ...és még sok más! Tömörített (.gz) fontokat is kezeli. Bitmap vektorizálás és vektor font raszterirálás egyaránt lehetséges.
 

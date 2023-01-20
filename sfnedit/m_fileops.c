@@ -150,6 +150,7 @@ void fileops_readdir(int save)
                     memcmp(de->d_name + k - 4, ".fnt", 4) && memcmp(de->d_name + k - 4, ".fon", 4) &&
                     memcmp(de->d_name + k - 4, ".psf", 4) && memcmp(de->d_name + k - 5, ".psfu",5) &&
                     memcmp(de->d_name + k - 4, ".bdf", 4) && memcmp(de->d_name + k - 4, ".hex", 4) &&
+                    memcmp(de->d_name + k - 6, ".kbits", 6) && memcmp(de->d_name + k - 6, ".kbitx", 6) &&
                     memcmp(de->d_name + k - 4, ".tga", 4) && memcmp(de->d_name + k - 4, ".png", 4)))
 #endif
                     ) continue;

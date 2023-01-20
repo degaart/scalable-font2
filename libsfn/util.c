@@ -58,6 +58,22 @@ unsigned int getnum(char *s)
 }
 
 /**
+ * Read wasm integer (LEB128)
+ */
+unsigned char *getleb(unsigned char *bytes, unsigned int *value)
+{
+    unsigned int ret = 0, shift = 0, b;
+    if(!bytes) return NULL;
+    do {
+        b = *bytes++;
+        ret |= ((b & 0x7f) << shift);
+        shift += 7;
+    } while(shift < 32 && (b & 0x80));
+    if(value) *value = ret;
+    return bytes;
+}
+
+/**
  * Encode run-length bytes
  */
 unsigned char *rle_enc(unsigned char *inbuff, int inlen, int *outlen)
@@ -130,4 +146,38 @@ int isempty(int len, unsigned char *data)
     for(i = 0; i < len; i++)
         if(data[i] != 0xFF) return 0;
     return 1;
+}
+
+/**
+ * RFC4648 base64 decoder
+ */
+int base64_decode(char *s, unsigned char *out)
+{
+    unsigned char *ret = out;
+    int b = 0, c = 0, d;
+    while(*s && *s != '=' && *s != '<' && *s != '>' && *s != '\"') {
+        while(*s && (*s == ' ' || *s == '\r' || *s == '\n')) s++;
+        if(!*s) break;
+        if(*s >= 'A' && *s <= 'Z') d = *s - 'A'; else
+        if(*s >= 'a' && *s <= 'z') d = *s - 'a' + 26; else
+        if(*s >= '0' && *s <= '9') d = *s - '0' + 52; else
+        if(*s == '+' || *s == '-' || *s == '.') d = 62; else
+        if(*s == '/' || *s == '_') d = 63; else break;
+        b += d; c++; s++;
+        if(c == 4) {
+            *out++ = (b >> 16);
+            *out++ = ((b >> 8) & 0xff);
+            *out++ = (b & 0xff);
+            b = c = 0;
+        } else {
+            b <<= 6;
+        }
+    }
+    switch(c) {
+        case 1: break;
+        case 2: *out++ = (b >> 10); break;
+        case 3: *out++ = (b >> 16); *out++ = ((b >> 8) & 0xff); break;
+    }
+    *out = 0;
+    return (int)(out - ret);
 }

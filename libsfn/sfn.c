@@ -54,6 +54,12 @@ int rs = 0, re = 0x10FFFF, replace = 0, skipundef = 0, skipcode = 0, hinting = 0
 int rasterize = 0, origwh = 0, lastuni = -1, *fidx, dorounderr = 0, monosize = 0, advrecalc = 0;
 sfnctx_t ctx;
 sfnprogressbar_t pbar = NULL;
+void *my_memmem(const void *haystack, size_t haystacklen, const void *needle, size_t needlelen)
+{
+    size_t i;
+    for(i = 0; i < haystacklen - needlelen && memcmp((uint8_t*)haystack + i, needle, needlelen); i++);
+    return (i < haystacklen - needlelen) ? (void*)((uint8_t*)haystack + i) : NULL;
+}
 
 /**
  * Sort layers by type and scanline
@@ -1414,6 +1420,12 @@ int sfn_load(char *filename, int dump)
     } else if(data[0]=='S' && data[1]=='p' && data[2]=='l' && data[3]=='i' && data[4]=='n') {
         printf("Loaded '%s' (SplineFontDB, %X - %X)\n", filename, rs, re);
         sfd((char*)data, size);
+    } else if(!memcmp(data, "KBnPbits", 8)) {
+        printf("Loaded '%s' (KBnP bin, %X - %X)\n", filename, rs, re);
+        kbits(data, size);
+    } else if(!memcmp(data, "<?xml", 5) && my_memmem(data, size < 256 ? size : 256, "<kbits>", 7)) {
+        printf("Loaded '%s' (KBnP xml, %X - %X)\n", filename, rs, re);
+        kbitx((char*)data, size);
     } else if(data[0]==0x89 && data[1]=='P' && data[2]=='N' && data[3]=='G') {
         printf("Loaded '%s' (PNG, %X - %X)\n", filename, rs, re);
         png(data, size);
