@@ -80,9 +80,9 @@ typedef struct {
 filelist_t *files = NULL;
 
 int numfiles = 0, scrollfiles = 0, pagefiles = 0, selfiles = -1, ordering = 0, pathX[PATH_MAX/FILENAME_MAX+64] = { 0 }, pathlen;
-int lastsave = -1, clkfiles = 0, question_y = 0;
+int lastsave = -1, clkfiles = 0, question_y = 0, numdrives = 0, seldrive = 0;
 char fn[PATH_MAX+64] = {0}, filename[FILENAME_MAX+64] = {0}, path[PATH_MAX/FILENAME_MAX+64][FILENAME_MAX], fsearch[256] = { 0 };
-char strrs[16] = { 0 }, strre[16] = { 0 }, fstatus[256];
+char strrs[16] = { 0 }, strre[16] = { 0 }, fstatus[256], drives[128];
 
 /**
  * Sort file names
@@ -238,8 +238,8 @@ void view_fileops(int save)
     for(i = 0, ssfn_dst.x = 10; i < pathlen && ssfn_dst.x < win->w - 158; i++) {
         pathX[i] = ssfn_dst.x;
         ui_text(win, ssfn_dst.x, 30, path[i]);
-        ui_rect(win, pathX[i] - 3, 29, ssfn_dst.x - pathX[i] + 6, 20, theme[selfield == i + 4 ? k : j],
-            theme[selfield == i + 4 ? j : k]);
+        ui_rect(win, pathX[i] - 3, 29, ssfn_dst.x - pathX[i] + 6, 20, theme[selfield == i + 6 ? k : j],
+            theme[selfield == i + 6 ? j : k]);
         ssfn_dst.x += 8;
     }
     pathX[i] = ssfn_dst.x - 8;
@@ -317,7 +317,7 @@ void view_fileops(int save)
         ssfn_dst.fg = theme[THEME_FG];
         ssfn_dst.w = win->w;
         ssfn_dst.h = win->h;
-        ui_hscrbar(win, win->w - 20, 72, 12, win->h - 124, scrollfiles, pagefiles, numfiles, selfield == 12);
+        ui_hscrbar(win, win->w - 20, 72, 12, win->h - 124, scrollfiles, pagefiles, numfiles, selfield == 5);
         j = win->w / 4;
         if(!save) {
             if(!strrs[0]) sprintf(strrs, "U+%X", rs);
@@ -338,6 +338,28 @@ void view_fileops(int save)
             ui_button(win, win->w - 12 - j, win->h - 44, j, lang[FILEOP_SAVE], selfield == 4 ? 3 : 2, wins[0].field == 12);
         }
     }
+#ifdef __WIN32__
+    if(selfield == 6) {
+        memset(drives, 0, sizeof(drives)); numdrives = 0;
+        k = (int)GetLogicalDrives();
+        for(i = 0, j = 1; i < 32; i++, j <<= 1)
+            if(k & j) {
+                drives[numdrives * 4] = 'A' + i;
+                drives[numdrives * 4 + 1] = ':';
+                drives[numdrives * 4 + 2] = DIRSEP;
+                numdrives++;
+            }
+        ui_box(win, 10, 52, 32, 4 + numdrives * 16, theme[THEME_DARK], theme[THEME_BG], theme[THEME_LIGHT]);
+        for(i = 0; i < numdrives; i++) {
+            if(i == seldrive) {
+                ui_box(win, 11, 52 + i * 16, 30, 16, theme[THEME_SELBG], theme[THEME_SELBG], theme[THEME_SELBG]);
+                ssfn_dst.fg = theme[THEME_SELFG];
+            } else
+                ssfn_dst.fg = theme[THEME_FG];
+            ui_text(win, 12, 52 + i * 16, drives + i * 4);
+        }
+    }
+#endif
 }
 
 /**
@@ -496,7 +518,7 @@ void ctrl_fileops_onbtnpress(int save)
         else {
             for(i = 0; i < pathlen; i++)
                 if(event.x >= pathX[i] - 3 && event.x <= pathX[i + 1] - 5) {
-                    selfield = 4 + i; break;
+                    selfield = 6 + i; break;
                 }
         }
     } else
@@ -509,7 +531,7 @@ void ctrl_fileops_onbtnpress(int save)
         wins[0].field = 8;
         if(event.x >= wins[0].w - 20 && numfiles) {
             i = 72 + (wins[0].h - 144) * scrollfiles / numfiles; j = 20 + (wins[0].h - 144) * pagefiles / numfiles;
-            if(event.y >= i && event.y < i + j) { selfield = 12; scrolly = event.y - i; }
+            if(event.y >= i && event.y < i + j) { selfield = 5; scrolly = event.y - i; }
         } else {
             if(event.w & 1) {
                 selfiles = (event.y - 73) / 16 + scrollfiles;
@@ -548,9 +570,18 @@ void ctrl_fileops_onbtnpress(int save)
 void ctrl_fileops_onclick(int save)
 {
     int i, j = wins[0].w / 4;
+#ifdef __WIN32__
+    if(selfield == 6 && event.y > 54 && event.y < 54 + numdrives * 16 && event.x >= 10 && event.x < 42) {
+        strcpy(path[0], &drives[((event.y - 54) / 16) * 4]);
+        strcpy(fn, path[0]);
+        pathlen = 1;
+        fileops_readdir(save);
+        path[pathlen][strlen(path[pathlen]) - 1] = 0;
+    } else
+#endif
     if(event.y >= 29 && event.y <= 49) {
-        if(event.x < wins[0].w - 132 && selfield >= 4 && event.x >= pathX[selfield-4] - 3 && event.x <= pathX[selfield-3] - 5) {
-            pathlen = selfield - 3;
+        if(event.x < wins[0].w - 132 && selfield >= 6 && event.x >= pathX[selfield-6] - 3 && event.x <= pathX[selfield-5] - 5) {
+            pathlen = selfield - 5;
             for(fn[0] = 0, i = 0; i < pathlen; i++)
                 strcat(fn, path[i]);
             fileops_readdir(save);
@@ -585,7 +616,7 @@ void ctrl_fileops_onclick(int save)
 void ctrl_fileops_onmove()
 {
     int i;
-    if(selfield == 12 && event.y > 73 && event.y < wins[0].h - 72) {
+    if(selfield == 5 && event.y > 73 && event.y < wins[0].h - 72) {
         i = scrollfiles;
         scrollfiles = (event.y - scrolly - 73) * numfiles / (wins[0].h - 144);
         if(scrollfiles > numfiles - pagefiles) scrollfiles = numfiles - pagefiles;
@@ -597,6 +628,17 @@ void ctrl_fileops_onmove()
             ui_refreshwin(0, 0, 0, wins[0].w, wins[0].h);
         }
     }
+#ifdef __WIN32__
+    if(selfield == 6 && event.y > 54 && event.y < 54 + numdrives * 16 && event.x >= 10 && event.x < 42) {
+        i = (event.y - 54) / 16;
+        if(i != seldrive) {
+            seldrive = i;
+            ui_resizewin(&wins[0], wins[0].w, wins[0].h);
+            ui_refreshwin(0, 0, 0, wins[0].w, wins[0].h);
+        }
+    } else
+        seldrive = -1;
+#endif
 }
 
 /**
