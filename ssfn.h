@@ -165,7 +165,7 @@ typedef struct {
 } ssfn_buf_t;
 
 /* cached bitmap struct */
-#define SSFN_DATA_MAX       ((SSFN_SIZE_MAX + 4 + (SSFN_SIZE_MAX + 4) / SSFN_ITALIC_DIV) << 8)
+#define SSFN_DATA_MAX       65536
 typedef struct {
     uint16_t p;                       /* data buffer pitch, bytes per line */
     uint8_t h;                        /* data buffer height */
@@ -1047,6 +1047,7 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
         ci = (ctx->style & SSFN_STYLE_ITALIC) && !(SSFN_TYPE_STYLE(ctx->f->type) & SSFN_STYLE_ITALIC);
         cb = (ctx->style & SSFN_STYLE_BOLD) && !(SSFN_TYPE_STYLE(ctx->f->type) & SSFN_STYLE_BOLD) ? (ctx->f->height+64)>>6 : 0;
         w = (ctx->rc->w * h + ctx->f->height - 1) / ctx->f->height;
+        if(w > SSFN_SIZE_MAX) { h = h * SSFN_SIZE_MAX / w; w = SSFN_SIZE_MAX; }
         p = w + (ci ? h / SSFN_ITALIC_DIV : 0) + cb;
         /* failsafe, should never happen */
         if(p * h >= SSFN_DATA_MAX) return SSFN_ERR_BADSIZE;
@@ -1070,7 +1071,7 @@ again:  if(p >= SSFN_FAMILY_BYNAME) { n = 0; m = 4; } else n = m = p;
         x = (ctx->rc->x > 0 && ci ? (ctx->f->height - ctx->f->baseline) * h / SSFN_ITALIC_DIV / ctx->f->height : 0);
         ctx->g->p = p;
         ctx->g->h = h;
-        ctx->g->x = ctx->rc->x + x;
+        ctx->g->x = (ctx->rc->x + x > 255 ? 255 : ctx->rc->x + x);
         ctx->g->y = ctx->rc->y;
         ctx->g->o = (ctx->rc->t & 0x3F) + x;
         SSFN_memset(&ctx->g->data, 0xFF, p * h);
@@ -1521,11 +1522,8 @@ int ssfn_putc(uint32_t unicode)
             for(p = o, l = 0; l < k; l++, p++, m <<= 1) {
                 if(m > 0x80) { frg++; m = 1; }
                 if(ssfn_dst.x + l >= 0 && (!w || ssfn_dst.x + l < w)) {
-                    if(*frg & m) {
-                        *p = ssfn_dst.fg;
-                    } else if(ssfn_dst.bg) {
-                        *p = ssfn_dst.bg;
-                    }
+                    if(*frg & m) *p = ssfn_dst.fg; else
+                    if(ssfn_dst.bg) *p = ssfn_dst.bg;
                 }
             }
     }
@@ -1597,5 +1595,5 @@ namespace SSFN {
 #endif
 }
 #endif
-/*   */
+/*                             */
 #endif /* _SSFN_H_ */
