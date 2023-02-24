@@ -300,7 +300,7 @@ void view_fileops(int save)
             ui_text(win, 30, ssfn_dst.y, files[i].name);
             sprintf(tmp,"%13" PRIu64,files[i].size);
             ssfn_dst.w = win->w - 168; if(ssfn_dst.w < 1) ssfn_dst.w = 1;
-            ui_text(win, win->w - 280, ssfn_dst.y, tmp);
+            ui_text(win, win->w - 288, ssfn_dst.y, tmp);
             ssfn_dst.w = win->w - 9; if(ssfn_dst.w < 1) ssfn_dst.w = 1;
             diff = now - files[i].time;
             if(diff < 120) strcpy(tmp, lang[FILEOP_NOW]); else

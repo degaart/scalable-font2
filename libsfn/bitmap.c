@@ -976,7 +976,7 @@ tgaerr: fprintf(stderr,"libsfn: unsupported TGA file format\n");
         case 2:
             if(ptr[5]!=0 || ptr[6]!=0 || ptr[1]!=0 || (ptr[16]!=24 && ptr[16]!=32)) goto tgaerr;
             for(y=i=0; y<h; y++) {
-                j = ((!o?h-y-1:y)*w*(ptr[16]>>3));
+                j = m+((!o?h-y-1:y)*w*(ptr[16]>>3));
                 for(x=0; x<w; x++) {
                     data[i++] = sfn_cpaladd(ptr[j+2], ptr[j+1], ptr[j], ptr[16]==32?ptr[j+3]:0xFF);
                     j += ptr[16]>>3;
