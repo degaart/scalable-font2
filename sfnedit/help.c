@@ -78,7 +78,8 @@ void view_help(int idx)
         if(c == '[') { ssfn_dst.fg = theme[THEME_BG]; ssfn_dst.bg = theme[THEME_FG]; ssfn_putc(' '); } else
         if(c == ']') { ssfn_putc(' '); ssfn_dst.fg = theme[THEME_FG]; ssfn_dst.bg = theme[THEME_BG]; } else
         if(c == '\t') { ssfn_dst.x = 8 + 20*8; } else
-        if(c == '\n' || ssfn_dst.x + 8 >= win->w) { ssfn_dst.x = 8; ssfn_dst.y += 18; }
+        if(c == '\n' || ssfn_dst.x + 16 >= win->w) { ssfn_dst.x = 8; ssfn_dst.y += 18; }
         else ssfn_putc(c);
+        if(ssfn_dst.fg == theme[THEME_BG]) ssfn_dst.x--;
     }
 }
