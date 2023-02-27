@@ -51,7 +51,7 @@
 #define BM_USET(bm, x, y) (*bm_index(bm, x, y) |= bm_mask(x))
 
 int rs = 0, re = 0x10FFFF, replace = 0, skipundef = 0, skipcode = 0, hinting = 0, adv = 0, relul = 0;
-int rasterize = 0, origwh = 0, lastuni = -1, *fidx, dorounderr = 0, monosize = 0, advrecalc = 0;
+int rasterize = 0, origwh = 0, lastuni = -1, *fidx, dorounderr = 0, monosize = 0, advrecalc = 0, propo = 0;
 sfnctx_t ctx;
 sfnprogressbar_t pbar = NULL;
 void *my_memmem(const void *haystack, size_t haystacklen, const void *needle, size_t needlelen)
@@ -2194,7 +2194,7 @@ void sfn_setstr(char **s, char *n, int len)
 void sfn_sanitize(int unicode)
 {
     sfncont_t *cont;
-    int i, j, k, l, m = 0, h, s, e;
+    int i, j, k, l, m = 0, n, o, h, s, e;
 
     if(unicode == -1) { s = 0; e = 0x110000; } else { s = unicode; e = unicode + 1; }
     for(i = s; i < e; i++) {
@@ -2231,13 +2231,23 @@ void sfn_sanitize(int unicode)
                     }
                 } else {
                     ctx.glyphs[i].layers[j].minx = ctx.glyphs[i].layers[j].miny = 256;
-                    for(l = 0; l < ctx.glyphs[i].height; l++)
+                    for(l = o = 0; l < ctx.glyphs[i].height; l++)
                         for(k = 0; k < ctx.glyphs[i].width; k++)
                             if(ctx.glyphs[i].layers[j].data[l * ctx.glyphs[i].width + k] != 0xFF) {
+                                if(k > o) o = k;
                                 if(k > m) m = k;
                                 if(k < ctx.glyphs[i].layers[j].minx) ctx.glyphs[i].layers[j].minx = k;
                                 if(l < ctx.glyphs[i].layers[j].miny) ctx.glyphs[i].layers[j].miny = l;
                             }
+                    if(propo && ctx.glyphs[i].adv_x && (ctx.glyphs[i].layers[j].minx || o + 1 != ctx.glyphs[i].width)) {
+                        for(l = 0; l < ctx.glyphs[i].height; l++) {
+                            for(n = 0, k = ctx.glyphs[i].layers[j].minx; k <= o; k++, n++)
+                                ctx.glyphs[i].layers[j].data[l * ctx.glyphs[i].width + n] = ctx.glyphs[i].layers[j].data[l * ctx.glyphs[i].width + k];
+                            for(; n < ctx.glyphs[i].width; n++) ctx.glyphs[i].layers[j].data[l * ctx.glyphs[i].width + n] = 0xFF;
+                        }
+                        if(i != 32 && i != 160) ctx.glyphs[i].adv_x = o - ctx.glyphs[i].layers[j].minx + 2 + adv;
+                        ctx.glyphs[i].layers[j].minx = 0;
+                    }
                 }
                 if(ctx.glyphs[i].layers[j].color >= ctx.numcpal || ctx.glyphs[i].layers[j].type == SSFN_FRAG_PIXMAP)
                     ctx.glyphs[i].layers[j].color = 0xFE;

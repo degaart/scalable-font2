@@ -149,7 +149,8 @@ void usage()
            " -u:  underline position in pixels (relative to baseline)\n"
            " -a:  add a constant to advance (1-255, some fonts need it)\n"
            " -M:  monospacing, round advances up to multiple of n\n"
-           " -o:  use original width and height instead of calculated one\n");
+           " -o:  use original width and height instead of calculated one\n"
+           " -p:  convert to proportional font\n");
     printf(" -q:  quiet, don't report font errors\n"
            " -S:  skip a UNICODE code point, this flag can be repeated\n"
            " -E:  don't care about rounding errors\n"
@@ -356,6 +357,7 @@ int main(int argc, char **argv)
                             case 'D': dump = 99; break;
                             case 'C': dump = -1; break;
                             case 'T': advrecalc = 1; break;
+                            case 'p': propo = 1; break;
                             default: fprintf(stderr, "sfnconv: unknown flag '%c'\n", argv[i][j]); return 1;
                         }
                     }
