@@ -30,6 +30,7 @@ Scalable Screen Font 2.0 by bzt Copyright (C) 2020 MIT license
  -a:  add a constant to advance (1-255, some fonts need it)
  -M:  monospacing, round advances up to multiple of n
  -o:  use original width and height instead of calculated one
+ -p:  convert to proportional font
  -q:  quiet, don't report font errors
  -S:  skip a UNICODE code point, this flag can be repeated
  -E:  don't care about rounding errors
